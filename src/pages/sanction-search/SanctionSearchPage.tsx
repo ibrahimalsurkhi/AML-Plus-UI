@@ -80,6 +80,7 @@ interface SearchOptions {
 const AVAILABLE_FIELDS = [
   { value: 'firstName', label: 'First Name' },
   { value: 'secondName', label: 'Second Name' },
+  { value: 'nameOriginalScript', label: 'Name Original Script' },
   { value: 'unListType', label: 'List Type' },
   { value: 'referenceNumber', label: 'Reference Number' },
   { value: 'nationalities', label: 'Nationalities' },
@@ -277,7 +278,19 @@ interface DetailModalProps {
   onClose: () => void;
 }
 
-const DetailModal = ({ result, highlights, onClose }: DetailModalProps) => {
+const DetailModal: React.FC<DetailModalProps> = ({ result, highlights, onClose }) => {
+  const renderValue = (value: string | null | undefined, field?: string) => {
+    if (!value) return '-';
+    if (!highlights || !field) return value;
+    
+    const fieldHighlights = highlights[field];
+    if (!fieldHighlights) return value;
+    
+    return (
+      <span dangerouslySetInnerHTML={{ __html: fieldHighlights[0] }} />
+    );
+  };
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -288,26 +301,6 @@ const DetailModal = ({ result, highlights, onClose }: DetailModalProps) => {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
-  const renderHighlightedValue = (value: string | undefined, highlightedValues?: string[]) => {
-    if (!value) return <span className="text-gray-400">-</span>;
-    if (!highlightedValues?.length) return value;
-
-    return (
-      <div className="flex flex-col gap-1">
-        <span>{value}</span>
-        <div className="text-xs space-y-1">
-          {highlightedValues.map((highlight, index) => (
-            <div 
-              key={index}
-              className="bg-yellow-50 text-yellow-800 px-2 py-1 rounded"
-              dangerouslySetInnerHTML={{ __html: highlight }}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   const renderTableRow = (icon: string, label: string, value: any, highlight?: string[]) => (
     <tr className="border-b border-gray-100 last:border-0">
       <td className="py-3 pl-4 pr-3 whitespace-nowrap w-[200px]">
@@ -317,580 +310,437 @@ const DetailModal = ({ result, highlights, onClose }: DetailModalProps) => {
         </div>
       </td>
       <td className="py-3 px-3">
-        {typeof value === 'string' ? renderHighlightedValue(value, highlight) : value}
+        {typeof value === 'string' ? renderValue(value, undefined) : value}
       </td>
     </tr>
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
-                <KeenIcon icon="user" className="text-primary w-8 h-8" />
-              </div>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    {result.firstName} {result.secondName}
-                  </h3>
-                  <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary">
-                    {result.unListType}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-                  <span className="flex items-center gap-1.5">
-                    <KeenIcon icon="barcode" className="w-4 h-4" />
-                    Ref: {result.referenceNumber}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <KeenIcon icon="calendar" className="w-4 h-4" />
-                    Listed: {new Date(result.listedOn).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-start mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              {renderValue(result.firstName, 'firstName')} {renderValue(result.secondName, 'secondName')}
+            </h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 hover:text-gray-500"
             >
-              <KeenIcon icon="cross" className="w-5 h-5" />
+              <KeenIcon icon="cross" className="h-6 w-6" />
             </button>
           </div>
-        </div>
-        
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          <div className="space-y-6">
-            {/* Basic Information */}
-            <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <KeenIcon icon="user" className="text-primary" />
-                Basic Information
-              </h4>
-              <div className="bg-gray-50/50 rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <tbody className="divide-y divide-gray-100">
-                      {[
-                        { icon: 'fingerprint', label: 'ID', value: result.id },
-                        { icon: 'code', label: 'Data ID', value: result.dataID },
-                        { icon: 'code', label: 'Source ID', value: result.sourceID },
-                        { icon: 'code', label: 'Version', value: result.versionNum },
-                        { icon: 'user', label: 'First Name', value: result.firstName },
-                        { icon: 'user', label: 'Second Name', value: result.secondName },
-                        { icon: 'user', label: 'Third Name', value: result.thirdName },
-                        { icon: 'abstract-28', label: 'UN List Type', value: result.unListType },
-                        { icon: 'barcode', label: 'Reference Number', value: result.referenceNumber },
-                        { 
-                          icon: 'calendar', 
-                          label: 'Listed On', 
-                          value: new Date(result.listedOn).toLocaleDateString(undefined, {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })
-                        },
-                        { icon: 'text', label: 'Original Script', value: result.nameOriginalScript }
-                      ].map((item, index) => (
-                        <tr 
-                          key={index}
-                          className={clsx(
-                            'hover:bg-gray-50/50 transition-colors',
-                            index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                          )}
-                        >
-                          <td className="py-3 pl-4 pr-3 w-[200px] whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <KeenIcon icon={item.icon} className="text-gray-400 w-5 h-5" />
-                              <span className="font-medium text-gray-600">{item.label}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3">
-                            {item.value || <span className="text-gray-400">-</span>}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+
+          {/* Basic Information */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <KeenIcon icon="user" className="h-5 w-5 mr-2" />
+              Basic Information
+            </h3>
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-200">
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">ID</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{result.id || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Data ID</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{result.dataID || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Source ID</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{result.sourceID || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Version</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{result.versionNum || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">First Name</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {renderValue(result.firstName, 'firstName')}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Second Name</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {renderValue(result.secondName, 'secondName')}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Third Name</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {renderValue(result.thirdName, 'thirdName')}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">UN List Type</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {renderValue(result.unListType, 'unListType')}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Reference Number</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {renderValue(result.referenceNumber, 'referenceNumber')}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Listed On</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {renderValue(result.listedOn, 'listedOn')}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Original Script</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {renderValue(result.nameOriginalScript, 'nameOriginalScript')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-
-            {/* Comments */}
-            {result.comments && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <KeenIcon icon="message-text-2" className="text-primary" />
-                  Comments
-                </h4>
-                <div className="bg-gray-50/50 rounded-lg overflow-hidden">
-                  <div className="p-4">
-                    <div className="text-gray-600 text-sm whitespace-pre-wrap">
-                      {result.comments}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Aliases */}
-            {result.aliases && result.aliases.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <KeenIcon icon="profile-user" className="text-primary" />
-                  Known Aliases ({result.aliases.length})
-                </h4>
-                <div className="bg-gray-50/50 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-200 bg-gray-50/80">
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="user" className="w-4 h-4" />
-                              Name
-                            </div>
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="verify" className="w-4 h-4" />
-                              Quality
-                            </div>
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="information" className="w-4 h-4" />
-                              Note
-                            </div>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {result.aliases.map((alias, index) => (
-                          <tr 
-                            key={index}
-                            className={clsx(
-                              'hover:bg-gray-50/50 transition-colors',
-                              index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                            )}
-                          >
-                            <td className="py-3 px-4 text-sm">
-                              <div className="flex items-center gap-2">
-                                <KeenIcon icon="user" className="w-5 h-5 text-gray-400" />
-                                <span className="font-medium text-gray-900">{alias.aliasName}</span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              <span className={clsx(
-                                'inline-flex px-2 py-1 rounded text-xs font-medium',
-                                alias.quality === 'Good' 
-                                  ? 'bg-success/10 text-success'
-                                  : 'bg-warning/10 text-warning'
-                              )}>
-                                {alias.quality}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {alias.note || <span className="text-gray-400">-</span>}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Addresses */}
-            {result.addresses && result.addresses.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <KeenIcon icon="geolocation" className="text-primary" />
-                  Addresses ({result.addresses.length})
-                </h4>
-                <div className="bg-gray-50/50 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-200 bg-gray-50/80">
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="home" className="w-4 h-4" />
-                              Street
-                            </div>
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="location" className="w-4 h-4" />
-                              City
-                            </div>
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="map" className="w-4 h-4" />
-                              State/Province
-                            </div>
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="flag" className="w-4 h-4" />
-                              Country
-                            </div>
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="barcode" className="w-4 h-4" />
-                              ZIP Code
-                            </div>
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="information" className="w-4 h-4" />
-                              Note
-                            </div>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {result.addresses.map((address, index) => (
-                          <tr 
-                            key={index}
-                            className={clsx(
-                              'hover:bg-gray-50/50 transition-colors',
-                              index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                            )}
-                          >
-                            <td className="py-3 px-4 text-sm">
-                              {address.street || <span className="text-gray-400">-</span>}
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {address.city || <span className="text-gray-400">-</span>}
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {address.stateProvince || <span className="text-gray-400">-</span>}
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {address.country ? (
-                                <div className="flex items-center gap-1.5">
-                                  <KeenIcon icon="flag" className="w-4 h-4 text-gray-400" />
-                                  <span className="text-gray-900">{address.country}</span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {address.zipCode || <span className="text-gray-400">-</span>}
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {address.note || <span className="text-gray-400">-</span>}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Documents */}
-            {result.documents && result.documents.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <KeenIcon icon="document" className="text-primary" />
-                  Documents ({result.documents.length})
-                </h4>
-                <div className="bg-gray-50/50 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-200 bg-gray-50/80">
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="document-text" className="w-4 h-4" />
-                              Type
-                            </div>
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="barcode" className="w-4 h-4" />
-                              Number
-                            </div>
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="flag" className="w-4 h-4" />
-                              Country
-                            </div>
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="calendar" className="w-4 h-4" />
-                              Issue Date
-                            </div>
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="location" className="w-4 h-4" />
-                              City
-                            </div>
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="information" className="w-4 h-4" />
-                              Note
-                            </div>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {result.documents.map((doc, index) => (
-                          <tr 
-                            key={index}
-                            className={clsx(
-                              'hover:bg-gray-50/50 transition-colors',
-                              index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                            )}
-                          >
-                            <td className="py-3 px-4 text-sm">
-                              <div className="flex items-center gap-2">
-                                <KeenIcon 
-                                  icon={doc.typeOfDocument?.toLowerCase()?.includes('passport') ? 'passport' : 'document-text'}
-                                  className={clsx(
-                                    'w-5 h-5',
-                                    doc.typeOfDocument?.toLowerCase()?.includes('passport') ? 'text-primary' : 'text-gray-400'
-                                  )}
-                                />
-                                <span className="font-medium text-gray-900">
-                                  {doc.typeOfDocument || '-'}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {doc.number ? (
-                                <span className="inline-flex px-2 py-1 rounded bg-gray-100 text-gray-600 font-medium">
-                                  {doc.number}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {doc.countryOfIssue ? (
-                                <div className="flex items-center gap-1.5">
-                                  <KeenIcon icon="flag" className="w-4 h-4 text-gray-400" />
-                                  <span className="text-gray-600">{doc.countryOfIssue}</span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {doc.dateOfIssue ? (
-                                <div className="flex items-center gap-1.5">
-                                  <KeenIcon icon="calendar" className="w-4 h-4 text-gray-400" />
-                                  <span className="text-gray-600">
-                                    {new Date(doc.dateOfIssue).toLocaleDateString()}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {doc.cityOfIssue ? (
-                                <div className="flex items-center gap-1.5">
-                                  <KeenIcon icon="location" className="w-4 h-4 text-gray-400" />
-                                  <span className="text-gray-600">{doc.cityOfIssue}</span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {doc.note ? (
-                                <div className="flex items-center gap-1.5">
-                                  <KeenIcon icon="information" className="w-4 h-4 text-gray-400" />
-                                  <span className="text-gray-600">{doc.note}</span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Designations */}
-            {result.designations && result.designations.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <KeenIcon icon="award" className="text-primary" />
-                  Designations ({result.designations.length})
-                </h4>
-                <div className="bg-gray-50/50 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-200 bg-gray-50/80">
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="medal" className="w-4 h-4" />
-                              Designation
-                            </div>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {result.designations.map((designation, index) => (
-                          <tr 
-                            key={index}
-                            className={clsx(
-                              'hover:bg-gray-50/50 transition-colors',
-                              index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                            )}
-                          >
-                            <td className="py-3 px-4 text-sm">
-                              <div className="flex items-start gap-2">
-                                <KeenIcon icon="medal" className="w-5 h-5 text-primary mt-0.5" />
-                                <span className="text-gray-900">{designation.designationText}</span>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Additional Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Nationalities */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <KeenIcon icon="flag" className="text-primary" />
-                  Nationalities ({result.nationalities.length})
-                </h4>
-                <div className="bg-gray-50/50 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-200 bg-gray-50/80">
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="flag" className="w-4 h-4" />
-                              Nationality
-                            </div>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {result.nationalities.map((nat, index) => (
-                          <tr 
-                            key={index}
-                            className={clsx(
-                              'hover:bg-gray-50/50 transition-colors',
-                              index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                            )}
-                          >
-                            <td className="py-3 px-4 text-sm">
-                              <div className="flex items-center gap-2">
-                                <KeenIcon icon="flag" className="w-5 h-5 text-gray-400" />
-                                <span className="text-gray-900">{nat.nationalityText}</span>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-
-              {/* List Types */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <KeenIcon icon="category" className="text-primary" />
-                  List Types ({result.listTypes.length})
-                </h4>
-                <div className="bg-gray-50/50 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-200 bg-gray-50/80">
-                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="abstract-28" className="w-4 h-4" />
-                              List Type
-                            </div>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {result.listTypes.map((type, index) => (
-                          <tr 
-                            key={index}
-                            className={clsx(
-                              'hover:bg-gray-50/50 transition-colors',
-                              index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                            )}
-                          >
-                            <td className="py-3 px-4 text-sm">
-                              <div className="flex items-center gap-2">
-                                <KeenIcon icon="abstract-28" className="w-5 h-5 text-primary" />
-                                <span className="text-gray-900">{type.listTypeText}</span>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Search Matches */}
-            {highlights && Object.keys(highlights).length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <KeenIcon icon="search" className="text-primary" />
-                  Search Matches
-                </h4>
-                <div className="bg-gray-50/50 rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <tbody>
-                      {Object.entries(highlights).map(([key, values]) => (
-                        renderTableRow('target', key, (
-                          <div className="space-y-1">
-                            {values.map((value, index) => (
-                              <div
-                                key={index}
-                                className="bg-yellow-50 text-yellow-800 px-2 py-1 rounded text-xs"
-                                dangerouslySetInnerHTML={{ __html: value }}
-                              />
-                            ))}
-                          </div>
-                        ))
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
           </div>
+
+          {/* Comments */}
+          {result.comments && result.comments.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <KeenIcon icon="chat" className="h-5 w-5 mr-2" />
+                Comments
+              </h3>
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <p className="text-sm text-gray-700">
+                  {renderValue(result.comments[0], 'comments')}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Documents */}
+          {result.documents && result.documents.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <KeenIcon icon="document" className="h-5 w-5 mr-2" />
+                Documents ({result.documents.length})
+              </h3>
+              <div className="bg-gray-50 rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="document" className="h-4 w-4 mr-2" />
+                          Type
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="hashtag" className="h-4 w-4 mr-2" />
+                          Number
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="flag" className="h-4 w-4 mr-2" />
+                          Country
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="calendar" className="h-4 w-4 mr-2" />
+                          Issue Date
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="location" className="h-4 w-4 mr-2" />
+                          City
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="information" className="h-4 w-4 mr-2" />
+                          Note
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {result.documents.map((doc, index) => (
+                      <tr key={index} className={clsx(
+                        'hover:bg-gray-50',
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                      )}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {doc.typeOfDocument || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {doc.number || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {doc.countryOfIssue || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {doc.dateOfIssue || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {doc.cityOfIssue || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {doc.note || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Aliases */}
+          {result.aliases && result.aliases.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <KeenIcon icon="user-group" className="h-5 w-5 mr-2" />
+                Aliases ({result.aliases.length})
+              </h3>
+              <div className="bg-gray-50 rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="user" className="h-4 w-4 mr-2" />
+                          Name
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="star" className="h-4 w-4 mr-2" />
+                          Quality
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="information" className="h-4 w-4 mr-2" />
+                          Note
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {result.aliases.map((alias, index) => (
+                      <tr key={index} className={clsx(
+                        'hover:bg-gray-50',
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                      )}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {alias.aliasName || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {alias.quality || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {alias.note || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Addresses */}
+          {result.addresses && result.addresses.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <KeenIcon icon="location" className="h-5 w-5 mr-2" />
+                Addresses ({result.addresses.length})
+              </h3>
+              <div className="bg-gray-50 rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="location" className="h-4 w-4 mr-2" />
+                          Street
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="location" className="h-4 w-4 mr-2" />
+                          City
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="location" className="h-4 w-4 mr-2" />
+                          State/Province
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="flag" className="h-4 w-4 mr-2" />
+                          Country
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="hashtag" className="h-4 w-4 mr-2" />
+                          ZIP Code
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="information" className="h-4 w-4 mr-2" />
+                          Note
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {result.addresses.map((address, index) => (
+                      <tr key={index} className={clsx(
+                        'hover:bg-gray-50',
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                      )}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {address.street || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {address.city || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {address.stateProvince || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {address.country || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {address.zipCode || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {address.note || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Nationalities */}
+          {result.nationalities && result.nationalities.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <KeenIcon icon="flag" className="h-5 w-5 mr-2" />
+                Nationalities ({result.nationalities.length})
+              </h3>
+              <div className="bg-gray-50 rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="flag" className="h-4 w-4 mr-2" />
+                          Nationality
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {result.nationalities.map((nationality, index) => (
+                      <tr key={index} className={clsx(
+                        'hover:bg-gray-50',
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                      )}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {nationality.nationalityText || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* List Types */}
+          {result.listTypes && result.listTypes.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <KeenIcon icon="list" className="h-5 w-5 mr-2" />
+                List Types ({result.listTypes.length})
+              </h3>
+              <div className="bg-gray-50 rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="list" className="h-4 w-4 mr-2" />
+                          List Type
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {result.listTypes.map((listType, index) => (
+                      <tr key={index} className={clsx(
+                        'hover:bg-gray-50',
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                      )}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {listType.listTypeText || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Designations */}
+          {result.designations && result.designations.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <KeenIcon icon="medal" className="h-5 w-5 mr-2" />
+                Designations ({result.designations.length})
+              </h3>
+              <div className="bg-gray-50 rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th className="px-6 py-3 bg-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center">
+                          <KeenIcon icon="medal" className="h-4 w-4 mr-2" />
+                          Designation
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {result.designations.map((designation, index) => (
+                      <tr key={index} className={clsx(
+                        'hover:bg-gray-50',
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                      )}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {designation.designationText || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -905,7 +755,7 @@ const SanctionSearchPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [searchOptions, setSearchOptions] = useState<SearchOptions>({
-    fieldsToSearch: ['firstName', 'secondName'],
+    fieldsToSearch: ['firstName', 'secondName', 'nameOriginalScript'],
     matchMode: 1,
     logicalOperator: 1,
     sortBy: 'listedOn'
