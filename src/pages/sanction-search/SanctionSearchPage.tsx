@@ -317,22 +317,50 @@ const SanctionSearchPage = () => {
 
     return (
       <div className="border-t border-gray-100 pt-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <KeenIcon icon="abstract-45" className="text-primary" />
-            Found {searchResults.total} results
-            {searchQuery && (
-              <span className="text-sm font-normal text-gray-600">
-                for "{searchQuery}"
-              </span>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <KeenIcon icon="abstract-45" className="text-primary" />
+              Found {searchResults.total} results
+              {searchQuery && (
+                <span className="text-sm font-normal text-gray-600">
+                  for "{searchQuery}"
+                </span>
+              )}
+            </h3>
+            {searchResults.total > 0 && (
+              <div className="text-sm text-gray-600">
+                Showing {Math.min(searchResults.results.length, searchResults.total)} of {searchResults.total} results
+              </div>
             )}
-          </h3>
-          {searchResults.total > 0 && (
-            <div className="text-sm text-gray-600">
-              Showing {Math.min(searchResults.results.length, searchResults.total)} of {searchResults.total} results
+          </div>
+
+          {searchResults.aggregations?.un_list_types?.length > 0 && (
+            <div className="bg-gray-50/50 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <KeenIcon icon="chart-pie-simple" className="text-primary" />
+                <h4 className="font-medium">Results by List Type</h4>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {searchResults.aggregations.un_list_types.map((agg) => (
+                  <div 
+                    key={agg.key} 
+                    className="bg-white rounded-lg p-3 border border-gray-100 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-primary/20" />
+                      <span className="text-[13px] text-gray-700">{agg.key}</span>
+                    </div>
+                    <span className="text-[13px] font-medium text-primary">
+                      {agg.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
+
         <div className="space-y-3">
           {searchResults.results.map((result) => (
             <div key={result.id} className="p-4 bg-white border border-gray-100 rounded-lg hover:border-gray-200 hover:shadow-sm transition-all">
