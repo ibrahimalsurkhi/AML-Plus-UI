@@ -1,9 +1,14 @@
 import { type TLanguageCode } from '@/i18n';
 
 export interface AuthModel {
-  access_token: string;
-  refreshToken?: string;
-  api_token: string;
+  success: boolean;
+  errorMessage: string | null;
+  token: string;
+  refreshToken: string | null;
+  userId: string;
+  userName: string;
+  email: string;
+  roles: string[] | null;
 }
 
 export interface UserModel {

@@ -79,50 +79,17 @@ const Login = () => {
         noValidate
       >
         <div className="text-center mb-2.5">
-          <h3 className="text-lg font-semibold text-gray-900 leading-none mb-2.5">Sign in</h3>
+          <h3 className="text-lg font-semibold text-gray-900 leading-none mb-2.5">Sign in to AML Plus</h3>
           <div className="flex items-center justify-center font-medium">
-            <span className="text-2sm text-gray-600 me-1.5">Need an account?</span>
+            <span className="text-2sm text-gray-600 me-1.5">Need access to the platform?</span>
             <Link
               to={currentLayout?.name === 'auth-branded' ? '/auth/signup' : '/auth/classic/signup'}
               className="text-2sm link"
             >
-              Sign up
+              Request Access
             </Link>
           </div>
         </div>
-
-        <div className="grid grid-cols-2 gap-2.5">
-          <a href="#" className="btn btn-light btn-sm justify-center">
-            <img
-              src={toAbsoluteUrl('/media/brand-logos/google.svg')}
-              className="size-3.5 shrink-0"
-            />
-            Use Google
-          </a>
-
-          <a href="#" className="btn btn-light btn-sm justify-center">
-            <img
-              src={toAbsoluteUrl('/media/brand-logos/apple-black.svg')}
-              className="size-3.5 shrink-0 dark:hidden"
-            />
-            <img
-              src={toAbsoluteUrl('/media/brand-logos/apple-white.svg')}
-              className="size-3.5 shrink-0 light:hidden"
-            />
-            Use Apple
-          </a>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="border-t border-gray-200 w-full"></span>
-          <span className="text-2xs text-gray-500 font-medium uppercase">Or</span>
-          <span className="border-t border-gray-200 w-full"></span>
-        </div>
-
-        <Alert variant="primary">
-          Use <span className="font-semibold text-gray-900">administrator@localhost</span> username and{' '}
-          <span className="font-semibold text-gray-900">Administrator1!</span> password.
-        </Alert>
 
         {formik.status && <Alert variant="danger">{formik.status}</Alert>}
 

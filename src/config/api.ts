@@ -4,5 +4,8 @@ export const API_CONFIG = {
     auth: {
       login: 'Auth/login',
     },
+    search: {
+      tenants: 'Tenants/search',
+    },
   },
 } as const; 

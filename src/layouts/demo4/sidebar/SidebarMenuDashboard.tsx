@@ -27,35 +27,82 @@ interface IMenuItem {
 const SidebarMenuDashboard = () => {
   const dropdownItems: IDropdownItem[] = [
     {
-      title: 'Client API',
-      path: '/account/home/user-profile',
-      icon: 'calendar',
+      title: 'Transaction Monitoring',
+      path: '/aml/transaction-monitoring',
+      icon: 'chart-line',
       active: true
     },
     {
-      title: 'Profile',
-      path: '/public-profile/profiles/company',
+      title: 'Customer Due Diligence',
+      path: '/aml/customer-due-diligence',
       icon: 'profile-circle'
     },
     {
-      title: 'My Account',
-      path: '/account/integrations',
-      icon: 'setting-2'
+      title: 'Risk Assessment',
+      path: '/aml/risk-assessment',
+      icon: 'shield-tick'
     },
     {
-      title: 'Projects',
-      path: '/public-profile/projects/3-columns',
-      icon: 'questionnaire-tablet'
+      title: 'Sanctions Screening',
+      path: '/aml/sanctions-screening',
+      icon: 'search-status'
     },
     {
-      title: 'Personal info',
-      path: '/public-profile/profiles/creator',
-      icon: 'badge'
+      title: 'Reports & Analytics',
+      path: '/aml/reports',
+      icon: 'document-text'
     }
   ];
   const { isRTL } = useLanguage();
 
   const menuItems: IMenuItem[] = [
+    {
+      title: 'AML Configuration',
+      children: [
+        {
+          title: 'Risk Rules Setup',
+          path: '/aml/config/risk-rules'
+        },
+        {
+          title: 'Screening Parameters',
+          path: '/aml/config/screening',
+          active: true
+        },
+        {
+          title: 'Alert Thresholds',
+          path: '/aml/config/alerts'
+        },
+        {
+          title: 'API Integration',
+          path: '/aml/config/api'
+        },
+        {
+          title: 'Data Sources',
+          path: '/aml/config/data-sources'
+        }
+      ]
+    },
+    {
+      title: 'Compliance',
+      children: [
+        {
+          title: 'Regulatory Reports',
+          path: '/aml/compliance/reports'
+        },
+        {
+          title: 'Audit Logs',
+          path: '/aml/compliance/audit'
+        },
+        {
+          title: 'Case Management',
+          path: '/aml/compliance/cases'
+        },
+        {
+          title: 'Document Management',
+          path: '/aml/compliance/documents'
+        }
+      ]
+    },
     {
       title: 'Configuration',
       children: [
