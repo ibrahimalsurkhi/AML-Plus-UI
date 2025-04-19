@@ -64,9 +64,7 @@ interface SearchResult {
 interface SearchResponse {
   total: number;
   results: SearchResult[];
-  aggregations: {
-    un_list_types: Array<{ key: string; count: number }>;
-  };
+  aggregations: Record<string, Array<{ key: string; count: number }>>;
   highlights: Record<string, Record<string, string[]>>;
 }
 
@@ -75,6 +73,10 @@ interface SearchOptions {
   matchMode: number;
   logicalOperator: number;
   sortBy: string;
+  aggregationRequests: Array<{
+    Name: string;
+    Field: string;
+  }>;
 }
 
 const AVAILABLE_FIELDS = [
@@ -84,6 +86,19 @@ const AVAILABLE_FIELDS = [
   { value: 'unListType', label: 'List Type' },
   { value: 'referenceNumber', label: 'Reference Number' },
   { value: 'nationalities', label: 'Nationalities' },
+] as const;
+
+const AGGREGATION_OPTIONS = [
+  { 
+    value: 'un_list_types', 
+    label: 'List Types',
+    field: 'unListType.keyword'
+  },
+  { 
+    value: 'nationalityText', 
+    label: 'Nationalities',
+    field: 'nationalities.nationalityText.keyword'
+  }
 ] as const;
 
 const MATCH_MODES = [
@@ -105,7 +120,7 @@ const SORT_OPTIONS = [
 ] as const;
 
 interface MultiSelectProps {
-  options: typeof AVAILABLE_FIELDS;
+  options: typeof AVAILABLE_FIELDS | typeof AGGREGATION_OPTIONS;
   value: string[];
   onChange: (value: string[]) => void;
   placeholder?: string;
@@ -776,7 +791,13 @@ const SanctionSearchPage = () => {
     fieldsToSearch: ['firstName', 'secondName', 'nameOriginalScript'],
     matchMode: 1,
     logicalOperator: 1,
-    sortBy: 'listedOn'
+    sortBy: 'listedOn',
+    aggregationRequests: [
+      {
+        Name: "un_list_types",
+        Field: "unListType.keyword"
+      }
+    ]
   });
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
 
@@ -827,7 +848,13 @@ const SanctionSearchPage = () => {
       fieldsToSearch: ['firstName', 'secondName'],
       matchMode: 1,
       logicalOperator: 1,
-      sortBy: 'listedOn'
+      sortBy: 'listedOn',
+      aggregationRequests: [
+        {
+          Name: "un_list_types",
+          Field: "unListType.keyword"
+        }
+      ]
     });
   };
 
@@ -868,16 +895,20 @@ const SanctionSearchPage = () => {
             )}
           </div>
 
-          {searchResults.aggregations?.un_list_types?.length > 0 && (
-            <div className="bg-gray-50/75 rounded-xl p-5 mb-6 border border-gray-200/75">
+          {Object.entries(searchResults.aggregations || {}).map(([aggName, aggData]) => (
+            <div key={aggName} className="bg-gray-50/75 rounded-xl p-5 mb-6 border border-gray-200/75">
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
                   <KeenIcon icon="chart-pie-simple" className="h-4 w-4 text-primary" />
                 </div>
-                <h4 className="font-medium">Results by List Type</h4>
+                <h4 className="font-medium">
+                  {aggName === 'un_list_types' ? 'Results by List Type' : 
+                   aggName === 'nationalityText' ? 'Results by Nationality' : 
+                   `Results by ${aggName}`}
+                </h4>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {searchResults.aggregations.un_list_types.map((agg) => (
+                {aggData.map((agg) => (
                   <div 
                     key={agg.key} 
                     className="bg-white rounded-xl p-4 border border-gray-200/75 flex items-center justify-between hover:border-gray-300 hover:shadow-sm transition-all duration-200"
@@ -893,7 +924,7 @@ const SanctionSearchPage = () => {
                 ))}
               </div>
             </div>
-          )}
+          ))}
         </div>
 
         <div className="space-y-3">
@@ -963,6 +994,27 @@ const SanctionSearchPage = () => {
                   fieldsToSearch: fields
                 }))}
                 placeholder="Select fields to search..."
+              />
+            </div>
+
+            <div>
+              <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
+                Aggregations
+              </label>
+              <MultiSelect
+                options={AGGREGATION_OPTIONS}
+                value={searchOptions.aggregationRequests.map(agg => agg.Name)}
+                onChange={(selectedAggs) => setSearchOptions(prev => ({
+                  ...prev,
+                  aggregationRequests: selectedAggs.map(name => {
+                    const option = AGGREGATION_OPTIONS.find(opt => opt.value === name);
+                    return {
+                      Name: name,
+                      Field: option?.field || ''
+                    };
+                  })
+                }))}
+                placeholder="Select aggregations..."
               />
             </div>
 
@@ -1184,6 +1236,27 @@ const SanctionSearchPage = () => {
                               fieldsToSearch: fields
                             }))}
                             placeholder="Select fields to search..."
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
+                            Aggregations
+                          </label>
+                          <MultiSelect
+                            options={AGGREGATION_OPTIONS}
+                            value={searchOptions.aggregationRequests.map(agg => agg.Name)}
+                            onChange={(selectedAggs) => setSearchOptions(prev => ({
+                              ...prev,
+                              aggregationRequests: selectedAggs.map(name => {
+                                const option = AGGREGATION_OPTIONS.find(opt => opt.value === name);
+                                return {
+                                  Name: name,
+                                  Field: option?.field || ''
+                                };
+                              })
+                            }))}
+                            placeholder="Select aggregations..."
                           />
                         </div>
 
