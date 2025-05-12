@@ -77,6 +77,8 @@ interface SearchOptions {
     Name: string;
     Field: string;
   }>;
+  from: number;
+  size: number;
 }
 
 const AVAILABLE_FIELDS = [
@@ -787,6 +789,8 @@ const SanctionSearchPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20);
   const [searchOptions, setSearchOptions] = useState<SearchOptions>({
     fieldsToSearch: ['firstName', 'secondName', 'nameOriginalScript'],
     matchMode: 1,
@@ -797,7 +801,9 @@ const SanctionSearchPage = () => {
         Name: "un_list_types",
         Field: "unListType.keyword"
       }
-    ]
+    ],
+    from: 0,
+    size: 20
   });
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
 
@@ -824,7 +830,9 @@ const SanctionSearchPage = () => {
         API_CONFIG.endpoints.search.tenants,
         {
           query: searchQuery,
-          ...searchOptions
+          ...searchOptions,
+          from: (currentPage - 1) * itemsPerPage,
+          size: itemsPerPage
         }
       );
       setSearchResults(response.data);
@@ -844,6 +852,7 @@ const SanctionSearchPage = () => {
     setSearchQuery('');
     setSearchResults(null);
     setError(null);
+    setCurrentPage(1);
     setSearchOptions({
       fieldsToSearch: ['firstName', 'secondName'],
       matchMode: 1,
@@ -854,7 +863,9 @@ const SanctionSearchPage = () => {
           Name: "un_list_types",
           Field: "unListType.keyword"
         }
-      ]
+      ],
+      from: 0,
+      size: 10
     });
   };
 
@@ -873,6 +884,13 @@ const SanctionSearchPage = () => {
       );
     }
 
+    const totalPages = Math.ceil(searchResults.total / itemsPerPage);
+
+    const handlePageChange = (page: number) => {
+      setCurrentPage(page);
+      handleSearch();
+    };
+
     return (
       <div className="border-t border-gray-100 pt-6 animate-fade-in">
         <div className="mb-6">
@@ -890,7 +908,7 @@ const SanctionSearchPage = () => {
             </h3>
             {searchResults.total > 0 && (
               <div className="text-sm text-gray-600">
-                Showing {Math.min(searchResults.results.length, searchResults.total)} of {searchResults.total} results
+                Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, searchResults.total)} of {searchResults.total} results
               </div>
             )}
           </div>
@@ -964,6 +982,51 @@ const SanctionSearchPage = () => {
           ))}
         </div>
 
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-6">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={clsx(
+                  "btn btn-sm gap-2",
+                  currentPage === 1 ? "btn-light opacity-50 cursor-not-allowed" : "btn-light-primary"
+                )}
+              >
+                <KeenIcon icon="arrow-left" />
+                Previous
+              </button>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={clsx(
+                  "btn btn-sm gap-2",
+                  currentPage === totalPages ? "btn-light opacity-50 cursor-not-allowed" : "btn-light-primary"
+                )}
+              >
+                Next
+                <KeenIcon icon="arrow-right" />
+              </button>
+            </div>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={clsx(
+                    "w-8 h-8 rounded-lg text-sm font-medium transition-colors",
+                    page === currentPage
+                      ? "bg-primary text-white"
+                      : "text-gray-600 hover:bg-gray-100"
+                  )}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {selectedResult && (
           <DetailModal
             result={selectedResult}
@@ -980,114 +1043,89 @@ const SanctionSearchPage = () => {
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-4 divide-y divide-gray-100">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
-          <div className="space-y-4">
-            <div>
-              <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
-                Fields to Search
-              </label>
-              <MultiSelect
-                options={AVAILABLE_FIELDS}
-                value={searchOptions.fieldsToSearch}
-                onChange={(fields) => setSearchOptions(prev => ({
-                  ...prev,
-                  fieldsToSearch: fields
-                }))}
-                placeholder="Select fields to search..."
-              />
-            </div>
-
-            <div>
-              <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
-                Aggregations
-              </label>
-              <MultiSelect
-                options={AGGREGATION_OPTIONS}
-                value={searchOptions.aggregationRequests.map(agg => agg.Name)}
-                onChange={(selectedAggs) => setSearchOptions(prev => ({
-                  ...prev,
-                  aggregationRequests: selectedAggs.map(name => {
-                    const option = AGGREGATION_OPTIONS.find(opt => opt.value === name);
-                    return {
-                      Name: name,
-                      Field: option?.field || ''
-                    };
-                  })
-                }))}
-                placeholder="Select aggregations..."
-              />
-            </div>
-
-            <div>
-              <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
-                Match Mode
-              </label>
-              <select
-                className={clsx(
-                  'form-select w-full h-[42px] bg-white border-gray-200 rounded-lg text-[13px]',
-                  'hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary'
-                )}
-                value={searchOptions.matchMode}
-                onChange={(e) => setSearchOptions(prev => ({
-                  ...prev,
-                  matchMode: Number(e.target.value)
-                }))}
-              >
-                {MATCH_MODES.map(mode => (
-                  <option key={mode.value} value={mode.value}>
-                    {mode.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
+              Fields to Search
+            </label>
+            <MultiSelect
+              options={AVAILABLE_FIELDS}
+              value={searchOptions.fieldsToSearch}
+              onChange={(fields) => setSearchOptions(prev => ({
+                ...prev,
+                fieldsToSearch: fields
+              }))}
+              placeholder="Select fields to search..."
+            />
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
-                Logical Operator
-              </label>
-              <select
-                className={clsx(
-                  'form-select w-full h-[42px] bg-white border-gray-200 rounded-lg text-[13px]',
-                  'hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary'
-                )}
-                value={searchOptions.logicalOperator}
-                onChange={(e) => setSearchOptions(prev => ({
-                  ...prev,
-                  logicalOperator: Number(e.target.value)
-                }))}
-              >
-                {LOGICAL_OPERATORS.map(op => (
-                  <option key={op.value} value={op.value}>
-                    {op.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
+              Match Mode
+            </label>
+            <select
+              className={clsx(
+                'form-select w-full h-[42px] bg-white border-gray-200 rounded-lg text-[13px]',
+                'hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary'
+              )}
+              value={searchOptions.matchMode}
+              onChange={(e) => setSearchOptions(prev => ({
+                ...prev,
+                matchMode: Number(e.target.value)
+              }))}
+            >
+              {MATCH_MODES.map(mode => (
+                <option key={mode.value} value={mode.value}>
+                  {mode.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-            <div>
-              <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
-                Sort By
-              </label>
-              <select
-                className={clsx(
-                  'form-select w-full h-[42px] bg-white border-gray-200 rounded-lg text-[13px]',
-                  'hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary'
-                )}
-                value={searchOptions.sortBy}
-                onChange={(e) => setSearchOptions(prev => ({
-                  ...prev,
-                  sortBy: e.target.value
-                }))}
-              >
-                {SORT_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
+              Aggregations
+            </label>
+            <MultiSelect
+              options={AGGREGATION_OPTIONS}
+              value={searchOptions.aggregationRequests.map(agg => agg.Name)}
+              onChange={(selectedAggs) => setSearchOptions(prev => ({
+                ...prev,
+                aggregationRequests: selectedAggs.map(name => {
+                  const option = AGGREGATION_OPTIONS.find(opt => opt.value === name);
+                  return {
+                    Name: name,
+                    Field: option?.field || ''
+                  };
+                })
+              }))}
+              placeholder="Select aggregations..."
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
+              Logical Operator
+            </label>
+            <select
+              className={clsx(
+                'form-select w-full h-[42px] bg-white border-gray-200 rounded-lg text-[13px]',
+                'hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary'
+              )}
+              value={searchOptions.logicalOperator}
+              onChange={(e) => setSearchOptions(prev => ({
+                ...prev,
+                logicalOperator: Number(e.target.value)
+              }))}
+            >
+              {LOGICAL_OPERATORS.map(op => (
+                <option key={op.value} value={op.value}>
+                  {op.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -1171,28 +1209,50 @@ const SanctionSearchPage = () => {
                       </div>
                     )}
                   </div>
-                  <button 
-                    className={clsx(
-                      'btn gap-2 px-6 min-w-[120px] transition-all duration-200',
-                      isLoading 
-                        ? 'btn-light cursor-not-allowed' 
-                        : 'btn-primary hover:bg-primary-dark'
-                    )}
-                    onClick={handleSearch}
-                    disabled={isLoading || !searchQuery.trim()}
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                        Searching...
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        <KeenIcon icon="search-list" />
-                        Search
-                      </span>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <select
+                      className={clsx(
+                        'form-select h-[42px] bg-white border-gray-200 rounded-lg text-[13px] min-w-[140px]',
+                        'hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary'
+                      )}
+                      value={searchOptions.sortBy}
+                      onChange={(e) => {
+                        setSearchOptions(prev => ({
+                          ...prev,
+                          sortBy: e.target.value
+                        }));
+                        handleSearch();
+                      }}
+                    >
+                      {SORT_OPTIONS.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button 
+                      className={clsx(
+                        'btn gap-2 px-6 min-w-[120px] transition-all duration-200',
+                        isLoading 
+                          ? 'btn-light cursor-not-allowed' 
+                          : 'btn-primary hover:bg-primary-dark'
+                      )}
+                      onClick={handleSearch}
+                      disabled={isLoading || !searchQuery.trim()}
+                    >
+                      {isLoading ? (
+                        <span className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                          Searching...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <KeenIcon icon="search-list" />
+                          Search
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -1220,144 +1280,19 @@ const SanctionSearchPage = () => {
                   )}
                 </div>
 
-                {showAdvanced && (
-                  <div className="bg-white rounded-xl border border-gray-200/75 shadow-sm p-6 hover:border-gray-300 transition-all duration-200">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
-                            Fields to Search
-                          </label>
-                          <MultiSelect
-                            options={AVAILABLE_FIELDS}
-                            value={searchOptions.fieldsToSearch}
-                            onChange={(fields) => setSearchOptions(prev => ({
-                              ...prev,
-                              fieldsToSearch: fields
-                            }))}
-                            placeholder="Select fields to search..."
-                          />
-                        </div>
+                {showAdvanced && renderAdvancedSearch()}
 
-                        <div>
-                          <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
-                            Aggregations
-                          </label>
-                          <MultiSelect
-                            options={AGGREGATION_OPTIONS}
-                            value={searchOptions.aggregationRequests.map(agg => agg.Name)}
-                            onChange={(selectedAggs) => setSearchOptions(prev => ({
-                              ...prev,
-                              aggregationRequests: selectedAggs.map(name => {
-                                const option = AGGREGATION_OPTIONS.find(opt => opt.value === name);
-                                return {
-                                  Name: name,
-                                  Field: option?.field || ''
-                                };
-                              })
-                            }))}
-                            placeholder="Select aggregations..."
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
-                            Match Mode
-                          </label>
-                          <select
-                            className={clsx(
-                              'form-select w-full h-[42px] bg-white border-gray-200 rounded-lg text-[13px]',
-                              'hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary'
-                            )}
-                            value={searchOptions.matchMode}
-                            onChange={(e) => setSearchOptions(prev => ({
-                              ...prev,
-                              matchMode: Number(e.target.value)
-                            }))}
-                          >
-                            {MATCH_MODES.map(mode => (
-                              <option key={mode.value} value={mode.value}>
-                                {mode.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
-                            Logical Operator
-                          </label>
-                          <select
-                            className={clsx(
-                              'form-select w-full h-[42px] bg-white border-gray-200 rounded-lg text-[13px]',
-                              'hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary'
-                            )}
-                            value={searchOptions.logicalOperator}
-                            onChange={(e) => setSearchOptions(prev => ({
-                              ...prev,
-                              logicalOperator: Number(e.target.value)
-                            }))}
-                          >
-                            {LOGICAL_OPERATORS.map(op => (
-                              <option key={op.value} value={op.value}>
-                                {op.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
-                            Sort By
-                          </label>
-                          <select
-                            className={clsx(
-                              'form-select w-full h-[42px] bg-white border-gray-200 rounded-lg text-[13px]',
-                              'hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary'
-                            )}
-                            value={searchOptions.sortBy}
-                            onChange={(e) => setSearchOptions(prev => ({
-                              ...prev,
-                              sortBy: e.target.value
-                            }))}
-                          >
-                            {SORT_OPTIONS.map(option => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
+                {error && (
+                  <div className="flex items-center gap-3 text-red-600 bg-red-50 p-4 rounded-xl border border-red-100 animate-fade-in">
+                    <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                      <KeenIcon icon="information-5" className="h-5 w-5 text-red-500" />
                     </div>
-
-                    <div className="pt-4 border-t border-gray-100">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <KeenIcon icon="information-5" className="h-4 w-4 text-primary" />
-                        </div>
-                        <span>
-                          Select multiple fields and customize how the search is performed.
-                          The logical operator determines how multiple fields are combined in the search.
-                        </span>
-                      </div>
-                    </div>
+                    <p className="text-sm">{error}</p>
                   </div>
                 )}
+
+                {renderSearchResults()}
               </div>
-
-              {error && (
-                <div className="flex items-center gap-3 text-red-600 bg-red-50 p-4 rounded-xl border border-red-100 animate-fade-in">
-                  <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
-                    <KeenIcon icon="information-5" className="h-5 w-5 text-red-500" />
-                  </div>
-                  <p className="text-sm">{error}</p>
-                </div>
-              )}
-
-              {renderSearchResults()}
             </div>
           </div>
         </div>
