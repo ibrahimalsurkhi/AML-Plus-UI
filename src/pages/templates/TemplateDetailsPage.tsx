@@ -118,6 +118,8 @@ const ScoreCriteriaBar = ({
   // Initialize thumb positions
   const [thumbPositions, setThumbPositions] = useState([1.8, 3, 5]);
   const [isDragging, setIsDragging] = useState<number | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
 
   const getValueFromEvent = (e: React.MouseEvent | MouseEvent | React.TouchEvent | TouchEvent) => {
@@ -131,6 +133,9 @@ const ScoreCriteriaBar = ({
   };
 
   const updateThumbPosition = (index: number, newValue: number) => {
+    // Don't update if not in edit mode or trying to move last thumb
+    if (!isEditMode || index === 2) return;
+    
     const newPositions = [...thumbPositions];
     
     // Ensure the new value is within valid range and doesn't cross other thumbs
@@ -138,14 +143,16 @@ const ScoreCriteriaBar = ({
       newPositions[0] = Math.min(Math.max(newValue, 0), newPositions[1] - 0.1);
     } else if (index === 1) {
       newPositions[1] = Math.min(Math.max(newValue, newPositions[0] + 0.1), newPositions[2] - 0.1);
-    } else {
-      newPositions[2] = Math.min(Math.max(newValue, newPositions[1] + 0.1), maxScore);
     }
     
     setThumbPositions(newPositions);
+    setHasChanges(true);
   };
 
   const handleMouseDown = (index: number, e: React.MouseEvent) => {
+    // Don't handle if not in edit mode or trying to drag last thumb
+    if (!isEditMode || index === 2) return;
+    
     e.preventDefault();
     setIsDragging(index);
 
@@ -161,16 +168,6 @@ const ScoreCriteriaBar = ({
       setIsDragging(null);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-
-      if (onChange) {
-        const value = thumbPositions[index];
-        const criteriaNearThumb = criteria.filter(c => 
-          Math.abs(c.score - value) < 0.5
-        );
-        criteriaNearThumb.forEach(c => {
-          onChange(c.id, value);
-        });
-      }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -178,6 +175,9 @@ const ScoreCriteriaBar = ({
   };
 
   const handleTouchStart = (index: number, e: React.TouchEvent) => {
+    // Don't handle if not in edit mode or trying to drag last thumb
+    if (!isEditMode || index === 2) return;
+    
     e.preventDefault();
     setIsDragging(index);
 
@@ -193,20 +193,49 @@ const ScoreCriteriaBar = ({
       setIsDragging(null);
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
-
-      if (onChange) {
-        const value = thumbPositions[index];
-        const criteriaNearThumb = criteria.filter(c => 
-          Math.abs(c.score - value) < 0.5
-        );
-        criteriaNearThumb.forEach(c => {
-          onChange(c.id, value);
-        });
-      }
     };
 
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
     document.addEventListener('touchend', handleTouchEnd);
+  };
+
+  const handleEnableEdit = () => {
+    setIsEditMode(true);
+    toast({
+      description: "You can now drag the sliders to adjust scores",
+    });
+  };
+
+  const handleSave = () => {
+    if (!onChange || !hasChanges) return;
+
+    // Update criteria near both movable thumbs
+    [0, 1].forEach(index => {
+      const value = thumbPositions[index];
+      const criteriaNearThumb = criteria.filter(c => 
+        Math.abs(c.score - value) < 0.5
+      );
+      criteriaNearThumb.forEach(c => {
+        onChange(c.id, value);
+      });
+    });
+
+    setHasChanges(false);
+    setIsEditMode(false);
+    toast({
+      title: "Success",
+      description: "Score criteria updated successfully",
+    });
+  };
+
+  const handleCancel = () => {
+    // Reset to original positions
+    setThumbPositions([1.8, 3, 5]);
+    setHasChanges(false);
+    setIsEditMode(false);
+    toast({
+      description: "Changes cancelled",
+    });
   };
 
   return (
@@ -228,23 +257,39 @@ const ScoreCriteriaBar = ({
       <div className="relative h-12" ref={sliderRef}>
         {/* Background sections */}
         <div className="absolute inset-0 flex rounded-full overflow-hidden shadow-sm">
-          {sections.map((section, idx) => (
-            <div
-              key={section.key}
-              className="flex-1"
-              style={{ 
-                background: section.color,
-                borderRight: idx !== sections.length - 1 ? '2px solid white' : undefined
-              }}
-            />
-          ))}
+          {/* Low section */}
+          <div
+            className="h-full"
+            style={{ 
+              background: sections[0].color,
+              width: `${(thumbPositions[0] / maxScore) * 100}%`,
+              borderRight: '2px solid white'
+            }}
+          />
+          {/* Medium section */}
+          <div
+            className="h-full"
+            style={{ 
+              background: sections[1].color,
+              width: `${((thumbPositions[1] - thumbPositions[0]) / maxScore) * 100}%`,
+              borderRight: '2px solid white'
+            }}
+          />
+          {/* High section */}
+          <div
+            className="h-full"
+            style={{ 
+              background: sections[2].color,
+              width: `${((maxScore - thumbPositions[1]) / maxScore) * 100}%`
+            }}
+          />
         </div>
 
         {/* Thumbs */}
         {thumbPositions.map((value, idx) => (
           <div 
             key={`thumb-${idx}`} 
-            className="absolute top-0 bottom-0 cursor-grab active:cursor-grabbing"
+            className={`absolute top-0 bottom-0 ${isEditMode && idx !== 2 ? 'cursor-grab active:cursor-grabbing' : ''}`}
             style={{ 
               left: `${(value / maxScore) * 100}%`,
               transform: 'translateX(-50%)',
@@ -259,17 +304,16 @@ const ScoreCriteriaBar = ({
               <div 
                 className={`absolute -top-8 left-1/2 transform -translate-x-1/2 
                          bg-white px-2 py-1 rounded-md shadow-md text-sm font-medium
-                         whitespace-nowrap select-none transition-opacity duration-200
-                         ${isDragging === idx ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                         whitespace-nowrap select-none`}
               >
                 {value.toFixed(1)}
               </div>
               
               {/* Thumb */}
               <div 
-                className="w-8 h-8 rounded-full bg-white shadow-md border-2 border-gray-200 
-                         flex items-center justify-center hover:border-gray-300 
-                         transition-colors duration-200"
+                className={`w-8 h-8 rounded-full bg-white shadow-md border-2 
+                         flex items-center justify-center transition-colors duration-200
+                         ${isEditMode && idx !== 2 ? 'border-gray-200 hover:border-gray-300' : 'border-gray-300'}`}
               >
                 <div className="thumb-dot"></div>
               </div>
@@ -284,6 +328,41 @@ const ScoreCriteriaBar = ({
         <div className="absolute -bottom-6 right-0 text-sm text-gray-500 font-medium">
           {maxScore}
         </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex justify-end gap-2 pt-4">
+        {!isEditMode ? (
+          <Button
+            onClick={handleEnableEdit}
+            className="gap-2"
+            size="sm"
+          >
+            <Icon name="edit" className="text-base" />
+            Update
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              className="gap-2"
+              size="sm"
+            >
+              <Icon name="close" className="text-base" />
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges}
+              className="gap-2"
+              size="sm"
+            >
+              <Icon name="save" className="text-base" />
+              Save
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
