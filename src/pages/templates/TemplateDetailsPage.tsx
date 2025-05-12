@@ -567,7 +567,6 @@ export const TemplateDetailsPage = () => {
   const [scoreCriteria, setScoreCriteria] = useState<ScoreCriteria[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     if (id) {
@@ -601,12 +600,6 @@ export const TemplateDetailsPage = () => {
         description: "Failed to fetch score criteria",
         variant: "destructive",
       });
-    }
-  };
-
-  const handleTabChange = (event: React.SyntheticEvent | null, newValue: string | number | null) => {
-    if (typeof newValue === 'string') {
-      setActiveTab(newValue);
     }
   };
 
@@ -657,163 +650,175 @@ export const TemplateDetailsPage = () => {
 
   return (
     <Container>
-      <div className="space-y-6">
-        {/* Breadcrumb Navigation */}
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/templates">Templates</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{template.name}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
+      <div className="space-y-8">
         {/* Header Section */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              {template.name}
-              {getStatusBadge(template.status)}
-            </h1>
-            <p className="text-gray-500 mt-1">{template.description}</p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => navigate('/templates')}
-            className="hover:bg-gray-50"
-          >
-            Back to Templates
-          </Button>
-        </div>
+        <div className="flex flex-col gap-4">
+          {/* Breadcrumb Navigation */}
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/templates">Templates</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{template.name}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
 
-        <Separator className="my-6" />
-
-        {/* Main Content Tabs */}
-        <Tabs value={activeTab} onChange={handleTabChange}>
-          <TabsList className="bg-gray-50 p-1">
-            <Tab value="overview">Overview</Tab>
-            <Tab value="scoring">Scoring Criteria</Tab>
-            <Tab value="history">History</Tab>
-          </TabsList>
-
-          <TabPanel value="overview">
-            <div className="space-y-6">
-              {/* Header Card */}
-              <Card className="border-none bg-primary/5">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="rounded-lg p-3 bg-white shadow-sm">
-                        <Icon name="description" className="text-primary text-2xl" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-1 flex items-center gap-2">
-                          {template.name}
-                          <StatusIcon status={template.status} />
-                        </h3>
-                        <p className="text-gray-500 flex items-center gap-2">
-                          <Icon name="info" className="text-gray-400" />
-                          Template Details & Information
-                        </p>
-                      </div>
+          {/* Hero Section */}
+          <div className="bg-white rounded-xl py-8">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-4">
+                <div className="rounded-lg p-3 bg-primary/5">
+                  <Icon name="description" className="text-primary text-2xl" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h1 className="text-2xl font-bold text-gray-900">{template.name}</h1>
+                    {getStatusBadge(template.status)}
+                  </div>
+                  <div className="flex items-center gap-3 mt-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Icon name="tag" className="text-gray-400" />
+                      <span>Version {template.version}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <Icon name="history" className="text-base" />
-                        History
-                      </Button>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <Icon name="edit" className="text-base" />
-                        Edit
-                      </Button>
+                    <div className="w-1 h-1 rounded-full bg-gray-300"></div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Icon name="business" className="text-gray-400" />
+                      <span>{template.tenantName}</span>
+                    </div>
+                    <div className="w-1 h-1 rounded-full bg-gray-300"></div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <StatusIcon status={template.status} />
+                      <span>{TemplateStatus[template.status]}</span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Info Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InfoCard 
-                  label="Description" 
-                  value={template.description}
-                  icon="short_text"
-                  valueIcon="format_align_left"
-                />
-                <InfoCard 
-                  label="Version" 
-                  value={template.version}
-                  icon="tag"
-                  valueIcon="new_releases"
-                />
-                <InfoCard 
-                  label="Tenant" 
-                  value={template.tenantName}
-                  icon="business"
-                  valueIcon="domain"
-                />
-                <InfoCard 
-                  label="Status" 
-                  value={TemplateStatus[template.status]}
-                  icon="radio_button_checked"
-                  valueIcon="trending_up"
-                />
+                </div>
               </div>
-
-              {/* Quick Actions */}
-              <div className="flex items-center justify-end gap-3">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Icon name="download" className="text-base" />
-                  Export
-                </Button>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Icon name="share" className="text-base" />
-                  Share
-                </Button>
-                <Button className="gap-2">
-                  <Icon name="add" className="text-base" />
-                  New Version
+              <div>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/templates')}
+                  className="hover:bg-gray-50 gap-2"
+                  size="sm"
+                >
+                  <Icon name="arrow_back" className="text-base" />
+                  Back to Templates
                 </Button>
               </div>
             </div>
-          </TabPanel>
+          </div>
+        </div>
 
-          <TabPanel value="scoring">
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-xl font-semibold">Score Criteria</h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Scoring criteria are applied to both individuals and organizations
-                    </p>
+        {/* Main content in cards */}
+        <div className="grid grid-cols-1 gap-8">
+          {/* Scoring Section */}
+          <Card className="overflow-hidden border shadow-sm">
+            <CardHeader className="bg-gray-50/50 border-b px-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Icon name="analytics" className="text-primary text-xl" />
+                  <h2 className="text-xl font-semibold">Scoring Criteria</h2>
+                </div>
+                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+                  Applied to All Assessments
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="px-6 py-8">
+              <ScoreCriteriaBar 
+                criteria={scoreCriteria} 
+                onChange={handleScoreChange}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Template Details Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="overflow-hidden shadow-sm">
+              <CardHeader className="bg-gray-50/50 border-b px-6">
+                <div className="flex items-center gap-3">
+                  <Icon name="info" className="text-primary text-xl" />
+                  <h2 className="text-lg font-semibold">Template Information</h2>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-500">Version</p>
+                      <p className="text-base text-gray-900">{template.version}</p>
+                    </div>
+                    <Separator />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-500">Tenant</p>
+                      <p className="text-base text-gray-900">{template.tenantName}</p>
+                    </div>
+                    <Separator />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-500">Status</p>
+                      <p className="text-base text-gray-900 flex items-center gap-2">
+                        <StatusIcon status={template.status} />
+                        {TemplateStatus[template.status]}
+                      </p>
+                    </div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* History Section */}
+            <Card className="overflow-hidden shadow-sm">
+              <CardHeader className="bg-gray-50/50 border-b px-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Icon name="history" className="text-primary text-xl" />
+                    <h2 className="text-lg font-semibold">Activity History</h2>
+                  </div>
+                  <Button variant="ghost" size="sm" className="gap-2 text-primary">
+                    <Icon name="tune" className="text-base" />
+                    Filter
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="pt-4 pb-8">
-                  <ScoreCriteriaBar 
-                    criteria={scoreCriteria} 
-                    onChange={handleScoreChange}
-                  />
+              <CardContent className="p-0">
+                <div className="divide-y">
+                  {[1, 2, 3].map((item) => (
+                    <div key={item} className="p-4 hover:bg-gray-50/50 transition-colors duration-150">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-full bg-blue-100 p-2 mt-1">
+                          <Icon name="edit" className="text-blue-600 text-base" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="font-medium text-gray-900">Score criteria updated</p>
+                            <span className="text-xs text-gray-500">2 days ago</span>
+                          </div>
+                          <p className="text-sm text-gray-600">Values were updated from 1.5 to 2.0</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
+              <div className="px-6 py-4 border-t bg-gray-50/50">
+                <Button variant="outline" size="sm" className="w-full gap-2">
+                  <Icon name="expand_more" className="text-base" />
+                  View More
+                </Button>
+              </div>
             </Card>
-          </TabPanel>
+          </div>
+        </div>
 
-          <TabPanel value="history">
-            <Card>
-              <CardHeader className="pb-3">
-                <h2 className="text-xl font-semibold">Template History</h2>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-500">Template history and audit logs will be shown here.</p>
-              </CardContent>
-            </Card>
-          </TabPanel>
-        </Tabs>
+        {/* Quick Actions */}
+        <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8">
+          <Button size="sm" className="shadow-sm gap-2">
+            <Icon name="add" className="text-base" />
+            New Version
+          </Button>
+        </div>
       </div>
     </Container>
   );

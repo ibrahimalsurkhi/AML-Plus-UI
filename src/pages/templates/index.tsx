@@ -74,7 +74,6 @@ export default function TemplatesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Description</TableHead>
                 <TableHead>Version</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Tenant</TableHead>
@@ -88,7 +87,6 @@ export default function TemplatesPage() {
                   onClick={() => navigate(`/templates/${template.id}`)}
                 >
                   <TableCell>{template.name}</TableCell>
-                  <TableCell>{template.description}</TableCell>
                   <TableCell>{template.version}</TableCell>
                   <TableCell>{getStatusBadge(template.status)}</TableCell>
                   <TableCell>{template.tenantName}</TableCell>
@@ -96,7 +94,7 @@ export default function TemplatesPage() {
               ))}
               {templates?.items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">
+                  <TableCell colSpan={4} className="text-center">
                     No templates found
                   </TableCell>
                 </TableRow>
