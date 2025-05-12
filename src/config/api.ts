@@ -7,5 +7,9 @@ export const API_CONFIG = {
     search: {
       tenants: 'Tenants/search',
     },
+    templates: {
+      create: 'templates',
+      list: 'templates',
+    },
   },
 } as const; 

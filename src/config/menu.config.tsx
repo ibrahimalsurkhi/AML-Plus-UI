@@ -10,6 +10,16 @@ export const MENU_SIDEBAR: TMenuConfig = [
     title: 'Sanction Search',
     icon: 'search',
     path: '/sanction-search'
+  },
+  {
+    title: 'Templates',
+    icon: 'document',
+    path: '/templates'
+  },
+  {
+    title: 'Create Template',
+    icon: 'document',
+    path: '/create-template'
   }
 ];
 
@@ -27,6 +37,13 @@ export const MENU_ROOT: TMenuConfig = [
     rootPath: '/sanction-search',
     path: '/sanction-search',
     childrenIndex: 1
+  },
+  {
+    title: 'Templates',
+    icon: 'document',
+    rootPath: '/templates',
+    path: '/templates',
+    childrenIndex: 2
   }
 ];
 
@@ -39,5 +56,9 @@ export const MENU_MEGA: TMenuConfig = [
   {
     title: 'Sanction Search',
     path: '/sanction-search'
+  },
+  {
+    title: 'Templates',
+    path: '/templates'
   }
 ];

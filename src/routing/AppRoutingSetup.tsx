@@ -84,6 +84,9 @@ import {
 } from '@/pages/authentication';
 import { DashboardPage } from '@/pages/dashboard';
 import { SanctionSearchPage } from '@/pages/sanction-search';
+import { CreateTemplatePage } from '@/pages/create-template';
+import TemplatesPage from '@/pages/templates';
+import TemplateDetailsPage from '@/pages/templates/TemplateDetailsPage';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -92,6 +95,9 @@ const AppRoutingSetup = (): ReactElement => {
         <Route element={<Demo1Layout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/sanction-search" element={<SanctionSearchPage />} />
+          <Route path="/templates" element={<TemplatesPage />} />
+          <Route path="/templates/:id" element={<TemplateDetailsPage />} />
+          <Route path="/create-template" element={<CreateTemplatePage />} />
           <Route path="/dark-sidebar" element={<Demo1DarkSidebarPage />} />
           <Route path="/public-profile/profiles/default" element={<ProfileDefaultPage />} />
           <Route path="/public-profile/profiles/creator" element={<ProfileCreatorPage />} />

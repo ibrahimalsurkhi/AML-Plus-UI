@@ -1,0 +1,132 @@
+.score-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  z-index: 30;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+}
+
+.score-slider:active {
+  cursor: grabbing;
+}
+
+.score-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  background: white;
+  cursor: grab;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 2px solid #e5e7eb;
+}
+
+.score-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  background: white;
+  cursor: grab;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 2px solid #e5e7eb;
+}
+
+.score-slider::-webkit-slider-thumb:active,
+.score-slider::-moz-range-thumb:active {
+  cursor: grabbing;
+}
+
+.score-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 2px;
+  cursor: pointer;
+  background: transparent;
+  border-radius: 1px;
+}
+
+.score-slider::-moz-range-track {
+  width: 100%;
+  height: 2px;
+  cursor: pointer;
+  background: transparent;
+  border-radius: 1px;
+}
+
+/* Prevent text selection while dragging */
+.score-slider:focus {
+  outline: none;
+}
+
+/* Prevent touch callout on mobile */
+.score-slider {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Thumb dot indicator */
+.thumb-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #9ca3af;
+  border-radius: 50%;
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+/* Add two more dots for the draggable indicator */
+.thumb-dot::before,
+.thumb-dot::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background-color: #9ca3af;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.thumb-dot::before {
+  top: -8px;
+  left: 0;
+}
+
+.thumb-dot::after {
+  bottom: -8px;
+  left: 0;
+}
+
+/* Hover and active states */
+*:hover > .thumb-dot {
+  transform: scale(1.2);
+}
+
+*:active > .thumb-dot {
+  transform: scale(0.9);
+}
+
+*:hover > .thumb-dot::before {
+  transform: translateY(1px);
+}
+
+*:hover > .thumb-dot::after {
+  transform: translateY(-1px);
+}
+
+*:active > .thumb-dot::before {
+  transform: translateY(-1px);
+}
+
+*:active > .thumb-dot::after {
+  transform: translateY(1px);
+} 
