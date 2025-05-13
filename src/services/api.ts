@@ -75,6 +75,34 @@ export interface ScoreCriteria {
   score: number;
 }
 
+export enum FieldType {
+  Text = 0,
+  Dropdown = 1,
+  Radio = 2,
+  Checkbox = 3,
+  Date = 4,
+  Number = 5,
+  TextArea = 6
+}
+
+export interface TemplateField {
+  id?: number;
+  templateId?: number;
+  label: string;
+  fieldType: FieldType;
+  weight: number;
+  isRequired: boolean;
+  displayOrder: number;
+  placeholder?: string;
+  minLength?: number | null;
+  maxLength?: number | null;
+  minValue?: number | null;
+  maxValue?: number | null;
+  minDate?: string | null;
+  maxDate?: string | null;
+  pattern?: string | null;
+}
+
 export const templateService = {
   getTemplates: async (params: TemplateQueryParams): Promise<PaginatedResponse<Template>> => {
     const response = await api.get<PaginatedResponse<Template>>(API_CONFIG.endpoints.templates.list, { params });
@@ -104,5 +132,25 @@ export const templateService = {
   },
   deleteScoreCriteria: async (templateId: string, criteriaId: number): Promise<void> => {
     await api.delete(`${API_CONFIG.endpoints.templates.list}/${templateId}/score-criteria/${criteriaId}`);
+  },
+  getTemplateFields: async (templateId: string): Promise<TemplateField[]> => {
+    const response = await api.get<TemplateField[]>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields`);
+    return response.data;
+  },
+  createTemplateField: async (templateId: string, field: TemplateField): Promise<TemplateField> => {
+    const response = await api.post<TemplateField>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields`, field);
+    return response.data;
+  },
+  updateTemplateField: async (templateId: string, fieldId: number, field: TemplateField): Promise<TemplateField> => {
+    const response = await api.put<TemplateField>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}`, field);
+    return response.data;
+  },
+  deleteTemplateField: async (templateId: string, fieldId: number): Promise<void> => {
+    await api.delete(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}`);
+  },
+  updateFieldWeight: async (templateId: string, fieldId: number, weight: number): Promise<void> => {
+    await api.put(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/weight`, {
+      weight
+    });
   }
 }; 

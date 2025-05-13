@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { templateService, type Template, type PaginatedResponse, TemplateStatus } from '@/services/api';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import { toast } from '@/components/ui/use-toast';
 
 const getStatusBadge = (status: TemplateStatus) => {
   switch (status) {
@@ -24,12 +25,9 @@ export default function TemplatesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  useEffect(() => {
-    fetchTemplates();
-  }, []);
-
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       setLoading(true);
       const data = await templateService.getTemplates({
@@ -44,7 +42,28 @@ export default function TemplatesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
+  // Check if returning from create/edit with success message
+  useEffect(() => {
+    if (location.state?.refreshData) {
+      fetchTemplates();
+      
+      if (location.state.message) {
+        toast({
+          title: "Success",
+          description: location.state.message,
+        });
+      }
+      
+      // Clear the state to prevent multiple refreshes
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate, fetchTemplates]);
 
   const handleCreateTemplate = () => {
     navigate('/create-template');

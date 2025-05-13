@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { templateService, type Template, type ScoreCriteria, TemplateStatus } from '@/services/api';
+import { templateService, type Template, type ScoreCriteria, TemplateStatus, type TemplateField, FieldType } from '@/services/api';
 import { Container } from '@/components/container';
 import {
   Toolbar,
@@ -46,6 +46,14 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import '@/styles/material-icons.css';  // Make sure this CSS file exists and is properly configured
 import '@/styles/score-slider.css';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
   <i className={`material-symbols-outlined ${className}`}>{name}</i>
@@ -559,19 +567,356 @@ const ScoreCriteriaDialog = ({
   );
 };
 
+const FieldTypeMap = {
+  [FieldType.Text]: 'Text',
+  [FieldType.Dropdown]: 'Dropdown',
+  [FieldType.Radio]: 'Radio',
+  [FieldType.Checkbox]: 'Checkbox',
+  [FieldType.Date]: 'Date',
+  [FieldType.Number]: 'Number',
+  [FieldType.TextArea]: 'Text Area'
+};
+
+const TemplateFieldDialog = ({ 
+  open, 
+  onOpenChange,
+  onSubmit,
+  initialData
+}: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: Partial<TemplateField>) => void;
+  initialData?: TemplateField;
+}) => {
+  const defaultField: Partial<TemplateField> = {
+    label: '',
+    fieldType: FieldType.Text,
+    weight: 1,
+    isRequired: false,
+    placeholder: '',
+    displayOrder: 1
+  };
+
+  const [formData, setFormData] = useState<Partial<TemplateField>>(initialData || defaultField);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    } else {
+      setFormData(defaultField);
+    }
+    setErrors({});
+  }, [initialData, open]);
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    // Validate required fields
+    if (!formData.label?.trim()) {
+      newErrors.label = 'Label is required';
+    }
+    
+    if (formData.fieldType === undefined) {
+      newErrors.fieldType = 'Field type is required';
+    }
+    
+    if (formData.weight === undefined || formData.weight <= 0) {
+      newErrors.weight = 'Weight must be greater than 0';
+    }
+    
+    // Validate min/max values if provided
+    if (formData.minLength !== null && formData.maxLength !== null && 
+        formData.minLength !== undefined && formData.maxLength !== undefined && 
+        formData.minLength > formData.maxLength) {
+      newErrors.minLength = 'Min length cannot be greater than max length';
+    }
+    
+    if (formData.minValue !== null && formData.maxValue !== null && 
+        formData.minValue !== undefined && formData.maxValue !== undefined && 
+        formData.minValue > formData.maxValue) {
+      newErrors.minValue = 'Min value cannot be greater than max value';
+    }
+    
+    if (formData.minDate && formData.maxDate && 
+        new Date(formData.minDate) > new Date(formData.maxDate)) {
+      newErrors.minDate = 'Min date cannot be after max date';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md p-6">
+        <DialogHeader className="mb-4">
+          <DialogTitle>{initialData ? 'Edit Field' : 'Add Field'}</DialogTitle>
+          <DialogDescription>
+            {initialData ? 'Update the field details below.' : 'Configure the details for the new field.'}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="label" className="flex items-center">
+                Label <span className="text-red-500 ml-1">*</span>
+              </Label>
+              <Input
+                id="label"
+                value={formData.label || ''}
+                onChange={(e) => {
+                  setFormData({ ...formData, label: e.target.value });
+                  if (errors.label) {
+                    setErrors({ ...errors, label: '' });
+                  }
+                }}
+                placeholder="Enter field label"
+                className={errors.label ? 'border-red-500 focus-visible:ring-red-500' : ''}
+              />
+              {errors.label && (
+                <p className="text-red-500 text-sm mt-1">{errors.label}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="fieldType" className="flex items-center">
+                Field Type <span className="text-red-500 ml-1">*</span>
+              </Label>
+              <select
+                id="fieldType"
+                value={formData.fieldType}
+                onChange={(e) => {
+                  setFormData({ ...formData, fieldType: Number(e.target.value) });
+                  if (errors.fieldType) {
+                    setErrors({ ...errors, fieldType: '' });
+                  }
+                }}
+                className={`flex h-10 w-full rounded-md border ${errors.fieldType ? 'border-red-500' : 'border-input'} bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 ${errors.fieldType ? 'focus-visible:ring-red-500' : 'focus-visible:ring-ring'} focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
+              >
+                {Object.entries(FieldTypeMap).map(([value, label]) => (
+                  <option key={`field-type-${value}`} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              {errors.fieldType && (
+                <p className="text-red-500 text-sm mt-1">{errors.fieldType}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="placeholder">Placeholder</Label>
+              <Input
+                id="placeholder"
+                value={formData.placeholder || ''}
+                onChange={(e) => setFormData({ ...formData, placeholder: e.target.value })}
+                placeholder="Enter placeholder text"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="weight" className="flex items-center">
+                Weight <span className="text-red-500 ml-1">*</span>
+              </Label>
+              <Input
+                id="weight"
+                type="number"
+                min={1}
+                max={100}
+                value={formData.weight || ''}
+                onChange={(e) => {
+                  setFormData({ ...formData, weight: Number(e.target.value) });
+                  if (errors.weight) {
+                    setErrors({ ...errors, weight: '' });
+                  }
+                }}
+                placeholder="Enter weight"
+                className={errors.weight ? 'border-red-500 focus-visible:ring-red-500' : ''}
+              />
+              {errors.weight && (
+                <p className="text-red-500 text-sm mt-1">{errors.weight}</p>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <input
+                id="isRequired"
+                type="checkbox"
+                checked={formData.isRequired || false}
+                onChange={(e) => setFormData({ ...formData, isRequired: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <Label htmlFor="isRequired">Required Field</Label>
+            </div>
+            
+            {/* Additional validation fields based on field type */}
+            {(formData.fieldType === FieldType.Text || formData.fieldType === FieldType.TextArea) && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="minLength">Min Length</Label>
+                  <Input
+                    id="minLength"
+                    type="number"
+                    min={0}
+                    value={formData.minLength || ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : null;
+                      setFormData({ ...formData, minLength: value });
+                      if (errors.minLength) {
+                        setErrors({ ...errors, minLength: '' });
+                      }
+                    }}
+                    placeholder="Min length"
+                    className={errors.minLength ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  />
+                  {errors.minLength && (
+                    <p className="text-red-500 text-sm mt-1">{errors.minLength}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="maxLength">Max Length</Label>
+                  <Input
+                    id="maxLength"
+                    type="number"
+                    min={0}
+                    value={formData.maxLength || ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : null;
+                      setFormData({ ...formData, maxLength: value });
+                    }}
+                    placeholder="Max length"
+                  />
+                </div>
+              </div>
+            )}
+            
+            {formData.fieldType === FieldType.Number && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="minValue">Min Value</Label>
+                  <Input
+                    id="minValue"
+                    type="number"
+                    value={formData.minValue || ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : null;
+                      setFormData({ ...formData, minValue: value });
+                      if (errors.minValue) {
+                        setErrors({ ...errors, minValue: '' });
+                      }
+                    }}
+                    placeholder="Min value"
+                    className={errors.minValue ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  />
+                  {errors.minValue && (
+                    <p className="text-red-500 text-sm mt-1">{errors.minValue}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="maxValue">Max Value</Label>
+                  <Input
+                    id="maxValue"
+                    type="number"
+                    value={formData.maxValue || ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : null;
+                      setFormData({ ...formData, maxValue: value });
+                    }}
+                    placeholder="Max value"
+                  />
+                </div>
+              </div>
+            )}
+            
+            {formData.fieldType === FieldType.Date && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="minDate">Min Date</Label>
+                  <Input
+                    id="minDate"
+                    type="date"
+                    value={formData.minDate || ''}
+                    onChange={(e) => {
+                      setFormData({ ...formData, minDate: e.target.value || null });
+                      if (errors.minDate) {
+                        setErrors({ ...errors, minDate: '' });
+                      }
+                    }}
+                    className={errors.minDate ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  />
+                  {errors.minDate && (
+                    <p className="text-red-500 text-sm mt-1">{errors.minDate}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="maxDate">Max Date</Label>
+                  <Input
+                    id="maxDate"
+                    type="date"
+                    value={formData.maxDate || ''}
+                    onChange={(e) => setFormData({ ...formData, maxDate: e.target.value || null })}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </span>
+              ) : initialData ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export const TemplateDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentLayout } = useLayout();
   const [template, setTemplate] = useState<Template | null>(null);
   const [scoreCriteria, setScoreCriteria] = useState<ScoreCriteria[]>([]);
+  const [templateFields, setTemplateFields] = useState<TemplateField[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fieldDialogOpen, setFieldDialogOpen] = useState(false);
+  const [selectedField, setSelectedField] = useState<TemplateField | null>(null);
+  const [editingWeight, setEditingWeight] = useState<{ id: number, value: number } | null>(null);
 
   useEffect(() => {
     if (id) {
       fetchTemplateDetails(id);
       fetchScoreCriteria(id);
+      fetchTemplateFields(id);
     }
   }, [id]);
 
@@ -603,6 +948,20 @@ export const TemplateDetailsPage = () => {
     }
   };
 
+  const fetchTemplateFields = async (templateId: string) => {
+    try {
+      const data = await templateService.getTemplateFields(templateId);
+      setTemplateFields(data);
+    } catch (err) {
+      console.error('Error fetching template fields:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch template fields",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleScoreChange = async (criteriaId: number, newScore: number) => {
     if (!id) return;
     try {
@@ -623,6 +982,127 @@ export const TemplateDetailsPage = () => {
         description: "Failed to update score",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleCreateField = async (field: Partial<TemplateField>) => {
+    if (!id) return;
+
+    try {
+      const newField: Omit<TemplateField, 'id' | 'templateId'> = {
+        label: field.label || '',
+        fieldType: field.fieldType || FieldType.Text,
+        weight: field.weight || 1,
+        isRequired: field.isRequired || false,
+        displayOrder: templateFields.length + 1,
+        placeholder: field.placeholder || '',
+        minLength: field.minLength,
+        maxLength: field.maxLength,
+        minValue: field.minValue,
+        maxValue: field.maxValue,
+        minDate: field.minDate,
+        maxDate: field.maxDate,
+        pattern: field.pattern
+      };
+
+      await templateService.createTemplateField(id, newField);
+      
+      // Refresh fields from server to get the latest data
+      await fetchTemplateFields(id);
+      setFieldDialogOpen(false);
+      
+      toast({
+        title: "Success",
+        description: "Field created successfully",
+      });
+    } catch (err) {
+      console.error('Error creating field:', err);
+      toast({
+        title: "Error",
+        description: "Failed to create field",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateField = async (fieldId: number, field: Partial<TemplateField>) => {
+    if (!id) return;
+
+    try {
+      const currentField = templateFields.find(f => f.id === fieldId);
+      if (!currentField) return;
+
+      const updatedField: Omit<TemplateField, 'id' | 'templateId'> = {
+        ...currentField,
+        ...field
+      };
+
+      await templateService.updateTemplateField(id, fieldId, updatedField);
+      
+      // Refresh fields from server to get the latest data
+      await fetchTemplateFields(id);
+      setFieldDialogOpen(false);
+      setSelectedField(null);
+      
+      toast({
+        title: "Success",
+        description: "Field updated successfully",
+      });
+    } catch (err) {
+      console.error('Error updating field:', err);
+      toast({
+        title: "Error",
+        description: "Failed to update field",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteField = async (fieldId: number) => {
+    if (!id) return;
+
+    try {
+      await templateService.deleteTemplateField(id, fieldId);
+      
+      // Refresh fields from server to get the latest data
+      await fetchTemplateFields(id);
+      
+      toast({
+        title: "Success",
+        description: "Field deleted successfully",
+      });
+    } catch (err) {
+      console.error('Error deleting field:', err);
+      toast({
+        title: "Error",
+        description: "Failed to delete field",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleWeightChange = async (fieldId: number, weight: number) => {
+    if (!id) return;
+    
+    try {
+      await templateService.updateFieldWeight(id, fieldId, weight);
+      
+      // Refresh fields from server to get the latest data
+      await fetchTemplateFields(id);
+      
+      toast({
+        title: "Success",
+        description: "Field weight updated successfully",
+      });
+    } catch (err) {
+      console.error('Error updating field weight:', err);
+      toast({
+        title: "Error",
+        description: "Failed to update field weight",
+        variant: "destructive",
+      });
+    } finally {
+      setEditingWeight(null);
     }
   };
 
@@ -810,6 +1290,203 @@ export const TemplateDetailsPage = () => {
               </div>
             </Card>
           </div>
+
+          {/* Template Fields Section */}
+          <Card className="overflow-hidden shadow-sm">
+            <CardHeader className="bg-gray-50/50 border-b px-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Icon name="list_alt" className="text-primary text-xl" />
+                  <h2 className="text-lg font-semibold">Template Fields</h2>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={() => {
+                    setSelectedField(null);
+                    setFieldDialogOpen(true);
+                  }}
+                  className="gap-2"
+                >
+                  <Icon name="add" className="text-base" />
+                  Add Field
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {templateFields.length === 0 ? (
+                <div className="p-8 text-center">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                    <Icon name="article" className="text-gray-400 text-xl" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">No fields defined</h3>
+                  <p className="text-gray-500 mb-4">Add fields to collect data for this template</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSelectedField(null);
+                      setFieldDialogOpen(true);
+                    }}
+                    className="gap-2"
+                  >
+                    <Icon name="add" className="text-base" />
+                    Add First Field
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Field</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Required</TableHead>
+                      <TableHead>Weight</TableHead>
+                      <TableHead>Distribution (%)</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {templateFields.map((field) => (
+                      <TableRow 
+                        key={field.id}
+                        className="hover:bg-gray-50"
+                      >
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <div className="rounded-full bg-primary/10 p-1.5 flex-shrink-0">
+                              <Icon 
+                                name={
+                                  field.fieldType === FieldType.Text ? "text_fields" :
+                                  field.fieldType === FieldType.Dropdown ? "arrow_drop_down_circle" :
+                                  field.fieldType === FieldType.Radio ? "radio_button_checked" :
+                                  field.fieldType === FieldType.Checkbox ? "check_box" :
+                                  field.fieldType === FieldType.Date ? "calendar_month" :
+                                  field.fieldType === FieldType.Number ? "pin" :
+                                  "notes"
+                                } 
+                                className="text-primary text-sm" 
+                              />
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                {field.label}
+                              </div>
+                              {field.placeholder && (
+                                <div className="text-xs text-gray-500 italic mt-1">
+                                  "{field.placeholder}"
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {FieldTypeMap[field.fieldType]}
+                        </TableCell>
+                        <TableCell>
+                          {field.isRequired ? (
+                            <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
+                              Required
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-500 text-sm">Optional</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Input
+                              type="number"
+                              min="1"
+                              max="100"
+                              className="w-16 h-8 text-sm"
+                              value={editingWeight && field.id === editingWeight.id ? editingWeight.value : field.weight}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value, 10);
+                                if (!isNaN(value) && value > 0 && field.id) {
+                                  setEditingWeight({ id: field.id, value });
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && field.id && editingWeight && editingWeight.id === field.id) {
+                                  handleWeightChange(field.id, editingWeight.value);
+                                } else if (e.key === 'Escape') {
+                                  setEditingWeight(null);
+                                }
+                              }}
+                              onBlur={() => {
+                                if (field.id && editingWeight && editingWeight.id === field.id && editingWeight.value !== field.weight) {
+                                  handleWeightChange(field.id, editingWeight.value);
+                                } else {
+                                  setEditingWeight(null);
+                                }
+                              }}
+                              onFocus={() => {
+                                if (field.id) {
+                                  setEditingWeight({ id: field.id, value: field.weight });
+                                }
+                              }}
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            // Calculate the total weight of all fields
+                            const totalWeight = templateFields.reduce((sum, field) => sum + field.weight, 0);
+                            
+                            // Calculate the percentage distribution for this field
+                            const percentage = totalWeight > 0 ? (field.weight / totalWeight) * 100 : 0;
+                            
+                            return (
+                              <div className="flex items-center">
+                                <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                                  <div 
+                                    className="bg-primary h-2.5 rounded-full" 
+                                    style={{ width: `${percentage}%` }}
+                                  ></div>
+                                </div>
+                                <span>{percentage.toFixed(1)}%</span>
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => {
+                                setSelectedField(field);
+                                setFieldDialogOpen(true);
+                              }}
+                            >
+                              <Icon name="edit" className="text-gray-500" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => {
+                                if (field.id) handleDeleteField(field.id);
+                              }}
+                            >
+                              <Icon name="delete" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {templateFields.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center">
+                          No fields found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Quick Actions */}
@@ -819,6 +1496,20 @@ export const TemplateDetailsPage = () => {
             New Version
           </Button>
         </div>
+
+        {/* Field Dialog */}
+        <TemplateFieldDialog
+          open={fieldDialogOpen}
+          onOpenChange={setFieldDialogOpen}
+          initialData={selectedField || undefined}
+          onSubmit={(data) => {
+            if (selectedField && selectedField.id) {
+              handleUpdateField(selectedField.id, data);
+            } else {
+              handleCreateField(data);
+            }
+          }}
+        />
       </div>
     </Container>
   );
