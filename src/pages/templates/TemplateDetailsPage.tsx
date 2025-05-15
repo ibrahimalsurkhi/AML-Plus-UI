@@ -123,12 +123,29 @@ const ScoreCriteriaBar = ({
     { key: 'High', color: '#fde8e8', textColor: '#dc2626', range: [3, 5] }
   ];
 
-  // Initialize thumb positions
-  const [thumbPositions, setThumbPositions] = useState([1.8, 3, 5]);
+  // State for slider boundaries
+  const [boundaries, setBoundaries] = useState([1.8, 3.0]);
   const [isDragging, setIsDragging] = useState<number | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
+  
+  // Store modified criteria scores separately to track changes
+  const [editedScores, setEditedScores] = useState<Record<number, number>>({});
+  
+  // Initialize boundaries and edited scores on mount or when criteria changes
+  useEffect(() => {
+    // Default boundaries from section definitions
+    const initialBoundaries = [sections[0].range[1], sections[1].range[1]];
+    setBoundaries(initialBoundaries);
+    
+    // Initialize edited scores with original values
+    const initialScores: Record<number, number> = {};
+    criteria.forEach(c => {
+      initialScores[c.id] = c.score;
+    });
+    setEditedScores(initialScores);
+  }, [criteria]);
 
   const getValueFromEvent = (e: React.MouseEvent | MouseEvent | React.TouchEvent | TouchEvent) => {
     if (!sliderRef.current) return null;
@@ -140,25 +157,27 @@ const ScoreCriteriaBar = ({
     return percentage * maxScore;
   };
 
-  const updateThumbPosition = (index: number, newValue: number) => {
-    // Don't update if not in edit mode or trying to move last thumb
-    if (!isEditMode || index === 2) return;
+  const updateBoundary = (index: number, newValue: number) => {
+    // Don't update if not in edit mode
+    if (!isEditMode) return;
     
-    const newPositions = [...thumbPositions];
+    const newBoundaries = [...boundaries];
     
-    // Ensure the new value is within valid range and doesn't cross other thumbs
+    // Ensure the new value is within valid range and doesn't cross other boundaries
     if (index === 0) {
-      newPositions[0] = Math.min(Math.max(newValue, 0), newPositions[1] - 0.1);
+      newBoundaries[0] = Math.min(Math.max(newValue, minScore + 0.1), newBoundaries[1] - 0.1);
     } else if (index === 1) {
-      newPositions[1] = Math.min(Math.max(newValue, newPositions[0] + 0.1), newPositions[2] - 0.1);
+      newBoundaries[1] = Math.min(Math.max(newValue, newBoundaries[0] + 0.1), maxScore - 0.1);
     }
     
-    setThumbPositions(newPositions);
+    setBoundaries(newBoundaries);
     setHasChanges(true);
+    
+    console.log(`Updated boundary ${index} to ${newBoundaries[index]}`);
   };
 
   const handleMouseDown = (index: number, e: React.MouseEvent) => {
-    // Don't handle if not in edit mode or trying to drag last thumb
+    // Only allow dragging the first two boundaries (low and medium)
     if (!isEditMode || index === 2) return;
     
     e.preventDefault();
@@ -168,7 +187,7 @@ const ScoreCriteriaBar = ({
       e.preventDefault();
       const newValue = getValueFromEvent(e);
       if (newValue !== null) {
-        updateThumbPosition(index, newValue);
+        updateBoundary(index, newValue);
       }
     };
 
@@ -183,7 +202,7 @@ const ScoreCriteriaBar = ({
   };
 
   const handleTouchStart = (index: number, e: React.TouchEvent) => {
-    // Don't handle if not in edit mode or trying to drag last thumb
+    // Only allow dragging the first two boundaries (low and medium)
     if (!isEditMode || index === 2) return;
     
     e.preventDefault();
@@ -193,7 +212,7 @@ const ScoreCriteriaBar = ({
       e.preventDefault();
       const newValue = getValueFromEvent(e);
       if (newValue !== null) {
-        updateThumbPosition(index, newValue);
+        updateBoundary(index, newValue);
       }
     };
 
@@ -209,24 +228,111 @@ const ScoreCriteriaBar = ({
 
   const handleEnableEdit = () => {
     setIsEditMode(true);
+    // Reset edited scores to current criteria values
+    const currentScores: Record<number, number> = {};
+    criteria.forEach(c => {
+      currentScores[c.id] = c.score;
+    });
+    setEditedScores(currentScores);
     toast({
-      description: "You can now drag the sliders to adjust scores",
+      description: "You can now drag the sliders to adjust score boundaries",
     });
   };
 
-  const handleSave = () => {
-    if (!onChange || !hasChanges) return;
+  // Get score section (low, medium, high) based on score value
+  const getSection = (score: number): number => {
+    if (score <= boundaries[0]) return 0; // Low
+    if (score <= boundaries[1]) return 1; // Medium
+    return 2; // High
+  };
 
-    // Update criteria near both movable thumbs
-    [0, 1].forEach(index => {
-      const value = thumbPositions[index];
-      const criteriaNearThumb = criteria.filter(c => 
-        Math.abs(c.score - value) < 0.5
-      );
-      criteriaNearThumb.forEach(c => {
-        onChange(c.id, value);
+  const handleSave = () => {
+    if (!onChange || !hasChanges) {
+      console.log("Save canceled: onChange handler missing or no changes", { 
+        hasOnChange: !!onChange, 
+        hasChanges 
       });
+      return;
+    }
+
+    console.log("CRITICAL: ScoreCriteriaBar handleSave called", {
+      boundaries,
+      hasChanges,
+      criteriaCount: criteria.length
     });
+
+    console.log("CRITICAL: Using actual slider positions to calculate scores");
+    
+    // Calculate section ranges based on current boundaries
+    const lowRange = [0, boundaries[0]];
+    const mediumRange = [boundaries[0], boundaries[1]];
+    const highRange = [boundaries[1], maxScore];
+    
+    // Debug: print all criteria with their score ranges
+    console.log("CRITICAL: Section ranges:", {
+      low: lowRange,
+      medium: mediumRange,
+      high: highRange
+    });
+    
+    console.log("CRITICAL: Current criteria:", criteria.map(c => ({ 
+      id: c.id, 
+      key: c.key, 
+      score: c.score,
+      // Determine which section each criterion is in based on its current score
+      section: c.score <= boundaries[0] ? "LOW" : (c.score <= boundaries[1] ? "MEDIUM" : "HIGH")
+    })));
+    
+    // Find criteria in each section
+    const lowCriteria = criteria.filter(c => c.key.toLowerCase().includes('low'));
+    const mediumCriteria = criteria.filter(c => c.key.toLowerCase().includes('medium'));
+    const highCriteria = criteria.filter(c => c.key.toLowerCase().includes('high'));
+    
+    // Calculate scores based on actual slider positions
+    const updateCriteriaScores = () => {
+      // Process each criteria based on its key
+      lowCriteria.forEach(c => {
+        if (c && onChange) {
+          // For low criteria, use first boundary value
+          const targetScore = Number(boundaries[0]);
+          console.log(`CRITICAL: Setting LOW criteria ${c.id} to score ${targetScore} based on first boundary`);
+          
+          setTimeout(() => {
+            console.log(`CRITICAL: Dispatching update for LOW criteria ${c.id} with score ${targetScore}`);
+            onChange(c.id, targetScore);
+          }, 200 * criteria.indexOf(c));
+        }
+      });
+      
+      mediumCriteria.forEach(c => {
+        if (c && onChange) {
+          // For medium criteria, use second boundary value
+          const targetScore = Number(boundaries[1]);
+          console.log(`CRITICAL: Setting MEDIUM criteria ${c.id} to score ${targetScore} based on second boundary`);
+          
+          setTimeout(() => {
+            console.log(`CRITICAL: Dispatching update for MEDIUM criteria ${c.id} with score ${targetScore}`);
+            onChange(c.id, targetScore);
+          }, 200 * criteria.indexOf(c));
+        }
+      });
+      
+      highCriteria.forEach(c => {
+        if (c && onChange) {
+          // For high criteria, use max score
+          const targetScore = Number(maxScore);
+          console.log(`CRITICAL: Setting HIGH criteria ${c.id} to score ${targetScore} based on max score`);
+          
+          setTimeout(() => {
+            console.log(`CRITICAL: Dispatching update for HIGH criteria ${c.id} with score ${targetScore}`);
+            onChange(c.id, targetScore);
+          }, 200 * criteria.indexOf(c));
+        }
+      });
+    };
+    
+    // Update all criteria
+    updateCriteriaScores();
 
     setHasChanges(false);
     setIsEditMode(false);
@@ -237,15 +343,15 @@ const ScoreCriteriaBar = ({
   };
 
   const handleCancel = () => {
-    // Reset to original positions
-    setThumbPositions([1.8, 3, 5]);
+    // Reset to default section boundaries
+    setBoundaries([sections[0].range[1], sections[1].range[1]]);
     setHasChanges(false);
     setIsEditMode(false);
     toast({
       description: "Changes cancelled",
     });
   };
-
+  
   return (
     <div className="w-full space-y-6 px-4">
       {/* Section labels */}
@@ -268,9 +374,9 @@ const ScoreCriteriaBar = ({
           {/* Low section */}
           <div
             className="h-full"
-            style={{ 
+            style={{
               background: sections[0].color,
-              width: `${(thumbPositions[0] / maxScore) * 100}%`,
+              width: `${(boundaries[0] / maxScore) * 100}%`,
               borderRight: '2px solid white'
             }}
           />
@@ -279,7 +385,7 @@ const ScoreCriteriaBar = ({
             className="h-full"
             style={{ 
               background: sections[1].color,
-              width: `${((thumbPositions[1] - thumbPositions[0]) / maxScore) * 100}%`,
+              width: `${((boundaries[1] - boundaries[0]) / maxScore) * 100}%`,
               borderRight: '2px solid white'
             }}
           />
@@ -288,13 +394,13 @@ const ScoreCriteriaBar = ({
             className="h-full"
             style={{ 
               background: sections[2].color,
-              width: `${((maxScore - thumbPositions[1]) / maxScore) * 100}%`
+              width: `${((maxScore - boundaries[1]) / maxScore) * 100}%`
             }}
           />
         </div>
 
         {/* Thumbs */}
-        {thumbPositions.map((value, idx) => (
+        {[...boundaries, maxScore].map((value, idx) => (
           <div 
             key={`thumb-${idx}`} 
             className={`absolute top-0 bottom-0 ${isEditMode && idx !== 2 ? 'cursor-grab active:cursor-grabbing' : ''}`}
@@ -1272,17 +1378,40 @@ export const TemplateDetailsPage = () => {
 
   const handleScoreChange = async (criteriaId: number, newScore: number) => {
     if (!id) return;
+    
+    console.log(`CRITICAL: Updating criteria ${criteriaId} with new score ${newScore}`);
+    
     try {
       const criteriaToUpdate = scoreCriteria.find(c => c.id === criteriaId);
-      if (!criteriaToUpdate) return;
-
-      await templateService.updateScoreCriteria(id, criteriaId, {
-        ...criteriaToUpdate,
-        score: newScore
+      if (!criteriaToUpdate) {
+        console.error(`Could not find criteria with ID ${criteriaId}`);
+        return;
+      }
+      
+      // Force update even if the score hasn't changed significantly
+      // This ensures that clicking the Update button will always send updates to the server
+      
+      console.log(`CRITICAL: Sending API request to update criteria ${criteriaId}`, {
+        current: criteriaToUpdate,
+        newScore: newScore
       });
       
-      // Refresh the list to get the updated scores
-      //await fetchScoreCriteria(id);
+      // Make absolutely sure we're sending the correct value
+      const payload = {
+        ...criteriaToUpdate,
+        score: Number(newScore) // Ensure it's a number
+      };
+      
+      console.log(`CRITICAL: Final payload for criteria ${criteriaId}:`, payload);
+      
+      await templateService.updateScoreCriteria(id, criteriaId, payload);
+      
+      console.log(`CRITICAL: Successfully updated criteria ${criteriaId} to ${newScore}`);
+      
+      // Update the local state with the new score
+      setScoreCriteria(prev => 
+        prev.map(c => c.id === criteriaId ? {...c, score: Number(newScore)} : c)
+      );
     } catch (err) {
       console.error('Error updating score:', err);
       toast({
@@ -1547,7 +1676,7 @@ export const TemplateDetailsPage = () => {
   }
 
   return (
-    <Container>
+      <Container>
       <div className="space-y-8">
         {/* Header Section */}
         <div className="flex flex-col gap-4">
@@ -1566,16 +1695,16 @@ export const TemplateDetailsPage = () => {
 
           {/* Hero Section */}
           <div className="bg-white rounded-xl py-8">
-            <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between">
               <div className="flex items-start gap-4">
                 <div className="rounded-lg p-3 bg-primary/5">
                   <Icon name="description" className="text-primary text-2xl" />
                 </div>
-                <div>
+            <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h1 className="text-2xl font-bold text-gray-900">{template.name}</h1>
-                    {getStatusBadge(template.status)}
-                  </div>
+                {getStatusBadge(template.status)}
+            </div>
                   <div className="flex items-center gap-3 mt-4">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Icon name="tag" className="text-gray-400" />
@@ -1595,19 +1724,19 @@ export const TemplateDetailsPage = () => {
                 </div>
               </div>
               <div>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/templates')}
+            <Button
+              variant="outline"
+              onClick={() => navigate('/templates')}
                   className="hover:bg-gray-50 gap-2"
                   size="sm"
-                >
+            >
                   <Icon name="arrow_back" className="text-base" />
-                  Back to Templates
-                </Button>
+              Back to Templates
+            </Button>
               </div>
             </div>
           </div>
-        </div>
+          </div>
 
         {/* Main content in cards */}
         <div className="grid grid-cols-1 gap-8">
@@ -1641,13 +1770,13 @@ export const TemplateDetailsPage = () => {
                   <h2 className="text-lg font-semibold">Template Information</h2>
                 </div>
               </CardHeader>
-              <CardContent className="p-6">
+                  <CardContent className="p-6">
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-gray-500">Version</p>
                       <p className="text-base text-gray-900">{template.version}</p>
-                    </div>
+                        </div>
                     <Separator />
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-gray-500">Tenant</p>
@@ -1657,11 +1786,11 @@ export const TemplateDetailsPage = () => {
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-gray-500">Status</p>
                       <p className="text-base text-gray-900 flex items-center gap-2">
-                        <StatusIcon status={template.status} />
+                            <StatusIcon status={template.status} />
                         {TemplateStatus[template.status]}
-                      </p>
-                    </div>
-                  </div>
+                          </p>
+                        </div>
+                      </div>
                 </div>
               </CardContent>
             </Card>
@@ -1677,8 +1806,8 @@ export const TemplateDetailsPage = () => {
                   <Button variant="ghost" size="sm" className="gap-2 text-primary">
                     <Icon name="tune" className="text-base" />
                     Filter
-                  </Button>
-                </div>
+                        </Button>
+                      </div>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y">
@@ -1698,15 +1827,15 @@ export const TemplateDetailsPage = () => {
                       </div>
                     </div>
                   ))}
-                </div>
-              </CardContent>
+                    </div>
+                  </CardContent>
               <div className="px-6 py-4 border-t bg-gray-50/50">
                 <Button variant="outline" size="sm" className="w-full gap-2">
                   <Icon name="expand_more" className="text-base" />
                   View More
                 </Button>
               </div>
-            </Card>
+                </Card>
           </div>
 
           {/* Template Fields Section */}
@@ -1842,8 +1971,8 @@ export const TemplateDetailsPage = () => {
                                   setEditingWeight({ id: field.id, value: field.weight });
                                 }
                               }}
-                            />
-                          </div>
+                  />
+                </div>
                         </TableCell>
                         <TableCell>
                           {(() => {
@@ -1883,7 +2012,7 @@ export const TemplateDetailsPage = () => {
                               >
                                 <Icon name="list" className="mr-1" />
                                 Options
-                              </Button>
+                  </Button>
                             )}
                             <Button 
                               variant="ghost" 
@@ -1895,7 +2024,7 @@ export const TemplateDetailsPage = () => {
                               }}
                             >
                               <Icon name="edit" className="text-gray-500" />
-                            </Button>
+                  </Button>
                             <Button 
                               variant="ghost" 
                               size="sm"
@@ -1927,10 +2056,10 @@ export const TemplateDetailsPage = () => {
         {/* Quick Actions */}
         <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8">
           <Button size="sm" className="shadow-sm gap-2">
-            <Icon name="add" className="text-base" />
-            New Version
-          </Button>
-        </div>
+                    <Icon name="add" className="text-base" />
+                    New Version
+                  </Button>
+                </div>
 
         {/* Field Dialog */}
         <TemplateFieldDialog
@@ -1993,7 +2122,7 @@ export const TemplateDetailsPage = () => {
             <DialogFooter className="mt-6 gap-3">
               <Button type="button" variant="outline" onClick={() => setDeleteDialogOpen(false)}>
                 Cancel
-              </Button>
+                    </Button>
               <Button type="button" variant="destructive" onClick={() => {
                 if (fieldToDelete && fieldToDelete.id) {
                   handleDeleteField(fieldToDelete.id);
@@ -2021,7 +2150,7 @@ export const TemplateDetailsPage = () => {
                   <div className="flex items-center gap-4">
                     <div className="rounded-full bg-red-100 p-3 flex-shrink-0">
                       <Icon name="label" className="text-red-600 text-xl" />
-                    </div>
+                  </div>
                     <div>
                       <h4 className="font-medium text-lg text-gray-900">{optionToDelete.label}</h4>
                       {scoreCriteria.some(c => c.id === optionToDelete.scoreCriteriaId) && (
@@ -2034,7 +2163,7 @@ export const TemplateDetailsPage = () => {
                           >
                             {scoreCriteria.find(c => c.id === optionToDelete.scoreCriteriaId)?.key}
                           </Badge>
-                        </div>
+                  </div>
                       )}
                     </div>
                   </div>
@@ -2068,8 +2197,8 @@ export const TemplateDetailsPage = () => {
           onUpdateOption={handleUpdateOption}
           onDeleteOption={confirmDeleteOption}
         />
-      </div>
-    </Container>
+        </div>
+      </Container>
   );
 };
 
