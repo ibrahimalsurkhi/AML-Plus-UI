@@ -911,6 +911,8 @@ export const TemplateDetailsPage = () => {
   const [fieldDialogOpen, setFieldDialogOpen] = useState(false);
   const [selectedField, setSelectedField] = useState<TemplateField | null>(null);
   const [editingWeight, setEditingWeight] = useState<{ id: number, value: number } | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [fieldToDelete, setFieldToDelete] = useState<TemplateField | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -1058,6 +1060,11 @@ export const TemplateDetailsPage = () => {
     }
   };
 
+  const confirmDeleteField = (field: TemplateField) => {
+    setFieldToDelete(field);
+    setDeleteDialogOpen(true);
+  };
+
   const handleDeleteField = async (fieldId: number) => {
     if (!id) return;
 
@@ -1078,6 +1085,9 @@ export const TemplateDetailsPage = () => {
         description: "Failed to delete field",
         variant: "destructive",
       });
+    } finally {
+      setFieldToDelete(null);
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -1466,7 +1476,7 @@ export const TemplateDetailsPage = () => {
                               size="sm"
                               className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                               onClick={() => {
-                                if (field.id) handleDeleteField(field.id);
+                                if (field.id) confirmDeleteField(field);
                               }}
                             >
                               <Icon name="delete" />
@@ -1510,6 +1520,65 @@ export const TemplateDetailsPage = () => {
             }
           }}
         />
+
+        {/* Delete Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-md p-6">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-xl">Confirm Deletion</DialogTitle>
+              <DialogDescription className="mt-2">
+                Are you sure you want to delete this field?
+              </DialogDescription>
+            </DialogHeader>
+            
+            {fieldToDelete && (
+              <div className="py-4 space-y-4">
+                <div className="bg-gray-50 p-5 rounded-lg border border-gray-100">
+                  <div className="flex items-center gap-4">
+                    <div className="rounded-full bg-red-100 p-3 flex-shrink-0">
+                      <Icon 
+                        name={
+                          fieldToDelete.fieldType === FieldType.Text ? "text_fields" :
+                          fieldToDelete.fieldType === FieldType.Dropdown ? "arrow_drop_down_circle" :
+                          fieldToDelete.fieldType === FieldType.Radio ? "radio_button_checked" :
+                          fieldToDelete.fieldType === FieldType.Checkbox ? "check_box" :
+                          fieldToDelete.fieldType === FieldType.Date ? "calendar_month" :
+                          fieldToDelete.fieldType === FieldType.Number ? "pin" :
+                          "notes"
+                        } 
+                        className="text-red-600 text-xl" 
+                      />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-lg text-gray-900">{fieldToDelete.label}</h4>
+                      <p className="text-gray-500 mt-1">{FieldTypeMap[fieldToDelete.fieldType]}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {fieldToDelete.isRequired && (
+                  <div className="bg-yellow-50 text-yellow-800 p-4 rounded-md border border-yellow-100 flex items-start gap-3">
+                    <Icon name="warning" className="text-yellow-600 mt-0.5 flex-shrink-0" />
+                    <p>This is a required field. Deleting it may affect existing assessments or evaluations.</p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <DialogFooter className="mt-6 gap-3">
+              <Button type="button" variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="destructive" onClick={() => {
+                if (fieldToDelete && fieldToDelete.id) {
+                  handleDeleteField(fieldToDelete.id);
+                }
+              }}>
+                Delete Field
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Container>
   );
