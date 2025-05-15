@@ -103,6 +103,14 @@ export interface TemplateField {
   pattern?: string | null;
 }
 
+export interface FieldOption {
+  id?: number;
+  fieldId?: number;
+  label: string;
+  scoreCriteriaId: number;
+  displayOrder: number;
+}
+
 export const templateService = {
   getTemplates: async (params: TemplateQueryParams): Promise<PaginatedResponse<Template>> => {
     const response = await api.get<PaginatedResponse<Template>>(API_CONFIG.endpoints.templates.list, { params });
@@ -152,5 +160,20 @@ export const templateService = {
     await api.put(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/weight`, {
       weight
     });
+  },
+  getFieldOptions: async (templateId: string, fieldId: number): Promise<FieldOption[]> => {
+    const response = await api.get<FieldOption[]>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options`);
+    return response.data;
+  },
+  createFieldOption: async (templateId: string, fieldId: number, option: Omit<FieldOption, 'id' | 'fieldId'>): Promise<FieldOption> => {
+    const response = await api.post<FieldOption>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options`, option);
+    return response.data;
+  },
+  updateFieldOption: async (templateId: string, fieldId: number, optionId: number, option: Omit<FieldOption, 'id' | 'fieldId'>): Promise<FieldOption> => {
+    const response = await api.put<FieldOption>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options/${optionId}`, option);
+    return response.data;
+  },
+  deleteFieldOption: async (templateId: string, fieldId: number, optionId: number): Promise<void> => {
+    await api.delete(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options/${optionId}`);
   }
 }; 

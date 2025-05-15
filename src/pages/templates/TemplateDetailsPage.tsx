@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { templateService, type Template, type ScoreCriteria, TemplateStatus, type TemplateField, FieldType } from '@/services/api';
+import { templateService, type Template, type ScoreCriteria, TemplateStatus, type TemplateField, FieldType, type FieldOption } from '@/services/api';
 import { Container } from '@/components/container';
 import {
   Toolbar,
@@ -899,6 +899,304 @@ const TemplateFieldDialog = ({
   );
 };
 
+const OptionForm = ({ 
+  onSubmit, 
+  initialData, 
+  scoreCriteria,
+  onCancel
+}: { 
+  onSubmit: (data: Omit<FieldOption, 'id' | 'fieldId'>) => void;
+  initialData?: FieldOption;
+  scoreCriteria: ScoreCriteria[];
+  onCancel: () => void;
+}) => {
+  const defaultOption: Omit<FieldOption, 'id' | 'fieldId'> = {
+    label: '',
+    scoreCriteriaId: scoreCriteria.length > 0 ? scoreCriteria[0].id : 0,
+    displayOrder: 1
+  };
+
+  const [formData, setFormData] = useState<Omit<FieldOption, 'id' | 'fieldId'>>(initialData || defaultOption);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        label: initialData.label,
+        scoreCriteriaId: initialData.scoreCriteriaId,
+        displayOrder: initialData.displayOrder
+      });
+    } else {
+      setFormData(defaultOption);
+    }
+    setErrors({});
+  }, [initialData, scoreCriteria]);
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.label?.trim()) {
+      newErrors.label = 'Label is required';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="label" className="flex items-center">
+          Label <span className="text-red-500 ml-1">*</span>
+        </Label>
+        <Input
+          id="label"
+          value={formData.label}
+          onChange={(e) => {
+            setFormData({ ...formData, label: e.target.value });
+            if (errors.label) {
+              setErrors({ ...errors, label: '' });
+            }
+          }}
+          placeholder="Enter option label"
+          className={errors.label ? 'border-red-500 focus-visible:ring-red-500' : ''}
+        />
+        {errors.label && (
+          <p className="text-red-500 text-sm mt-1">{errors.label}</p>
+        )}
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="scoreCriteriaId">Score Criteria</Label>
+        <select
+          id="scoreCriteriaId"
+          value={formData.scoreCriteriaId}
+          onChange={(e) => setFormData({ ...formData, scoreCriteriaId: Number(e.target.value) })}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {scoreCriteria.map((criteria) => (
+            <option key={`criteria-${criteria.id}`} value={criteria.id}>
+              {criteria.key} (Score: {criteria.score})
+            </option>
+          ))}
+        </select>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="displayOrder">Display Order</Label>
+        <Input
+          id="displayOrder"
+          type="number"
+          min={1}
+          value={formData.displayOrder}
+          onChange={(e) => setFormData({ ...formData, displayOrder: Number(e.target.value) })}
+          placeholder="Enter display order"
+        />
+      </div>
+      
+      <div className="flex justify-end gap-2 pt-4">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit">
+          {initialData ? 'Update' : 'Create'}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+const FieldOptionsDialog = ({ 
+  open, 
+  onOpenChange,
+  field,
+  options,
+  scoreCriteria,
+  onCreateOption,
+  onUpdateOption,
+  onDeleteOption,
+}: { 
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  field: TemplateField | null;
+  options: FieldOption[];
+  scoreCriteria: ScoreCriteria[];
+  onCreateOption: (option: Omit<FieldOption, 'id' | 'fieldId'>) => void;
+  onUpdateOption: (optionId: number, option: Omit<FieldOption, 'id' | 'fieldId'>) => void;
+  onDeleteOption: (option: FieldOption) => void;
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<FieldOption | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setIsEditing(false);
+      setSelectedOption(null);
+    }
+  }, [open]);
+
+  const handleCreateClick = () => {
+    setSelectedOption(null);
+    setIsEditing(true);
+  };
+
+  const handleEditClick = (option: FieldOption) => {
+    setSelectedOption(option);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setSelectedOption(null);
+  };
+
+  const handleFormSubmit = (data: Omit<FieldOption, 'id' | 'fieldId'>) => {
+    if (selectedOption && selectedOption.id) {
+      onUpdateOption(selectedOption.id, data);
+    } else {
+      onCreateOption(data);
+    }
+    setIsEditing(false);
+    setSelectedOption(null);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg p-2 bg-primary/10">
+              <Icon 
+                name={
+                  field?.fieldType === FieldType.Dropdown ? "arrow_drop_down_circle" :
+                  field?.fieldType === FieldType.Radio ? "radio_button_checked" :
+                  field?.fieldType === FieldType.Checkbox ? "check_box" : "list"
+                } 
+                className="text-primary text-xl"
+              />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {field?.label || 'Field Options'}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Define selectable options with score values
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {isEditing ? (
+          <OptionForm 
+            initialData={selectedOption || undefined}
+            onSubmit={handleFormSubmit}
+            scoreCriteria={scoreCriteria}
+            onCancel={handleCancelEdit}
+          />
+        ) : (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium">Available Options</h3>
+              <Button size="sm" onClick={handleCreateClick}>
+                <Icon name="add" className="mr-1" />
+                Add Option
+              </Button>
+            </div>
+            
+            {options.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                <Icon name="list" className="mx-auto text-gray-400 text-3xl mb-2" />
+                <p className="text-gray-600">No options defined for this field yet.</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-4"
+                  onClick={handleCreateClick}
+                >
+                  Add Your First Option
+                </Button>
+              </div>
+            ) : (
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Label</TableHead>
+                      <TableHead>Score Criteria</TableHead>
+                      <TableHead>Order</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {options
+                      .sort((a, b) => a.displayOrder - b.displayOrder)
+                      .map((option) => {
+                        const criteria = scoreCriteria.find(c => c.id === option.scoreCriteriaId);
+                        return (
+                          <TableRow key={option.id}>
+                            <TableCell className="font-medium">{option.label}</TableCell>
+                            <TableCell>
+                              {criteria ? (
+                                <div className="flex items-center gap-2">
+                                  <Badge 
+                                    style={{ 
+                                      backgroundColor: criteria.bgColor, 
+                                      color: criteria.color 
+                                    }}
+                                  >
+                                    {criteria.key}
+                                  </Badge>
+                                  <span className="text-sm text-gray-500">({criteria.score})</span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500">Not assigned</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{option.displayOrder}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleEditClick(option)}
+                                >
+                                  <Icon name="edit" className="text-gray-500" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => onDeleteOption(option)}
+                                >
+                                  <Icon name="delete" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export const TemplateDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -913,6 +1211,14 @@ export const TemplateDetailsPage = () => {
   const [editingWeight, setEditingWeight] = useState<{ id: number, value: number } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fieldToDelete, setFieldToDelete] = useState<TemplateField | null>(null);
+  
+  // Field Options states
+  const [fieldOptions, setFieldOptions] = useState<FieldOption[]>([]);
+  const [optionsDialogOpen, setOptionsDialogOpen] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<FieldOption | null>(null);
+  const [optionFieldId, setOptionFieldId] = useState<number | null>(null);
+  const [deleteOptionDialogOpen, setDeleteOptionDialogOpen] = useState(false);
+  const [optionToDelete, setOptionToDelete] = useState<FieldOption | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -1113,6 +1419,108 @@ export const TemplateDetailsPage = () => {
       });
     } finally {
       setEditingWeight(null);
+    }
+  };
+
+  // Field Options handlers
+  const openOptionsDialog = async (fieldId: number) => {
+    if (!id) return;
+    
+    setOptionFieldId(fieldId);
+    
+    try {
+      const options = await templateService.getFieldOptions(id, fieldId);
+      setFieldOptions(options);
+      setOptionsDialogOpen(true);
+    } catch (err) {
+      console.error('Error fetching field options:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch field options",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateOption = async (option: Omit<FieldOption, 'id' | 'fieldId'>) => {
+    if (!id || !optionFieldId) return;
+
+    try {
+      await templateService.createFieldOption(id, optionFieldId, option);
+      
+      // Refresh options from server
+      const updatedOptions = await templateService.getFieldOptions(id, optionFieldId);
+      setFieldOptions(updatedOptions);
+      setSelectedOption(null);
+      
+      toast({
+        title: "Success",
+        description: "Option created successfully",
+      });
+    } catch (err) {
+      console.error('Error creating option:', err);
+      toast({
+        title: "Error",
+        description: "Failed to create option",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateOption = async (optionId: number, option: Omit<FieldOption, 'id' | 'fieldId'>) => {
+    if (!id || !optionFieldId) return;
+
+    try {
+      await templateService.updateFieldOption(id, optionFieldId, optionId, option);
+      
+      // Refresh options from server
+      const updatedOptions = await templateService.getFieldOptions(id, optionFieldId);
+      setFieldOptions(updatedOptions);
+      setSelectedOption(null);
+      
+      toast({
+        title: "Success",
+        description: "Option updated successfully",
+      });
+    } catch (err) {
+      console.error('Error updating option:', err);
+      toast({
+        title: "Error",
+        description: "Failed to update option",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const confirmDeleteOption = (option: FieldOption) => {
+    setOptionToDelete(option);
+    setDeleteOptionDialogOpen(true);
+  };
+
+  const handleDeleteOption = async (optionId: number) => {
+    if (!id || !optionFieldId) return;
+
+    try {
+      await templateService.deleteFieldOption(id, optionFieldId, optionId);
+      
+      // Refresh options from server
+      const updatedOptions = await templateService.getFieldOptions(id, optionFieldId);
+      setFieldOptions(updatedOptions);
+      
+      toast({
+        title: "Success",
+        description: "Option deleted successfully",
+      });
+    } catch (err) {
+      console.error('Error deleting option:', err);
+      toast({
+        title: "Error",
+        description: "Failed to delete option",
+        variant: "destructive",
+      });
+    } finally {
+      setOptionToDelete(null);
+      setDeleteOptionDialogOpen(false);
     }
   };
 
@@ -1352,7 +1760,7 @@ export const TemplateDetailsPage = () => {
                       <TableHead>Required</TableHead>
                       <TableHead>Weight</TableHead>
                       <TableHead>Distribution (%)</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1460,6 +1868,23 @@ export const TemplateDetailsPage = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
+                            {/* Only show options button for field types that can have options */}
+                            {(field.fieldType === FieldType.Dropdown || 
+                              field.fieldType === FieldType.Radio ||
+                              field.fieldType === FieldType.Checkbox) && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="mr-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (field.id) openOptionsDialog(field.id);
+                                }}
+                              >
+                                <Icon name="list" className="mr-1" />
+                                Options
+                              </Button>
+                            )}
                             <Button 
                               variant="ghost" 
                               size="sm"
@@ -1579,6 +2004,70 @@ export const TemplateDetailsPage = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Option Delete Confirmation Dialog */}
+        <Dialog open={deleteOptionDialogOpen} onOpenChange={setDeleteOptionDialogOpen}>
+          <DialogContent className="sm:max-w-md p-6">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-xl">Delete Option</DialogTitle>
+              <DialogDescription className="mt-2">
+                Are you sure you want to delete this option?
+              </DialogDescription>
+            </DialogHeader>
+            
+            {optionToDelete && (
+              <div className="py-4 space-y-4">
+                <div className="bg-gray-50 p-5 rounded-lg border border-gray-100">
+                  <div className="flex items-center gap-4">
+                    <div className="rounded-full bg-red-100 p-3 flex-shrink-0">
+                      <Icon name="label" className="text-red-600 text-xl" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-lg text-gray-900">{optionToDelete.label}</h4>
+                      {scoreCriteria.some(c => c.id === optionToDelete.scoreCriteriaId) && (
+                        <div className="mt-2">
+                          <Badge 
+                            style={{ 
+                              backgroundColor: scoreCriteria.find(c => c.id === optionToDelete.scoreCriteriaId)?.bgColor,
+                              color: scoreCriteria.find(c => c.id === optionToDelete.scoreCriteriaId)?.color 
+                            }}
+                          >
+                            {scoreCriteria.find(c => c.id === optionToDelete.scoreCriteriaId)?.key}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <DialogFooter className="mt-6 gap-3">
+              <Button type="button" variant="outline" onClick={() => setDeleteOptionDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="destructive" onClick={() => {
+                if (optionToDelete && optionToDelete.id) {
+                  handleDeleteOption(optionToDelete.id);
+                }
+              }}>
+                Delete Option
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Field Options Dialog */}
+        <FieldOptionsDialog
+          open={optionsDialogOpen}
+          onOpenChange={setOptionsDialogOpen}
+          field={templateFields.find(f => f.id === optionFieldId) || null}
+          options={fieldOptions}
+          scoreCriteria={scoreCriteria}
+          onCreateOption={handleCreateOption}
+          onUpdateOption={handleUpdateOption}
+          onDeleteOption={confirmDeleteOption}
+        />
       </div>
     </Container>
   );
