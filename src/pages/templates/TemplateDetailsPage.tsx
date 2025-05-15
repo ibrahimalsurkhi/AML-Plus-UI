@@ -128,6 +128,7 @@ const ScoreCriteriaBar = ({
   const [isDragging, setIsDragging] = useState<number | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
   
   // Store modified criteria scores separately to track changes
@@ -135,8 +136,21 @@ const ScoreCriteriaBar = ({
   
   // Initialize boundaries and edited scores on mount or when criteria changes
   useEffect(() => {
-    // Default boundaries from section definitions
-    const initialBoundaries = [sections[0].range[1], sections[1].range[1]];
+    // Skip initialization if we're currently updating to prevent jumps
+    if (isUpdating) {
+      return;
+    }
+    
+    // Find criteria with keys matching sections
+    const lowCriteria = criteria.find(c => c.key.toLowerCase().includes('low'));
+    const mediumCriteria = criteria.find(c => c.key.toLowerCase().includes('medium'));
+    
+    // Use server values if available, otherwise use defaults
+    const initialBoundaries = [
+      lowCriteria ? lowCriteria.score : sections[0].range[1],
+      mediumCriteria ? mediumCriteria.score : sections[1].range[1]
+    ];
+    
     setBoundaries(initialBoundaries);
     
     // Initialize edited scores with original values
@@ -145,7 +159,7 @@ const ScoreCriteriaBar = ({
       initialScores[c.id] = c.score;
     });
     setEditedScores(initialScores);
-  }, [criteria]);
+  }, [criteria, isUpdating]);
 
   const getValueFromEvent = (e: React.MouseEvent | MouseEvent | React.TouchEvent | TouchEvent) => {
     if (!sliderRef.current) return null;
@@ -172,8 +186,6 @@ const ScoreCriteriaBar = ({
     
     setBoundaries(newBoundaries);
     setHasChanges(true);
-    
-    console.log(`Updated boundary ${index} to ${newBoundaries[index]}`);
   };
 
   const handleMouseDown = (index: number, e: React.MouseEvent) => {
@@ -248,40 +260,16 @@ const ScoreCriteriaBar = ({
 
   const handleSave = () => {
     if (!onChange || !hasChanges) {
-      console.log("Save canceled: onChange handler missing or no changes", { 
-        hasOnChange: !!onChange, 
-        hasChanges 
-      });
       return;
     }
 
-    console.log("CRITICAL: ScoreCriteriaBar handleSave called", {
-      boundaries,
-      hasChanges,
-      criteriaCount: criteria.length
-    });
-
-    console.log("CRITICAL: Using actual slider positions to calculate scores");
+    // Set updating flag to prevent boundaries from resetting during updates
+    setIsUpdating(true);
     
     // Calculate section ranges based on current boundaries
     const lowRange = [0, boundaries[0]];
     const mediumRange = [boundaries[0], boundaries[1]];
     const highRange = [boundaries[1], maxScore];
-    
-    // Debug: print all criteria with their score ranges
-    console.log("CRITICAL: Section ranges:", {
-      low: lowRange,
-      medium: mediumRange,
-      high: highRange
-    });
-    
-    console.log("CRITICAL: Current criteria:", criteria.map(c => ({ 
-      id: c.id, 
-      key: c.key, 
-      score: c.score,
-      // Determine which section each criterion is in based on its current score
-      section: c.score <= boundaries[0] ? "LOW" : (c.score <= boundaries[1] ? "MEDIUM" : "HIGH")
-    })));
     
     // Find criteria in each section
     const lowCriteria = criteria.filter(c => c.key.toLowerCase().includes('low'));
@@ -295,10 +283,8 @@ const ScoreCriteriaBar = ({
         if (c && onChange) {
           // For low criteria, use first boundary value
           const targetScore = Number(boundaries[0]);
-          console.log(`CRITICAL: Setting LOW criteria ${c.id} to score ${targetScore} based on first boundary`);
           
           setTimeout(() => {
-            console.log(`CRITICAL: Dispatching update for LOW criteria ${c.id} with score ${targetScore}`);
             onChange(c.id, targetScore);
           }, 200 * criteria.indexOf(c));
         }
@@ -308,10 +294,8 @@ const ScoreCriteriaBar = ({
         if (c && onChange) {
           // For medium criteria, use second boundary value
           const targetScore = Number(boundaries[1]);
-          console.log(`CRITICAL: Setting MEDIUM criteria ${c.id} to score ${targetScore} based on second boundary`);
           
           setTimeout(() => {
-            console.log(`CRITICAL: Dispatching update for MEDIUM criteria ${c.id} with score ${targetScore}`);
             onChange(c.id, targetScore);
           }, 200 * criteria.indexOf(c));
         }
@@ -321,10 +305,8 @@ const ScoreCriteriaBar = ({
         if (c && onChange) {
           // For high criteria, use max score
           const targetScore = Number(maxScore);
-          console.log(`CRITICAL: Setting HIGH criteria ${c.id} to score ${targetScore} based on max score`);
           
           setTimeout(() => {
-            console.log(`CRITICAL: Dispatching update for HIGH criteria ${c.id} with score ${targetScore}`);
             onChange(c.id, targetScore);
           }, 200 * criteria.indexOf(c));
         }
@@ -334,12 +316,16 @@ const ScoreCriteriaBar = ({
     // Update all criteria
     updateCriteriaScores();
 
-    setHasChanges(false);
-    setIsEditMode(false);
-    toast({
-      title: "Success",
-      description: "Score criteria updated successfully",
-    });
+    // Use a timeout to ensure all updates have time to process before resetting states
+    setTimeout(() => {
+      setHasChanges(false);
+      setIsEditMode(false);
+      setIsUpdating(false);
+      toast({
+        title: "Success",
+        description: "Score criteria updated successfully",
+      });
+    }, (criteria.length + 1) * 200);
   };
 
   const handleCancel = () => {
@@ -420,7 +406,7 @@ const ScoreCriteriaBar = ({
                          bg-white px-2 py-1 rounded-md shadow-md text-sm font-medium
                          whitespace-nowrap select-none`}
               >
-                {value.toFixed(1)}
+                {value.toFixed(2)}
               </div>
               
               {/* Thumb */}
@@ -1379,22 +1365,13 @@ export const TemplateDetailsPage = () => {
   const handleScoreChange = async (criteriaId: number, newScore: number) => {
     if (!id) return;
     
-    console.log(`CRITICAL: Updating criteria ${criteriaId} with new score ${newScore}`);
-    
     try {
       const criteriaToUpdate = scoreCriteria.find(c => c.id === criteriaId);
       if (!criteriaToUpdate) {
-        console.error(`Could not find criteria with ID ${criteriaId}`);
         return;
       }
       
       // Force update even if the score hasn't changed significantly
-      // This ensures that clicking the Update button will always send updates to the server
-      
-      console.log(`CRITICAL: Sending API request to update criteria ${criteriaId}`, {
-        current: criteriaToUpdate,
-        newScore: newScore
-      });
       
       // Make absolutely sure we're sending the correct value
       const payload = {
@@ -1402,18 +1379,13 @@ export const TemplateDetailsPage = () => {
         score: Number(newScore) // Ensure it's a number
       };
       
-      console.log(`CRITICAL: Final payload for criteria ${criteriaId}:`, payload);
-      
       await templateService.updateScoreCriteria(id, criteriaId, payload);
-      
-      console.log(`CRITICAL: Successfully updated criteria ${criteriaId} to ${newScore}`);
       
       // Update the local state with the new score
       setScoreCriteria(prev => 
         prev.map(c => c.id === criteriaId ? {...c, score: Number(newScore)} : c)
       );
     } catch (err) {
-      console.error('Error updating score:', err);
       toast({
         title: "Error",
         description: "Failed to update score",
