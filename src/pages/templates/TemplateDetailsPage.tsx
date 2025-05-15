@@ -340,15 +340,27 @@ const ScoreCriteriaBar = ({
   
   return (
     <div className="w-full space-y-6 px-4">
-      {/* Section labels */}
-      <div className="flex justify-between">
-        {sections.map((section) => (
+      {/* Section labels with values */}
+      <div className="grid grid-cols-3 gap-4">
+        {sections.map((section, index) => (
           <div
             key={section.key}
-            className="text-sm font-semibold"
-            style={{ color: section.textColor }}
+            className="flex flex-col items-center"
           >
-            {section.key}
+            <div
+              className="text-sm font-semibold mb-1"
+              style={{ color: section.textColor }}
+            >
+              {section.key}
+            </div>
+            <div className="text-xs text-gray-500">
+              {index === 0 ? 
+                `(${minScore.toFixed(2)}-${boundaries[0].toFixed(2)})` : 
+                index === 1 ? 
+                `(${boundaries[0].toFixed(2)}-${boundaries[1].toFixed(2)})` : 
+                `(${boundaries[1].toFixed(2)}-${maxScore.toFixed(2)})`
+              }
+            </div>
           </div>
         ))}
       </div>
@@ -423,10 +435,10 @@ const ScoreCriteriaBar = ({
 
         {/* Score labels */}
         <div className="absolute -bottom-6 left-0 text-sm text-gray-500 font-medium">
-          {minScore}
+          {minScore.toFixed(2)}
         </div>
         <div className="absolute -bottom-6 right-0 text-sm text-gray-500 font-medium">
-          {maxScore}
+          {maxScore.toFixed(2)}
         </div>
       </div>
 
@@ -577,8 +589,8 @@ const ScoreCriteriaDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
+        <DialogTitle>{initialData ? 'Edit Score Criteria' : 'Add Score Criteria'}</DialogTitle>
         <DialogHeader>
-          <DialogTitle>{initialData ? 'Edit Score Criteria' : 'Add Score Criteria'}</DialogTitle>
           <DialogDescription>
             {initialData ? 'Update the score criteria details below.' : 'Fill in the details for the new score criteria.'}
           </DialogDescription>
@@ -758,8 +770,8 @@ const TemplateFieldDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-6">
+        <DialogTitle>{initialData ? 'Edit Field' : 'Add Field'}</DialogTitle>
         <DialogHeader className="mb-4">
-          <DialogTitle>{initialData ? 'Edit Field' : 'Add Field'}</DialogTitle>
           <DialogDescription>
             {initialData ? 'Update the field details below.' : 'Configure the details for the new field.'}
           </DialogDescription>
@@ -1165,6 +1177,7 @@ const FieldOptionsDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl p-6">
+        <DialogTitle>Field Options</DialogTitle>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="rounded-lg p-2 bg-primary/10">
@@ -2050,8 +2063,8 @@ export const TemplateDetailsPage = () => {
         {/* Delete Dialog */}
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <DialogContent className="sm:max-w-md p-6">
+            <DialogTitle className="text-xl">Confirm Deletion</DialogTitle>
             <DialogHeader className="mb-4">
-              <DialogTitle className="text-xl">Confirm Deletion</DialogTitle>
               <DialogDescription className="mt-2">
                 Are you sure you want to delete this field?
               </DialogDescription>
@@ -2109,8 +2122,8 @@ export const TemplateDetailsPage = () => {
         {/* Option Delete Confirmation Dialog */}
         <Dialog open={deleteOptionDialogOpen} onOpenChange={setDeleteOptionDialogOpen}>
           <DialogContent className="sm:max-w-md p-6">
+            <DialogTitle className="text-xl">Delete Option</DialogTitle>
             <DialogHeader className="mb-4">
-              <DialogTitle className="text-xl">Delete Option</DialogTitle>
               <DialogDescription className="mt-2">
                 Are you sure you want to delete this option?
               </DialogDescription>
@@ -2136,7 +2149,7 @@ export const TemplateDetailsPage = () => {
                             {scoreCriteria.find(c => c.id === optionToDelete.scoreCriteriaId)?.key}
                           </Badge>
                   </div>
-                      )}
+                    )}
                     </div>
                   </div>
                 </div>
