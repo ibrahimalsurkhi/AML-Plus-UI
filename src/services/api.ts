@@ -111,6 +111,15 @@ export interface FieldOption {
   displayOrder: number;
 }
 
+export interface ScoreCriteriaRange {
+  id: number;
+  fieldId: number;
+  minValue: number;
+  maxValue: number;
+  scoreCriteriaId: number;
+  displayOrder: number;
+}
+
 export const templateService = {
   getTemplates: async (params: TemplateQueryParams): Promise<PaginatedResponse<Template>> => {
     const response = await api.get<PaginatedResponse<Template>>(API_CONFIG.endpoints.templates.list, { params });
@@ -175,6 +184,44 @@ export const templateService = {
   },
   deleteFieldOption: async (templateId: string, fieldId: number, optionId: number): Promise<void> => {
     await api.delete(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options/${optionId}`);
+  },
+  getTemplateScoreCriteriaRanges: async (templateId: string, fieldId: number): Promise<ScoreCriteriaRange[]> => {
+    const response = await api.get<ScoreCriteriaRange[]>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria-ranges`
+    );
+    return response.data;
+  },
+  createScoreCriteriaRange: async (
+    templateId: string, 
+    fieldId: number, 
+    data: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>
+  ): Promise<ScoreCriteriaRange> => {
+    const response = await api.post<ScoreCriteriaRange>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria-ranges`,
+      data
+    );
+    return response.data;
+  },
+  updateScoreCriteriaRange: async (
+    templateId: string, 
+    fieldId: number, 
+    rangeId: number, 
+    data: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>
+  ): Promise<ScoreCriteriaRange> => {
+    const response = await api.put<ScoreCriteriaRange>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria-ranges/${rangeId}`,
+      data
+    );
+    return response.data;
+  },
+  deleteScoreCriteriaRange: async (
+    templateId: string, 
+    fieldId: number, 
+    rangeId: number
+  ): Promise<void> => {
+    await api.delete(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria-ranges/${rangeId}`
+    );
   }
 };
 

@@ -1302,6 +1302,379 @@ const FieldOptionsDialog = ({
   );
 };
 
+interface ScoreCriteriaRange {
+  id?: number;
+  fieldId?: number;
+  minValue: number;
+  maxValue: number;
+  scoreCriteriaId: number;
+  displayOrder: number;
+}
+
+const ScoreCriteriaRangeForm = ({ 
+  onSubmit, 
+  initialData, 
+  scoreCriteria,
+  onCancel
+}: { 
+  onSubmit: (data: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>) => void;
+  initialData?: ScoreCriteriaRange;
+  scoreCriteria: ScoreCriteria[];
+  onCancel: () => void;
+}) => {
+  const defaultRange: Omit<ScoreCriteriaRange, 'id' | 'fieldId'> = {
+    minValue: 0,
+    maxValue: 0,
+    scoreCriteriaId: scoreCriteria.length > 0 ? scoreCriteria[0].id : 0,
+    displayOrder: 1
+  };
+
+  const [formData, setFormData] = useState<Omit<ScoreCriteriaRange, 'id' | 'fieldId'>>(initialData || defaultRange);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        minValue: initialData.minValue,
+        maxValue: initialData.maxValue,
+        scoreCriteriaId: initialData.scoreCriteriaId,
+        displayOrder: initialData.displayOrder
+      });
+    } else {
+      setFormData(defaultRange);
+    }
+    setErrors({});
+  }, [initialData, scoreCriteria]);
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    if (formData.minValue > formData.maxValue) {
+      newErrors.range = 'Minimum value cannot be greater than maximum value';
+    }
+    
+    if (formData.minValue === formData.maxValue) {
+      newErrors.range = 'Minimum and maximum values cannot be the same';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="minValue">Minimum Value</Label>
+          <Input
+            id="minValue"
+            type="number"
+            value={formData.minValue}
+            onChange={(e) => {
+              setFormData({ ...formData, minValue: Number(e.target.value) });
+              if (errors.range) {
+                setErrors({ ...errors, range: '' });
+              }
+            }}
+            placeholder="Enter minimum value"
+            className={errors.range ? 'border-red-500 focus-visible:ring-red-500' : ''}
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="maxValue">Maximum Value</Label>
+          <Input
+            id="maxValue"
+            type="number"
+            value={formData.maxValue}
+            onChange={(e) => {
+              setFormData({ ...formData, maxValue: Number(e.target.value) });
+              if (errors.range) {
+                setErrors({ ...errors, range: '' });
+              }
+            }}
+            placeholder="Enter maximum value"
+            className={errors.range ? 'border-red-500 focus-visible:ring-red-500' : ''}
+          />
+        </div>
+      </div>
+      
+      {errors.range && (
+        <p className="text-red-500 text-sm mt-1">{errors.range}</p>
+      )}
+      
+      <div className="space-y-2">
+        <Label htmlFor="scoreCriteriaId">Score Criteria</Label>
+        <select
+          id="scoreCriteriaId"
+          value={formData.scoreCriteriaId}
+          onChange={(e) => setFormData({ ...formData, scoreCriteriaId: Number(e.target.value) })}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {scoreCriteria.map((criteria) => (
+            <option key={`criteria-${criteria.id}`} value={criteria.id}>
+              {criteria.key} (Score: {criteria.score})
+            </option>
+          ))}
+        </select>
+      </div>
+      
+      <div className="flex justify-end gap-2 pt-4">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit">
+          {initialData ? 'Update' : 'Create'}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+const ScoreCriteriaRangeDialog = ({ 
+  open, 
+  onOpenChange,
+  field,
+  ranges,
+  scoreCriteria,
+  onCreateRange,
+  onUpdateRange,
+  onDeleteRange,
+}: { 
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  field: TemplateField | null;
+  ranges: ScoreCriteriaRange[];
+  scoreCriteria: ScoreCriteria[];
+  onCreateRange: (range: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>) => void;
+  onUpdateRange: (rangeId: number, range: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>) => void;
+  onDeleteRange: (range: ScoreCriteriaRange) => void;
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedRange, setSelectedRange] = useState<ScoreCriteriaRange | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [rangeToDelete, setRangeToDelete] = useState<ScoreCriteriaRange | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setIsEditing(false);
+      setSelectedRange(null);
+      setDeleteDialogOpen(false);
+      setRangeToDelete(null);
+    }
+  }, [open]);
+
+  const handleCreateClick = () => {
+    setSelectedRange(null);
+    setIsEditing(true);
+  };
+
+  const handleEditClick = (range: ScoreCriteriaRange) => {
+    setSelectedRange(range);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setSelectedRange(null);
+  };
+
+  const handleFormSubmit = (data: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>) => {
+    if (selectedRange && selectedRange.id) {
+      onUpdateRange(selectedRange.id, data);
+    } else {
+      onCreateRange(data);
+    }
+    setIsEditing(false);
+    setSelectedRange(null);
+  };
+
+  const confirmDeleteRange = (range: ScoreCriteriaRange) => {
+    setRangeToDelete(range);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteRange = () => {
+    if (rangeToDelete) {
+      onDeleteRange(rangeToDelete);
+      setDeleteDialogOpen(false);
+      setRangeToDelete(null);
+    }
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-xl p-6">
+          <DialogTitle>Score Criteria Ranges</DialogTitle>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg p-2 bg-primary/10">
+                <Icon name="numbers" className="text-primary text-xl" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {field?.label || 'Number Field Ranges'}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Define value ranges with score criteria
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {isEditing ? (
+            <ScoreCriteriaRangeForm 
+              initialData={selectedRange || undefined}
+              onSubmit={handleFormSubmit}
+              scoreCriteria={scoreCriteria}
+              onCancel={handleCancelEdit}
+            />
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Available Ranges</h3>
+                <Button size="sm" onClick={handleCreateClick}>
+                  <Icon name="add" className="mr-1" />
+                  Add Range
+                </Button>
+              </div>
+              
+              {ranges.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                  <Icon name="numbers" className="mx-auto text-gray-400 text-3xl mb-2" />
+                  <p className="text-gray-600">No ranges defined for this field yet.</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-4"
+                    onClick={handleCreateClick}
+                  >
+                    Add Your First Range
+                  </Button>
+                </div>
+              ) : (
+                <div className="border rounded-md divide-y">
+                  {ranges
+                    .sort((a, b) => a.displayOrder - b.displayOrder)
+                    .map((range) => {
+                      const criteria = scoreCriteria.find(c => c.id === range.scoreCriteriaId);
+                      return (
+                        <div key={range.id} className="p-4 hover:bg-gray-50/50 transition-colors duration-150">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-gray-900">
+                                    {range.minValue} - {range.maxValue}
+                                  </span>
+                                  {criteria && (
+                                    <Badge 
+                                      style={{ 
+                                        backgroundColor: criteria.bgColor, 
+                                        color: criteria.color 
+                                      }}
+                                    >
+                                      {criteria.key} ({criteria.score})
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  Display Order: {range.displayOrder}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditClick(range)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Icon name="edit" className="text-gray-500" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => confirmDeleteRange(range)}
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Icon name="delete" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md p-6">
+          <DialogTitle className="text-xl">Delete Range</DialogTitle>
+          <DialogHeader className="mb-4">
+            <DialogDescription className="mt-2">
+              Are you sure you want to delete this range?
+            </DialogDescription>
+          </DialogHeader>
+          
+          {rangeToDelete && (
+            <div className="py-4 space-y-4">
+              <div className="bg-gray-50 p-5 rounded-lg border border-gray-100">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-full bg-red-100 p-3 flex-shrink-0">
+                    <Icon name="numbers" className="text-red-600 text-xl" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-lg text-gray-900">
+                      {rangeToDelete.minValue} - {rangeToDelete.maxValue}
+                    </h4>
+                    {scoreCriteria.some(c => c.id === rangeToDelete.scoreCriteriaId) && (
+                      <div className="mt-2">
+                        <Badge 
+                          style={{ 
+                            backgroundColor: scoreCriteria.find(c => c.id === rangeToDelete.scoreCriteriaId)?.bgColor,
+                            color: scoreCriteria.find(c => c.id === rangeToDelete.scoreCriteriaId)?.color 
+                          }}
+                        >
+                          {scoreCriteria.find(c => c.id === rangeToDelete.scoreCriteriaId)?.key}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="mt-6 gap-3">
+            <Button type="button" variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={handleDeleteRange}>
+              Delete Range
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
 export const TemplateDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -1324,6 +1697,12 @@ export const TemplateDetailsPage = () => {
   const [optionFieldId, setOptionFieldId] = useState<number | null>(null);
   const [deleteOptionDialogOpen, setDeleteOptionDialogOpen] = useState(false);
   const [optionToDelete, setOptionToDelete] = useState<FieldOption | null>(null);
+  const [scoreCriteriaRanges, setScoreCriteriaRanges] = useState<ScoreCriteriaRange[]>([]);
+  const [rangesDialogOpen, setRangesDialogOpen] = useState(false);
+  const [selectedRange, setSelectedRange] = useState<ScoreCriteriaRange | null>(null);
+  const [rangeFieldId, setRangeFieldId] = useState<number | null>(null);
+  const [deleteRangeDialogOpen, setDeleteRangeDialogOpen] = useState(false);
+  const [rangeToDelete, setRangeToDelete] = useState<ScoreCriteriaRange | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -1639,6 +2018,139 @@ export const TemplateDetailsPage = () => {
     }
   };
 
+  const handleCreateRange = async (range: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>) => {
+    if (!id || !rangeFieldId) return;
+    
+    try {
+      const newRange = await templateService.createScoreCriteriaRange(id, rangeFieldId, range);
+      setScoreCriteriaRanges(prev => [...prev, newRange]);
+      
+      toast({
+        title: "Success",
+        description: "Range created successfully",
+      });
+    } catch (err) {
+      console.error('Error creating range:', err);
+      toast({
+        title: "Error",
+        description: "Failed to create range",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateRange = async (rangeId: number, range: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>) => {
+    if (!id || !rangeFieldId) return;
+    
+    try {
+      const updatedRange = await templateService.updateScoreCriteriaRange(id, rangeFieldId, rangeId, range);
+      setScoreCriteriaRanges(prev => prev.map(r => r.id === rangeId ? updatedRange : r));
+      
+      toast({
+        title: "Success",
+        description: "Range updated successfully",
+      });
+    } catch (err) {
+      console.error('Error updating range:', err);
+      toast({
+        title: "Error",
+        description: "Failed to update range",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteRange = async (rangeId: number) => {
+    if (!id || !rangeFieldId) return;
+    
+    try {
+      await templateService.deleteScoreCriteriaRange(id, rangeFieldId, rangeId);
+      setScoreCriteriaRanges(prev => prev.filter(r => r.id !== rangeId));
+      
+      toast({
+        title: "Success",
+        description: "Range deleted successfully",
+      });
+    } catch (err) {
+      console.error('Error deleting range:', err);
+      toast({
+        title: "Error",
+        description: "Failed to delete range",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const confirmDeleteRange = (range: ScoreCriteriaRange) => {
+    setRangeToDelete(range);
+    setDeleteRangeDialogOpen(true);
+  };
+
+  const fetchScoreCriteriaRanges = async (templateId: string, fieldId: number) => {
+    try {
+      const data = await templateService.getTemplateScoreCriteriaRanges(templateId, fieldId);
+      setScoreCriteriaRanges(data);
+    } catch (err) {
+      console.error('Error fetching score criteria ranges:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch score criteria ranges",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenRangesDialog = (field: TemplateField) => {
+    if (field.fieldType !== FieldType.Number) {
+      toast({
+        title: "Error",
+        description: "Score criteria ranges are only available for number fields",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!id || typeof field.id !== 'number') return;
+    
+    setRangeFieldId(field.id);
+    fetchScoreCriteriaRanges(id, field.id);
+    setRangesDialogOpen(true);
+  };
+
+  const handleUpdateWeight = async (fieldId: number, newWeight: number) => {
+    if (!id) return;
+    
+    try {
+      const fieldToUpdate = templateFields.find(f => f.id === fieldId);
+      if (!fieldToUpdate) return;
+      
+      const updatedField = await templateService.updateTemplateField(id, fieldId, {
+        ...fieldToUpdate,
+        weight: newWeight
+      });
+      
+      setTemplateFields(prev => prev.map(f => f.id === fieldId ? updatedField : f));
+      setEditingWeight(null);
+      
+      toast({
+        title: "Success",
+        description: "Field weight updated successfully",
+      });
+    } catch (err) {
+      console.error('Error updating field weight:', err);
+      toast({
+        title: "Error",
+        description: "Failed to update field weight",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenOptionsDialog = (fieldId: number) => {
+    setOptionFieldId(fieldId);
+    setOptionsDialogOpen(true);
+  };
+
   if (loading) {
     return (
       <Container>
@@ -1825,215 +2337,178 @@ export const TemplateDetailsPage = () => {
           </div>
 
           {/* Template Fields Section */}
-          <Card className="overflow-hidden shadow-sm">
+          <Card className="overflow-hidden border shadow-sm">
             <CardHeader className="bg-gray-50/50 border-b px-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Icon name="list_alt" className="text-primary text-xl" />
-                  <h2 className="text-lg font-semibold">Template Fields</h2>
+                  <Icon name="edit_note" className="text-primary text-xl" />
+                  <h2 className="text-xl font-semibold">Template Fields</h2>
                 </div>
-                <Button 
-                  size="sm" 
-                  onClick={() => {
-                    setSelectedField(null);
-                    setFieldDialogOpen(true);
-                  }}
-                  className="gap-2"
-                >
-                  <Icon name="add" className="text-base" />
+                <Button onClick={() => setFieldDialogOpen(true)}>
+                  <Icon name="add" className="mr-1" />
                   Add Field
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="p-0">
               {templateFields.length === 0 ? (
-                <div className="p-8 text-center">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                    <Icon name="article" className="text-gray-400 text-xl" />
-                  </div>
+                <div className="text-center py-12">
+                  <Icon name="edit_note" className="mx-auto text-gray-400 text-4xl mb-3" />
                   <h3 className="text-lg font-medium text-gray-900 mb-1">No fields defined</h3>
-                  <p className="text-gray-500 mb-4">Add fields to collect data for this template</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setSelectedField(null);
-                      setFieldDialogOpen(true);
-                    }}
-                    className="gap-2"
-                  >
-                    <Icon name="add" className="text-base" />
-                    Add First Field
+                  <p className="text-gray-500 mb-4">Add fields to your template to start collecting data</p>
+                  <Button onClick={() => setFieldDialogOpen(true)}>
+                    <Icon name="add" className="mr-1" />
+                    Add Your First Field
                   </Button>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Field</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Required</TableHead>
-                      <TableHead>Weight</TableHead>
-                      <TableHead>Distribution (%)</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {templateFields.map((field) => (
-                      <TableRow 
-                        key={field.id}
-                        className="hover:bg-gray-50"
-                      >
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <div className="rounded-full bg-primary/10 p-1.5 flex-shrink-0">
-                              <Icon 
-                                name={
-                                  field.fieldType === FieldType.Text ? "text_fields" :
-                                  field.fieldType === FieldType.Dropdown ? "arrow_drop_down_circle" :
-                                  field.fieldType === FieldType.Radio ? "radio_button_checked" :
-                                  field.fieldType === FieldType.Checkbox ? "check_box" :
-                                  field.fieldType === FieldType.Date ? "calendar_month" :
-                                  field.fieldType === FieldType.Number ? "pin" :
-                                  "notes"
-                                } 
-                                className="text-primary text-sm" 
-                              />
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-900">
-                                {field.label}
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Field</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Weight</TableHead>
+                        <TableHead>Required</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {templateFields.map((field) => {
+                        const fieldId = typeof field.id === 'number' ? field.id : null;
+                        
+                        return (
+                          <TableRow key={field.id}>
+                            <TableCell>
+                              <div className="flex items-start gap-4">
+                                <div className="rounded-lg p-2 bg-primary/10">
+                                  <Icon 
+                                    name={
+                                      field.fieldType === FieldType.Text ? "short_text" :
+                                      field.fieldType === FieldType.Number ? "numbers" :
+                                      field.fieldType === FieldType.Dropdown ? "arrow_drop_down_circle" :
+                                      field.fieldType === FieldType.Radio ? "radio_button_checked" :
+                                      field.fieldType === FieldType.Checkbox ? "check_box" : "list"
+                                    } 
+                                    className="text-primary text-xl"
+                                  />
+                                </div>
+                                <div>
+                                  <div className="font-medium text-gray-900">{field.label}</div>
+                                  {field.placeholder && (
+                                    <div className="text-sm text-gray-500 mt-1">{field.placeholder}</div>
+                                  )}
+                                </div>
                               </div>
-                              {field.placeholder && (
-                                <div className="text-xs text-gray-500 italic mt-1">
-                                  "{field.placeholder}"
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">
+                                {FieldTypeMap[field.fieldType]}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {fieldId && (
+                                <div className="flex items-center gap-2">
+                                  {editingWeight?.id === fieldId ? (
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        step={0.1}
+                                        value={editingWeight.value}
+                                        onChange={(e) => setEditingWeight({ id: fieldId, value: Number(e.target.value) })}
+                                        className="w-20"
+                                      />
+                                      <Button
+                                        size="sm"
+                                        onClick={() => handleUpdateWeight(fieldId, editingWeight.value)}
+                                      >
+                                        <Icon name="check" className="text-green-500" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => setEditingWeight(null)}
+                                      >
+                                        <Icon name="close" className="text-gray-500" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium">{field.weight}</span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setEditingWeight({ id: fieldId, value: field.weight })}
+                                      >
+                                        <Icon name="edit" className="text-gray-500" />
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
                               )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {FieldTypeMap[field.fieldType]}
-                        </TableCell>
-                        <TableCell>
-                          {field.isRequired ? (
-                            <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
-                              Required
-                            </Badge>
-                          ) : (
-                            <span className="text-gray-500 text-sm">Optional</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Input
-                              type="number"
-                              min="0"
-                              max="100"
-                              className="w-16 h-8 text-sm"
-                              value={editingWeight && field.id === editingWeight.id ? editingWeight.value : field.weight}
-                              onChange={(e) => {
-                                const value = parseInt(e.target.value, 10);
-                                if (!isNaN(value) && value >= 0 && field.id) {
-                                  setEditingWeight({ id: field.id, value });
-                                }
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && field.id && editingWeight && editingWeight.id === field.id) {
-                                  handleWeightChange(field.id, editingWeight.value);
-                                } else if (e.key === 'Escape') {
-                                  setEditingWeight(null);
-                                }
-                              }}
-                              onBlur={() => {
-                                if (field.id && editingWeight && editingWeight.id === field.id && editingWeight.value !== field.weight) {
-                                  handleWeightChange(field.id, editingWeight.value);
-                                } else {
-                                  setEditingWeight(null);
-                                }
-                              }}
-                              onFocus={() => {
-                                if (field.id) {
-                                  setEditingWeight({ id: field.id, value: field.weight });
-                                }
-                              }}
-                  />
-                </div>
-                        </TableCell>
-                        <TableCell>
-                          {(() => {
-                            // Calculate the total weight of all fields
-                            const totalWeight = templateFields.reduce((sum, field) => sum + field.weight, 0);
-                            
-                            // Calculate the percentage distribution for this field
-                            const percentage = totalWeight > 0 ? (field.weight / totalWeight) * 100 : 0;
-                            
-                            return (
-                              <div className="flex items-center">
-                                <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
-                                  <div 
-                                    className="bg-primary h-2.5 rounded-full" 
-                                    style={{ width: `${percentage}%` }}
-                                  ></div>
-                                </div>
-                                <span>{percentage.toFixed(1)}%</span>
+                            </TableCell>
+                            <TableCell>
+                              {field.isRequired ? (
+                                <Badge variant="destructive" className="text-xs">Required</Badge>
+                              ) : (
+                                <span className="text-gray-500 text-sm">Optional</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                {field.fieldType === FieldType.Number && fieldId && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleOpenRangesDialog(field)}
+                                  >
+                                    <Icon name="score" className="mr-1" />
+                                    Score Ranges
+                                  </Button>
+                                )}
+                                {(field.fieldType === FieldType.Dropdown || 
+                                  field.fieldType === FieldType.Radio || 
+                                  field.fieldType === FieldType.Checkbox) && fieldId && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleOpenOptionsDialog(fieldId)}
+                                  >
+                                    <Icon name="list" className="mr-1" />
+                                    Options
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedField(field);
+                                    setFieldDialogOpen(true);
+                                  }}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Icon name="edit" className="text-gray-500" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setFieldToDelete(field);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Icon name="delete" />
+                                </Button>
                               </div>
-                            );
-                          })()}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {/* Only show options button for field types that can have options */}
-                            {(field.fieldType === FieldType.Dropdown || 
-                              field.fieldType === FieldType.Radio ||
-                              field.fieldType === FieldType.Checkbox) && (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                className="mr-1"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (field.id) openOptionsDialog(field.id);
-                                }}
-                              >
-                                <Icon name="list" className="mr-1" />
-                                Options
-                  </Button>
-                            )}
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => {
-                                setSelectedField(field);
-                                setFieldDialogOpen(true);
-                              }}
-                            >
-                              <Icon name="edit" className="text-gray-500" />
-                  </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => {
-                                if (field.id) confirmDeleteField(field);
-                              }}
-                            >
-                              <Icon name="delete" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {templateFields.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center">
-                          No fields found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -2182,6 +2657,17 @@ export const TemplateDetailsPage = () => {
           onCreateOption={handleCreateOption}
           onUpdateOption={handleUpdateOption}
           onDeleteOption={confirmDeleteOption}
+        />
+
+        <ScoreCriteriaRangeDialog
+          open={rangesDialogOpen}
+          onOpenChange={setRangesDialogOpen}
+          field={templateFields.find(f => f.id === rangeFieldId) || null}
+          ranges={scoreCriteriaRanges}
+          scoreCriteria={scoreCriteria}
+          onCreateRange={handleCreateRange}
+          onUpdateRange={handleUpdateRange}
+          onDeleteRange={confirmDeleteRange}
         />
         </div>
       </Container>
