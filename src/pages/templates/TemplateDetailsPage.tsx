@@ -1315,12 +1315,18 @@ const ScoreCriteriaRangeForm = ({
   onSubmit, 
   initialData, 
   scoreCriteria,
-  onCancel
+  onCancel,
+  existingRanges = [],
+  templateId,
+  fieldId
 }: { 
   onSubmit: (data: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>) => void;
   initialData?: ScoreCriteriaRange;
   scoreCriteria: ScoreCriteria[];
   onCancel: () => void;
+  existingRanges?: ScoreCriteriaRange[];
+  templateId?: string;
+  fieldId?: number;
 }) => {
   const defaultRange: Omit<ScoreCriteriaRange, 'id' | 'fieldId'> = {
     minValue: 0,
@@ -1331,6 +1337,7 @@ const ScoreCriteriaRangeForm = ({
 
   const [formData, setFormData] = useState<Omit<ScoreCriteriaRange, 'id' | 'fieldId'>>(initialData || defaultRange);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverRanges, setServerRanges] = useState<ScoreCriteriaRange[]>(existingRanges);
 
   useEffect(() => {
     if (initialData) {
@@ -1346,15 +1353,67 @@ const ScoreCriteriaRangeForm = ({
     setErrors({});
   }, [initialData, scoreCriteria]);
 
+  // Fetch latest ranges from server when form is opened for creating new range
+  useEffect(() => {
+    const fetchLatestRanges = async () => {
+      if (!initialData && templateId && fieldId) {
+        try {
+          const ranges = await templateService.getTemplateScoreCriteriaRanges(templateId, fieldId);
+          setServerRanges(ranges);
+        } catch (err) {
+          console.error('Error fetching ranges:', err);
+        }
+      }
+    };
+    fetchLatestRanges();
+  }, [initialData, templateId, fieldId]);
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
+    // Check if min and max values are the same
+    if (formData.minValue === formData.maxValue) {
+      newErrors.range = 'Minimum and maximum values cannot be the same';
+    }
+    
+    // Check if min is greater than max
     if (formData.minValue > formData.maxValue) {
       newErrors.range = 'Minimum value cannot be greater than maximum value';
     }
-    
-    if (formData.minValue === formData.maxValue) {
-      newErrors.range = 'Minimum and maximum values cannot be the same';
+
+    // Use serverRanges for validation when creating new range, otherwise use existingRanges
+    const rangesToCheck = !initialData ? serverRanges : existingRanges;
+
+    // Check for overlapping ranges and boundary conditions
+    const hasOverlap = rangesToCheck.some(existingRange => {
+      // Skip the current range if we're editing
+      if (initialData && existingRange.id === initialData.id) {
+        return false;
+      }
+
+      // Check if the new range starts at the end of an existing range
+      if (formData.minValue === existingRange.maxValue) {
+        return true;
+      }
+
+      // Check if the new range ends at the start of an existing range
+      if (formData.maxValue === existingRange.minValue) {
+        return true;
+      }
+
+      // Check if the new range overlaps with any existing range
+      return (
+        // New range starts within an existing range
+        (formData.minValue > existingRange.minValue && formData.minValue < existingRange.maxValue) ||
+        // New range ends within an existing range
+        (formData.maxValue > existingRange.minValue && formData.maxValue < existingRange.maxValue) ||
+        // New range completely encompasses an existing range
+        (formData.minValue <= existingRange.minValue && formData.maxValue >= existingRange.maxValue)
+      );
+    });
+
+    if (hasOverlap) {
+      newErrors.range = 'This range overlaps with or connects to an existing range. Ranges must be distinct and non-adjacent.';
     }
     
     setErrors(newErrors);
@@ -1450,6 +1509,8 @@ const ScoreCriteriaRangeDialog = ({
   onCreateRange,
   onUpdateRange,
   onDeleteRange,
+  templateId,
+  fieldId
 }: { 
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1459,12 +1520,21 @@ const ScoreCriteriaRangeDialog = ({
   onCreateRange: (range: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>) => void;
   onUpdateRange: (rangeId: number, range: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>) => void;
   onDeleteRange: (range: ScoreCriteriaRange) => void;
+  templateId?: string;
+  fieldId?: number;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedRange, setSelectedRange] = useState<ScoreCriteriaRange | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [rangeToDelete, setRangeToDelete] = useState<ScoreCriteriaRange | null>(null);
+  const [localRanges, setLocalRanges] = useState<ScoreCriteriaRange[]>(ranges);
 
+  // Update local ranges when ranges prop changes
+  useEffect(() => {
+    setLocalRanges(ranges);
+  }, [ranges]);
+
+  // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
       setIsEditing(false);
@@ -1489,14 +1559,19 @@ const ScoreCriteriaRangeDialog = ({
     setSelectedRange(null);
   };
 
-  const handleFormSubmit = (data: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>) => {
-    if (selectedRange && selectedRange.id) {
-      onUpdateRange(selectedRange.id, data);
-    } else {
-      onCreateRange(data);
+  const handleFormSubmit = async (data: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>) => {
+    try {
+      if (selectedRange && selectedRange.id) {
+        await onUpdateRange(selectedRange.id, data);
+      } else {
+        await onCreateRange(data);
+      }
+      setIsEditing(false);
+      setSelectedRange(null);
+    } catch (error) {
+      // Error is handled by the parent component
+      console.error('Error submitting range:', error);
     }
-    setIsEditing(false);
-    setSelectedRange(null);
   };
 
   const confirmDeleteRange = (range: ScoreCriteriaRange) => {
@@ -1504,11 +1579,16 @@ const ScoreCriteriaRangeDialog = ({
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteRange = () => {
-    if (rangeToDelete) {
-      onDeleteRange(rangeToDelete);
-      setDeleteDialogOpen(false);
-      setRangeToDelete(null);
+  const handleDeleteRange = async () => {
+    if (rangeToDelete && rangeToDelete.id) {
+      try {
+        await onDeleteRange(rangeToDelete);
+        setDeleteDialogOpen(false);
+        setRangeToDelete(null);
+      } catch (error) {
+        // Error is handled by the parent component
+        console.error('Error deleting range:', error);
+      }
     }
   };
 
@@ -1539,6 +1619,9 @@ const ScoreCriteriaRangeDialog = ({
               onSubmit={handleFormSubmit}
               scoreCriteria={scoreCriteria}
               onCancel={handleCancelEdit}
+              existingRanges={localRanges}
+              templateId={templateId}
+              fieldId={fieldId}
             />
           ) : (
             <div className="space-y-4">
@@ -1550,7 +1633,7 @@ const ScoreCriteriaRangeDialog = ({
                 </Button>
               </div>
               
-              {ranges.length === 0 ? (
+              {localRanges.length === 0 ? ( // Use localRanges instead of ranges prop
                 <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
                   <Icon name="numbers" className="mx-auto text-gray-400 text-3xl mb-2" />
                   <p className="text-gray-600">No ranges defined for this field yet.</p>
@@ -1565,7 +1648,7 @@ const ScoreCriteriaRangeDialog = ({
                 </div>
               ) : (
                 <div className="border rounded-md divide-y">
-                  {ranges
+                  {localRanges // Use localRanges instead of ranges prop
                     .sort((a, b) => a.displayOrder - b.displayOrder)
                     .map((range) => {
                       const criteria = scoreCriteria.find(c => c.id === range.scoreCriteriaId);
@@ -1623,6 +1706,7 @@ const ScoreCriteriaRangeDialog = ({
         </DialogContent>
       </Dialog>
 
+      {/* Delete confirmation dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md p-6">
           <DialogTitle className="text-xl">Delete Range</DialogTitle>
@@ -2022,8 +2106,11 @@ export const TemplateDetailsPage = () => {
     if (!id || !rangeFieldId) return;
     
     try {
-      const newRange = await templateService.createScoreCriteriaRange(id, rangeFieldId, range);
-      setScoreCriteriaRanges(prev => [...prev, newRange]);
+      await templateService.createScoreCriteriaRange(id, rangeFieldId, range);
+      
+      // Refresh ranges from server
+      const updatedRanges = await templateService.getTemplateScoreCriteriaRanges(id, rangeFieldId);
+      setScoreCriteriaRanges(updatedRanges);
       
       toast({
         title: "Success",
@@ -2043,8 +2130,11 @@ export const TemplateDetailsPage = () => {
     if (!id || !rangeFieldId) return;
     
     try {
-      const updatedRange = await templateService.updateScoreCriteriaRange(id, rangeFieldId, rangeId, range);
-      setScoreCriteriaRanges(prev => prev.map(r => r.id === rangeId ? updatedRange : r));
+      await templateService.updateScoreCriteriaRange(id, rangeFieldId, rangeId, range);
+      
+      // Refresh ranges from server
+      const updatedRanges = await templateService.getTemplateScoreCriteriaRanges(id, rangeFieldId);
+      setScoreCriteriaRanges(updatedRanges);
       
       toast({
         title: "Success",
@@ -2060,12 +2150,27 @@ export const TemplateDetailsPage = () => {
     }
   };
 
-  const handleDeleteRange = async (rangeId: number) => {
-    if (!id || !rangeFieldId) return;
+  const handleDeleteRange = async (range: ScoreCriteriaRange) => {
+    if (!id || !rangeFieldId || !range.id) {
+      toast({
+        title: "Error",
+        description: "Missing required information to delete range",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
-      await templateService.deleteScoreCriteriaRange(id, rangeFieldId, rangeId);
-      setScoreCriteriaRanges(prev => prev.filter(r => r.id !== rangeId));
+      // First delete from server
+      await templateService.deleteScoreCriteriaRange(id, rangeFieldId, range.id);
+      
+      // Then refresh ranges from server
+      const updatedRanges = await templateService.getTemplateScoreCriteriaRanges(id, rangeFieldId);
+      setScoreCriteriaRanges(updatedRanges);
+      
+      // Close the delete dialog
+      setDeleteRangeDialogOpen(false);
+      setRangeToDelete(null);
       
       toast({
         title: "Success",
@@ -2078,10 +2183,19 @@ export const TemplateDetailsPage = () => {
         description: "Failed to delete range",
         variant: "destructive",
       });
+      throw err; // Re-throw to let the dialog component know about the error
     }
   };
 
   const confirmDeleteRange = (range: ScoreCriteriaRange) => {
+    if (!range.id) {
+      toast({
+        title: "Error",
+        description: "Invalid range selected for deletion",
+        variant: "destructive",
+      });
+      return;
+    }
     setRangeToDelete(range);
     setDeleteRangeDialogOpen(true);
   };
@@ -2100,7 +2214,7 @@ export const TemplateDetailsPage = () => {
     }
   };
 
-  const handleOpenRangesDialog = (field: TemplateField) => {
+  const handleOpenRangesDialog = async (field: TemplateField) => {
     if (field.fieldType !== FieldType.Number) {
       toast({
         title: "Error",
@@ -2113,7 +2227,8 @@ export const TemplateDetailsPage = () => {
     if (!id || typeof field.id !== 'number') return;
     
     setRangeFieldId(field.id);
-    fetchScoreCriteriaRanges(id, field.id);
+    // Fetch ranges before opening dialog
+    await fetchScoreCriteriaRanges(id, field.id);
     setRangesDialogOpen(true);
   };
 
@@ -2675,13 +2790,22 @@ export const TemplateDetailsPage = () => {
 
         <ScoreCriteriaRangeDialog
           open={rangesDialogOpen}
-          onOpenChange={setRangesDialogOpen}
+          onOpenChange={(open) => {
+            setRangesDialogOpen(open);
+            if (!open) {
+              // Reset state when dialog closes
+              setDeleteRangeDialogOpen(false);
+              setRangeToDelete(null);
+            }
+          }}
           field={templateFields.find(f => f.id === rangeFieldId) || null}
           ranges={scoreCriteriaRanges}
           scoreCriteria={scoreCriteria}
           onCreateRange={handleCreateRange}
           onUpdateRange={handleUpdateRange}
-          onDeleteRange={confirmDeleteRange}
+          onDeleteRange={handleDeleteRange}
+          templateId={id}
+          fieldId={rangeFieldId || undefined}
         />
         </div>
       </Container>
