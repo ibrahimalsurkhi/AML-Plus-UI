@@ -42,6 +42,7 @@ interface FieldOption {
   id: number;
   value: string;
   label: string;
+  scoreCriteriaId: number;
 }
 
 // Extend TemplateField type to include options
@@ -136,7 +137,7 @@ const NewRecordPage = () => {
               fieldSchema = Yup.string().nullable();
               break;
             case FieldType.Checkbox:
-              fieldSchema = Yup.boolean();
+              fieldSchema = Yup.boolean(); // Keep as boolean for form validation
               break;
             default:
               fieldSchema = Yup.string();
@@ -196,24 +197,41 @@ const NewRecordPage = () => {
           switch (field.fieldType) {
             case FieldType.Text:
             case FieldType.TextArea:
-            case FieldType.Dropdown:
-            case FieldType.Radio:
-              response.valueText = value;
+              response.valueText = String(value);
               response.valueNumber = null;
               response.valueDate = null;
               break;
             case FieldType.Number:
               response.valueText = null;
-              response.valueNumber = Number(value);
+              response.valueNumber = value !== undefined && value !== '' ? Number(value) : null;
               response.valueDate = null;
               break;
             case FieldType.Date:
               response.valueText = null;
               response.valueNumber = null;
-              response.valueDate = value ? new Date(value).toISOString() : null;
+              response.valueDate = value ? new Date(String(value)).toISOString() : null;
+              break;
+            case FieldType.Dropdown:
+            case FieldType.Radio:
+              // Find the selected option
+              const selectedOption = field.options?.find(opt => opt.id.toString() === value);
+              if (selectedOption) {
+                response.valueText = selectedOption.id.toString();
+                response.valueNumber = null;
+                response.valueDate = null;
+              } else {
+                response.valueText = null;
+                response.valueNumber = null;
+                response.valueDate = null;
+              }
               break;
             case FieldType.Checkbox:
-              response.valueText = value ? 'true' : 'false';
+              // For checkbox, we'll use the first option's ID if checked (value is boolean)
+              if (value === true && field.options?.[0]) {
+                response.valueText = field.options[0].id.toString();
+              } else {
+                response.valueText = null;
+              }
               response.valueNumber = null;
               response.valueDate = null;
               break;
@@ -223,25 +241,20 @@ const NewRecordPage = () => {
         });
 
         // Format date string to ISO format
-        let dateOfBirth = '';
-        if (typeof values.dateOfBirth === 'string' && values.dateOfBirth) {
-          dateOfBirth = new Date(values.dateOfBirth as string).toISOString();
-        }
+        const dateOfBirth = values.dateOfBirth ? new Date(String(values.dateOfBirth)).toISOString() : '';
 
         // Create the record with all required fields
         const recordData = {
-          templateId: values.templateId,
-          templateName: selectedTemplate.name,
           firstName: values.firstName,
           middleName: values.middleName || null,
           lastName: values.lastName,
-          dateOfBirth: dateOfBirth,
+          dateOfBirth,
           identification: values.identification,
           tenantId: selectedTemplate.tenantId,
           fieldResponses
         };
 
-        await recordService.createRecord(recordData);
+        await recordService.createRecord(values.templateId, recordData);
         
         toast({
           title: 'Success',
@@ -445,9 +458,9 @@ const NewRecordPage = () => {
               <Checkbox
                 id={fieldName}
                 name={fieldName}
-                checked={fieldValue as boolean || false}
+                checked={Boolean(fieldValue)} // Convert to boolean for checkbox
                 onCheckedChange={(checked) => {
-                  formik.setFieldValue(fieldName, checked);
+                  formik.setFieldValue(fieldName, checked); // Store as boolean in form
                 }}
                 className={cn("mt-1", isInvalid ? "border-red-500" : "")}
               />
@@ -477,7 +490,7 @@ const NewRecordPage = () => {
               </SelectTrigger>
               <SelectContent>
                 {field.options?.map((option: FieldOption) => (
-                  <SelectItem key={option.id} value={option.value}>
+                  <SelectItem key={option.id} value={option.id.toString()}>
                     {option.label}
                   </SelectItem>
                 ))}
@@ -500,8 +513,8 @@ const NewRecordPage = () => {
                     type="radio"
                     id={`${fieldName}_${option.id}`}
                     name={fieldName}
-                    value={option.value}
-                    checked={fieldValue === option.value}
+                    value={option.id.toString()}
+                    checked={fieldValue === option.id.toString()}
                     onChange={(e) => {
                       formik.setFieldValue(fieldName, e.target.value);
                     }}

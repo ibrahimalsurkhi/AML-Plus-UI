@@ -1007,12 +1007,14 @@ const OptionForm = ({
   onSubmit, 
   initialData, 
   scoreCriteria,
-  onCancel
+  onCancel,
+  isCheckboxField
 }: { 
   onSubmit: (data: Omit<FieldOption, 'id' | 'fieldId'>) => void;
   initialData?: FieldOption;
   scoreCriteria: ScoreCriteria[];
   onCancel: () => void;
+  isCheckboxField?: boolean;
 }) => {
   const defaultOption: Omit<FieldOption, 'id' | 'fieldId'> = {
     label: '',
@@ -1039,7 +1041,7 @@ const OptionForm = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.label?.trim()) {
+    if (!isCheckboxField && !formData.label?.trim()) {
       newErrors.label = 'Label is required';
     }
     
@@ -1054,31 +1056,42 @@ const OptionForm = ({
       return;
     }
     
-    onSubmit(formData);
+    // For checkbox fields, only update the score criteria
+    if (isCheckboxField && initialData) {
+      onSubmit({
+        ...initialData,
+        scoreCriteriaId: formData.scoreCriteriaId
+      });
+    } else {
+      onSubmit(formData);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="label" className="flex items-center">
-          Label <span className="text-red-500 ml-1">*</span>
-        </Label>
-        <Input
-          id="label"
-          value={formData.label}
-          onChange={(e) => {
-            setFormData({ ...formData, label: e.target.value });
-            if (errors.label) {
-              setErrors({ ...errors, label: '' });
-            }
-          }}
-          placeholder="Enter option label"
-          className={errors.label ? 'border-red-500 focus-visible:ring-red-500' : ''}
-        />
-        {errors.label && (
-          <p className="text-red-500 text-sm mt-1">{errors.label}</p>
-        )}
-      </div>
+      {!isCheckboxField && (
+        <div className="space-y-2">
+          <Label htmlFor="label" className="flex items-center">
+            Label <span className="text-red-500 ml-1">*</span>
+          </Label>
+          <Input
+            id="label"
+            value={formData.label}
+            onChange={(e) => {
+              setFormData({ ...formData, label: e.target.value });
+              if (errors.label) {
+                setErrors({ ...errors, label: '' });
+              }
+            }}
+            placeholder="Enter option label"
+            className={errors.label ? 'border-red-500 focus-visible:ring-red-500' : ''}
+            disabled={isCheckboxField}
+          />
+          {errors.label && (
+            <p className="text-red-500 text-sm mt-1">{errors.label}</p>
+          )}
+        </div>
+      )}
       
       <div className="space-y-2">
         <Label htmlFor="scoreCriteriaId">Score Criteria</Label>
@@ -1096,24 +1109,27 @@ const OptionForm = ({
         </select>
       </div>
       
-      <div className="space-y-2">
-        <Label htmlFor="displayOrder">Display Order</Label>
-        <Input
-          id="displayOrder"
-          type="number"
-          min={1}
-          value={formData.displayOrder}
-          onChange={(e) => setFormData({ ...formData, displayOrder: Number(e.target.value) })}
-          placeholder="Enter display order"
-        />
-      </div>
+      {!isCheckboxField && (
+        <div className="space-y-2">
+          <Label htmlFor="displayOrder">Display Order</Label>
+          <Input
+            id="displayOrder"
+            type="number"
+            min={1}
+            value={formData.displayOrder}
+            onChange={(e) => setFormData({ ...formData, displayOrder: Number(e.target.value) })}
+            placeholder="Enter display order"
+            disabled={isCheckboxField}
+          />
+        </div>
+      )}
       
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
         <Button type="submit">
-          {initialData ? 'Update' : 'Create'}
+          {isCheckboxField ? 'Update Score' : (initialData ? 'Update' : 'Create')}
         </Button>
       </div>
     </form>
@@ -1141,6 +1157,7 @@ const FieldOptionsDialog = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedOption, setSelectedOption] = useState<FieldOption | null>(null);
+  const isCheckboxField = field?.fieldType === FieldType.Checkbox;
 
   useEffect(() => {
     if (!open) {
@@ -1150,6 +1167,14 @@ const FieldOptionsDialog = ({
   }, [open]);
 
   const handleCreateClick = () => {
+    if (isCheckboxField) {
+      toast({
+        title: "Not Allowed",
+        description: "Cannot create new options for checkbox fields. Only score updates are allowed.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedOption(null);
     setIsEditing(true);
   };
@@ -1174,6 +1199,18 @@ const FieldOptionsDialog = ({
     setSelectedOption(null);
   };
 
+  const handleDeleteClick = (option: FieldOption) => {
+    if (isCheckboxField) {
+      toast({
+        title: "Not Allowed",
+        description: "Cannot delete options for checkbox fields. Only score updates are allowed.",
+        variant: "destructive",
+      });
+      return;
+    }
+    onDeleteOption(option);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl p-6">
@@ -1195,7 +1232,9 @@ const FieldOptionsDialog = ({
                 {field?.label || 'Field Options'}
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Define selectable options with score values
+                {isCheckboxField 
+                  ? "Update score criteria for checkbox field"
+                  : "Define selectable options with score values"}
               </p>
             </div>
           </div>
@@ -1207,29 +1246,40 @@ const FieldOptionsDialog = ({
             onSubmit={handleFormSubmit}
             scoreCriteria={scoreCriteria}
             onCancel={handleCancelEdit}
+            isCheckboxField={isCheckboxField}
           />
         ) : (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">Available Options</h3>
-              <Button size="sm" onClick={handleCreateClick}>
-                <Icon name="add" className="mr-1" />
-                Add Option
-              </Button>
+              <h3 className="text-lg font-medium">
+                {isCheckboxField ? "Checkbox Score Criteria" : "Available Options"}
+              </h3>
+              {!isCheckboxField && (
+                <Button size="sm" onClick={handleCreateClick}>
+                  <Icon name="add" className="mr-1" />
+                  Add Option
+                </Button>
+              )}
             </div>
             
             {options.length === 0 ? (
               <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
                 <Icon name="list" className="mx-auto text-gray-400 text-3xl mb-2" />
-                <p className="text-gray-600">No options defined for this field yet.</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-4"
-                  onClick={handleCreateClick}
-                >
-                  Add Your First Option
-                </Button>
+                <p className="text-gray-600">
+                  {isCheckboxField 
+                    ? "No score criteria defined for this checkbox field yet."
+                    : "No options defined for this field yet."}
+                </p>
+                {!isCheckboxField && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-4"
+                    onClick={handleCreateClick}
+                  >
+                    Add Your First Option
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="border rounded-md">
@@ -1269,23 +1319,25 @@ const FieldOptionsDialog = ({
                             </TableCell>
                             <TableCell>{option.displayOrder}</TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
-                                <Button 
-                                  variant="ghost" 
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="ghost"
                                   size="sm"
-                                  className="h-8 w-8 p-0"
                                   onClick={() => handleEditClick(option)}
+                                  className="h-8 w-8 p-0"
                                 >
                                   <Icon name="edit" className="text-gray-500" />
                                 </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                  onClick={() => onDeleteOption(option)}
-                                >
-                                  <Icon name="delete" />
-                                </Button>
+                                {!isCheckboxField && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteClick(option)}
+                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Icon name="delete" />
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>

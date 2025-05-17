@@ -12,7 +12,7 @@ export const API_CONFIG = {
       list: 'templates',
     },
     records: {
-      list: 'Templates/records',
+      list: 'templates/{templateId}/records',
     },
   },
 } as const; 

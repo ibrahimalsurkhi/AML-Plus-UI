@@ -254,22 +254,36 @@ export interface RecordQueryParams {
 
 export const recordService = {
   getRecords: async (params: RecordQueryParams): Promise<PaginatedResponse<Record>> => {
-    const response = await api.get<PaginatedResponse<Record>>(API_CONFIG.endpoints.records.list, { params });
+    const { templateId, ...queryParams } = params;
+    const endpoint = templateId 
+      ? `${API_CONFIG.endpoints.templates.list}/${templateId}/records`
+      : API_CONFIG.endpoints.records.list.replace('{templateId}', 'all');
+    const response = await api.get<PaginatedResponse<Record>>(endpoint, { params: queryParams });
     return response.data;
   },
-  getRecordById: async (id: number): Promise<Record> => {
-    const response = await api.get<Record>(`${API_CONFIG.endpoints.records.list}/${id}`);
+  getRecordById: async (templateId: number, recordId: number): Promise<Record> => {
+    const response = await api.get<Record>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/records/${recordId}`
+    );
     return response.data;
   },
-  createRecord: async (data: Omit<Record, 'id'>): Promise<Record> => {
-    const response = await api.post<Record>(API_CONFIG.endpoints.records.list, data);
+  createRecord: async (templateId: number, data: Omit<Record, 'id' | 'templateId' | 'templateName'>): Promise<Record> => {
+    const response = await api.post<Record>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/records`,
+      data
+    );
     return response.data;
   },
-  updateRecord: async (id: number, data: Omit<Record, 'id'>): Promise<Record> => {
-    const response = await api.put<Record>(`${API_CONFIG.endpoints.records.list}/${id}`, data);
+  updateRecord: async (templateId: number, recordId: number, data: Omit<Record, 'id' | 'templateId' | 'templateName'>): Promise<Record> => {
+    const response = await api.put<Record>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/records/${recordId}`,
+      data
+    );
     return response.data;
   },
-  deleteRecord: async (id: number): Promise<void> => {
-    await api.delete(`${API_CONFIG.endpoints.records.list}/${id}`);
+  deleteRecord: async (templateId: number, recordId: number): Promise<void> => {
+    await api.delete(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/records/${recordId}`
+    );
   }
 }; 
