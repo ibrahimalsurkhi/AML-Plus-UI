@@ -426,7 +426,7 @@ const ScoreCriteriaBar = ({
                 className={`w-8 h-8 rounded-full bg-white shadow-md border-2 
                          flex items-center justify-center transition-colors duration-200
                          ${isEditMode && idx !== 2 ? 'border-gray-200 hover:border-gray-300' : 'border-gray-300'}`}
-              >
+            >
                 <div className="thumb-dot"></div>
               </div>
             </div>
@@ -695,7 +695,7 @@ const TemplateFieldDialog = ({
   const defaultField: Partial<TemplateField> = {
     label: '',
     fieldType: FieldType.Text,
-    weight: 1,
+    weight: 0,
     isRequired: false,
     placeholder: '',
     displayOrder: 1
@@ -726,8 +726,8 @@ const TemplateFieldDialog = ({
       newErrors.fieldType = 'Field type is required';
     }
     
-    if (formData.weight === undefined || formData.weight <= 0) {
-      newErrors.weight = 'Weight must be greater than 0';
+    if (formData.weight === undefined || formData.weight < 0) {
+      newErrors.weight = 'Weight must be greater than or equal to 0';
     }
     
     // Validate min/max values if provided
@@ -842,9 +842,9 @@ const TemplateFieldDialog = ({
               <Input
                 id="weight"
                 type="number"
-                min={1}
+                min={0}
                 max={100}
-                value={formData.weight || ''}
+                value={formData.weight || 0}
                 onChange={(e) => {
                   setFormData({ ...formData, weight: Number(e.target.value) });
                   if (errors.weight) {
@@ -1414,7 +1414,7 @@ export const TemplateDetailsPage = () => {
       const newField: Omit<TemplateField, 'id' | 'templateId'> = {
         label: field.label || '',
         fieldType: field.fieldType || FieldType.Text,
-        weight: field.weight || 1,
+        weight: field.weight ?? 0,
         isRequired: field.isRequired || false,
         displayOrder: templateFields.length + 1,
         placeholder: field.placeholder || '',
@@ -1456,7 +1456,8 @@ export const TemplateDetailsPage = () => {
 
       const updatedField: Omit<TemplateField, 'id' | 'templateId'> = {
         ...currentField,
-        ...field
+        ...field,
+        weight: field.weight ?? 0
       };
 
       await templateService.updateTemplateField(id, fieldId, updatedField);
@@ -1927,13 +1928,13 @@ export const TemplateDetailsPage = () => {
                           <div className="flex items-center">
                             <Input
                               type="number"
-                              min="1"
+                              min="0"
                               max="100"
                               className="w-16 h-8 text-sm"
                               value={editingWeight && field.id === editingWeight.id ? editingWeight.value : field.weight}
                               onChange={(e) => {
                                 const value = parseInt(e.target.value, 10);
-                                if (!isNaN(value) && value > 0 && field.id) {
+                                if (!isNaN(value) && value >= 0 && field.id) {
                                   setEditingWeight({ id: field.id, value });
                                 }
                               }}

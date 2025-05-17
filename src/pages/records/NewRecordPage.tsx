@@ -1,0 +1,754 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Container } from '@/components/container';
+import {
+  Toolbar,
+  ToolbarHeading,
+  ToolbarActions
+} from '@/partials/toolbar';
+import { Input } from '@/components/ui/input';
+import { recordService, templateService, type TemplateField, FieldType } from '@/services/api';
+import { toast } from '@/components/ui/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from "@/lib/utils";
+import { HelpCircle } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+// Define the base form values type
+interface BaseFormValues {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  dateOfBirth: string;
+  identification: string;
+  templateId: number;
+  [key: string]: string | number | boolean | undefined; // Allow dynamic field values
+}
+
+// Define field option type
+interface FieldOption {
+  id: number;
+  value: string;
+  label: string;
+}
+
+// Extend TemplateField type to include options
+interface ExtendedTemplateField extends TemplateField {
+  options?: FieldOption[];
+}
+
+// Create base validation schema for required fields
+const baseValidationSchema = Yup.object().shape({
+  firstName: Yup.string().required('First name is required'),
+  middleName: Yup.string(),
+  lastName: Yup.string().required('Last name is required'),
+  dateOfBirth: Yup.string().required('Date of birth is required'),
+  identification: Yup.string().required('Identification is required'),
+  templateId: Yup.number().required('Template is required')
+}) as Yup.ObjectSchema<BaseFormValues>;
+
+const NewRecordPage = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const templateIdParam = searchParams.get('templateId');
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [templates, setTemplates] = useState<Array<{ id: number; name: string; tenantId: number }>>([]);
+  const [templateFields, setTemplateFields] = useState<ExtendedTemplateField[]>([]);
+  const [validationSchema, setValidationSchema] = useState<Yup.ObjectSchema<BaseFormValues>>(baseValidationSchema);
+
+  // Fetch templates
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const data = await templateService.getTemplates({
+          pageNumber: 1,
+          pageSize: 100
+        });
+        setTemplates(data.items.map(template => ({ 
+          id: template.id, 
+          name: template.name,
+          tenantId: template.tenantId
+        })));
+      } catch (error) {
+        console.error('Error fetching templates:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch templates. Please try again.',
+          variant: 'destructive'
+        });
+      }
+    };
+
+    fetchTemplates();
+  }, []);
+
+  // Fetch template fields when template is selected
+  const fetchTemplateFields = async (templateId: number) => {
+    try {
+      const fields = await templateService.getTemplateFields(templateId.toString());
+      // Fetch options for fields that need them
+      const fieldsWithOptions = await Promise.all(
+        fields.map(async (field) => {
+          if (
+            field.fieldType === FieldType.Dropdown ||
+            field.fieldType === FieldType.Radio ||
+            field.fieldType === FieldType.Checkbox
+          ) {
+            const options = await templateService.getFieldOptions(templateId.toString(), field.id!);
+            // Map FieldOption to include value property (use label as value for now)
+            return { ...field, options: options.map(opt => ({ ...opt, value: opt.label })) };
+          }
+          return field;
+        })
+      );
+      setTemplateFields(fieldsWithOptions as ExtendedTemplateField[]);
+
+      // Update the validation schema when template fields change
+      if (fieldsWithOptions.length > 0) {
+        const dynamicSchema = fieldsWithOptions.reduce<Yup.ObjectSchema<BaseFormValues>>((schema, field) => {
+          const fieldName = `field_${field.id}`;
+          let fieldSchema: Yup.Schema<any>;
+
+          switch (field.fieldType) {
+            case FieldType.Text:
+            case FieldType.TextArea:
+            case FieldType.Dropdown:
+            case FieldType.Radio:
+              fieldSchema = Yup.string();
+              break;
+            case FieldType.Number:
+              fieldSchema = Yup.number().nullable();
+              break;
+            case FieldType.Date:
+              fieldSchema = Yup.string().nullable();
+              break;
+            case FieldType.Checkbox:
+              fieldSchema = Yup.boolean();
+              break;
+            default:
+              fieldSchema = Yup.string();
+          }
+
+          if (field.isRequired) {
+            fieldSchema = fieldSchema.required(`${field.label} is required`);
+          }
+
+          return schema.shape({ [fieldName]: fieldSchema });
+        }, baseValidationSchema);
+
+        setValidationSchema(dynamicSchema);
+      } else {
+        setValidationSchema(baseValidationSchema);
+      }
+    } catch (error) {
+      console.error('Error fetching template fields:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch template fields. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const formik = useFormik<BaseFormValues>({
+    initialValues: {
+      firstName: '',
+      middleName: '',
+      lastName: '',
+      dateOfBirth: '',
+      identification: '',
+      templateId: templateIdParam ? parseInt(templateIdParam) : (templates.length > 0 ? templates[0].id : 0),
+    },
+    validationSchema,
+    enableReinitialize: true,
+    onSubmit: async (values) => {
+      setIsLoading(true);
+      
+      try {
+        // Find the selected template to get its name and tenantId
+        const selectedTemplate = templates.find(t => t.id === values.templateId);
+        
+        if (!selectedTemplate) {
+          throw new Error('Template not found');
+        }
+
+        // Format field responses based on field types
+        const fieldResponses = templateFields.map(field => {
+          const value = values[`field_${field.id}`];
+          let response: any = {
+            id: 0,
+            fieldId: field.id
+          };
+
+          switch (field.fieldType) {
+            case FieldType.Text:
+            case FieldType.TextArea:
+            case FieldType.Dropdown:
+            case FieldType.Radio:
+              response.valueText = value;
+              response.valueNumber = null;
+              response.valueDate = null;
+              break;
+            case FieldType.Number:
+              response.valueText = null;
+              response.valueNumber = Number(value);
+              response.valueDate = null;
+              break;
+            case FieldType.Date:
+              response.valueText = null;
+              response.valueNumber = null;
+              response.valueDate = value ? new Date(value).toISOString() : null;
+              break;
+            case FieldType.Checkbox:
+              response.valueText = value ? 'true' : 'false';
+              response.valueNumber = null;
+              response.valueDate = null;
+              break;
+          }
+
+          return response;
+        });
+
+        // Format date string to ISO format
+        let dateOfBirth = '';
+        if (typeof values.dateOfBirth === 'string' && values.dateOfBirth) {
+          dateOfBirth = new Date(values.dateOfBirth as string).toISOString();
+        }
+
+        // Create the record with all required fields
+        const recordData = {
+          templateId: values.templateId,
+          templateName: selectedTemplate.name,
+          firstName: values.firstName,
+          middleName: values.middleName || null,
+          lastName: values.lastName,
+          dateOfBirth: dateOfBirth,
+          identification: values.identification,
+          tenantId: selectedTemplate.tenantId,
+          fieldResponses
+        };
+
+        await recordService.createRecord(recordData);
+        
+        toast({
+          title: 'Success',
+          description: 'Record created successfully',
+        });
+        
+        navigate('/records');
+      } catch (error) {
+        console.error('Error creating record:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to create record. Please try again.',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  });
+
+  // Update form values when template changes
+  useEffect(() => {
+    if (formik.values.templateId) {
+      fetchTemplateFields(formik.values.templateId);
+      
+      // Reset dynamic field values
+      const newValues: BaseFormValues = {
+        ...formik.values,
+        ...templateFields.reduce((acc, field) => {
+          const key = `field_${field.id}`;
+          // Do not overwrite static fields like dateOfBirth
+          if (key === 'dateOfBirth') return acc;
+          return {
+            ...acc,
+            [key]: field.fieldType === FieldType.Checkbox ? false : ''
+          };
+        }, {})
+      };
+      formik.setValues(newValues);
+    }
+  }, [formik.values.templateId]);
+
+  // Helper function to render field help text
+  const renderFieldHelp = (field: ExtendedTemplateField) => {
+    if (!field.placeholder && !field.minLength && !field.maxLength && !field.minValue && !field.maxValue && !field.minDate && !field.maxDate) {
+      return null;
+    }
+
+    const helpTexts = [];
+    if (field.placeholder) helpTexts.push(field.placeholder);
+    if (field.minLength && field.maxLength) {
+      helpTexts.push(`Length: ${field.minLength}-${field.maxLength} characters`);
+    } else if (field.minLength) {
+      helpTexts.push(`Minimum length: ${field.minLength} characters`);
+    } else if (field.maxLength) {
+      helpTexts.push(`Maximum length: ${field.maxLength} characters`);
+    }
+    if (field.minValue !== null && field.maxValue !== null) {
+      helpTexts.push(`Range: ${field.minValue}-${field.maxValue}`);
+    } else if (field.minValue !== null) {
+      helpTexts.push(`Minimum value: ${field.minValue}`);
+    } else if (field.maxValue !== null) {
+      helpTexts.push(`Maximum value: ${field.maxValue}`);
+    }
+    if (field.minDate && field.maxDate) {
+      helpTexts.push(`Date range: ${field.minDate} to ${field.maxDate}`);
+    } else if (field.minDate) {
+      helpTexts.push(`Earliest date: ${field.minDate}`);
+    } else if (field.maxDate) {
+      helpTexts.push(`Latest date: ${field.maxDate}`);
+    }
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <HelpCircle className="h-4 w-4 text-muted-foreground ml-1 inline-block" />
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-sm">{helpTexts.join('. ')}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  // Helper function to render field label with required indicator and help
+  const renderFieldLabel = (field: ExtendedTemplateField, htmlFor: string) => (
+    <Label htmlFor={htmlFor} className="flex items-center gap-1">
+      {field.label}
+      {field.isRequired && <span className="text-red-500">*</span>}
+      {renderFieldHelp(field)}
+    </Label>
+  );
+
+  // Render dynamic form field based on field type
+  const renderDynamicField = (field: ExtendedTemplateField) => {
+    const fieldName = `field_${field.id}`;
+    const fieldValue = formik.values[fieldName];
+    const fieldError = formik.touched[fieldName] && formik.errors[fieldName];
+    const isInvalid = fieldError ? true : false;
+
+    const fieldWrapperClasses = cn(
+      "space-y-2",
+      field.fieldType === FieldType.Checkbox ? "flex items-start space-x-2" : "",
+      field.fieldType === FieldType.Radio ? "space-y-3" : ""
+    );
+
+    const inputClasses = cn(
+      "w-full",
+      isInvalid ? "border-red-500 focus-visible:ring-red-500" : "",
+      field.fieldType === FieldType.Checkbox ? "mt-1" : ""
+    );
+
+    switch (field.fieldType) {
+      case FieldType.Text:
+      case FieldType.TextArea:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            {field.fieldType === FieldType.Text ? (
+              <Input
+                id={fieldName}
+                name={fieldName}
+                value={fieldValue as string || ''}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                className={inputClasses}
+                placeholder={field.placeholder}
+                minLength={field.minLength || undefined}
+                maxLength={field.maxLength || undefined}
+              />
+            ) : (
+              <Textarea
+                id={fieldName}
+                name={fieldName}
+                value={fieldValue as string || ''}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                className={inputClasses}
+                placeholder={field.placeholder}
+                minLength={field.minLength || undefined}
+                maxLength={field.maxLength || undefined}
+                rows={4}
+              />
+            )}
+            {fieldError && (
+              <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
+            )}
+          </div>
+        );
+
+      case FieldType.Number:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            <Input
+              id={fieldName}
+              name={fieldName}
+              type="number"
+              value={fieldValue as number || ''}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              className={inputClasses}
+              placeholder={field.placeholder}
+              min={field.minValue || undefined}
+              max={field.maxValue || undefined}
+              step="any"
+            />
+            {fieldError && (
+              <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
+            )}
+          </div>
+        );
+
+      case FieldType.Date:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            <Input
+              id={fieldName}
+              name={fieldName}
+              type="date"
+              value={typeof fieldValue === 'string' || typeof fieldValue === 'number' ? String(fieldValue) : ''}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              className={inputClasses}
+              min={field.minDate || undefined}
+              max={field.maxDate || undefined}
+            />
+            {fieldError && (
+              <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
+            )}
+          </div>
+        );
+
+      case FieldType.Checkbox:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            <div className="flex items-start space-x-2">
+              <Checkbox
+                id={fieldName}
+                name={fieldName}
+                checked={fieldValue as boolean || false}
+                onCheckedChange={(checked) => {
+                  formik.setFieldValue(fieldName, checked);
+                }}
+                className={cn("mt-1", isInvalid ? "border-red-500" : "")}
+              />
+              <div className="space-y-1">
+                {renderFieldLabel(field, fieldName)}
+                {fieldError && (
+                  <p className="text-sm text-red-500">{fieldError as string}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+
+      case FieldType.Dropdown:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            <Select
+              name={fieldName}
+              value={fieldValue as string || ''}
+              onValueChange={(value: string) => {
+                formik.setFieldValue(fieldName, value);
+              }}
+            >
+              <SelectTrigger className={cn(inputClasses, "w-full")}>
+                <SelectValue placeholder={field.placeholder || "Select an option"} />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options?.map((option: FieldOption) => (
+                  <SelectItem key={option.id} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {fieldError && (
+              <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
+            )}
+          </div>
+        );
+
+      case FieldType.Radio:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            <div className="space-y-2">
+              {field.options?.map((option: FieldOption) => (
+                <div key={option.id} className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id={`${fieldName}_${option.id}`}
+                    name={fieldName}
+                    value={option.value}
+                    checked={fieldValue === option.value}
+                    onChange={(e) => {
+                      formik.setFieldValue(fieldName, e.target.value);
+                    }}
+                    className={cn(
+                      "h-4 w-4 border-gray-300 text-primary focus:ring-primary",
+                      isInvalid ? "border-red-500" : ""
+                    )}
+                  />
+                  <Label 
+                    htmlFor={`${fieldName}_${option.id}`}
+                    className="text-sm font-normal"
+                  >
+                    {option.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            {fieldError && (
+              <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // Helper function to sort fields - checkboxes last
+  const sortFields = (fields: ExtendedTemplateField[]) => {
+    return [...fields].sort((a, b) => {
+      // If a is checkbox and b is not, move a to end
+      if (a.fieldType === FieldType.Checkbox && b.fieldType !== FieldType.Checkbox) {
+        return 1;
+      }
+      // If b is checkbox and a is not, move b to end
+      if (b.fieldType === FieldType.Checkbox && a.fieldType !== FieldType.Checkbox) {
+        return -1;
+      }
+      // Otherwise maintain original order
+      return (a.displayOrder || 0) - (b.displayOrder || 0);
+    });
+  };
+
+  return (
+    <Container>
+      <div className="space-y-6">
+        <Toolbar>
+          <ToolbarHeading>Create New Record</ToolbarHeading>
+          <ToolbarActions>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/records')}
+            >
+              Cancel
+            </Button>
+          </ToolbarActions>
+        </Toolbar>
+
+        <form onSubmit={formik.handleSubmit} className="space-y-6">
+          {/* Personal Information Card */}
+          <Card>
+            <CardHeader className="bg-gray-50/50 border-b">
+              <h2 className="text-xl font-semibold">Personal Information</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Enter the basic information about the record holder.
+              </p>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="firstName" className="flex items-center">
+                    First Name <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Input
+                    id="firstName"
+                    name="firstName"
+                    value={formik.values.firstName}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    className={formik.touched.firstName && formik.errors.firstName ? 'border-red-500' : ''}
+                  />
+                  {formik.touched.firstName && formik.errors.firstName ? (
+                    <div className="text-red-500 text-sm mt-1">{formik.errors.firstName as string}</div>
+                  ) : null}
+                </div>
+                
+                <div>
+                  <Label htmlFor="middleName">
+                    Middle Name
+                  </Label>
+                  <Input
+                    id="middleName"
+                    name="middleName"
+                    value={formik.values.middleName}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="lastName" className="flex items-center">
+                    Last Name <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    value={formik.values.lastName}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    className={formik.touched.lastName && formik.errors.lastName ? 'border-red-500' : ''}
+                  />
+                  {formik.touched.lastName && formik.errors.lastName ? (
+                    <div className="text-red-500 text-sm mt-1">{formik.errors.lastName as string}</div>
+                  ) : null}
+                </div>
+                
+                <div>
+                  <Label htmlFor="identification" className="flex items-center">
+                    Identification <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Input
+                    id="identification"
+                    name="identification"
+                    value={formik.values.identification}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    className={formik.touched.identification && formik.errors.identification ? 'border-red-500' : ''}
+                  />
+                  {formik.touched.identification && formik.errors.identification ? (
+                    <div className="text-red-500 text-sm mt-1">{formik.errors.identification as string}</div>
+                  ) : null}
+                </div>
+                
+                <div>
+                  <Label htmlFor="dateOfBirth" className="flex items-center">
+                    Date of Birth <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Input
+                    id="dateOfBirth"
+                    name="dateOfBirth"
+                    type="date"
+                    value={formik.values.dateOfBirth}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    className={formik.touched.dateOfBirth && formik.errors.dateOfBirth ? 'border-red-500' : ''}
+                  />
+                  {formik.touched.dateOfBirth && formik.errors.dateOfBirth ? (
+                    <div className="text-red-500 text-sm mt-1">{formik.errors.dateOfBirth as string}</div>
+                  ) : null}
+                </div>
+                
+                <div>
+                  <Label htmlFor="templateId" className="flex items-center">
+                    Template <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Select 
+                    onValueChange={(value) => {
+                      formik.setFieldValue('templateId', parseInt(value));
+                    }}
+                    defaultValue={formik.values.templateId?.toString()}
+                    value={formik.values.templateId?.toString()}
+                  >
+                    <SelectTrigger className={formik.touched.templateId && formik.errors.templateId ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Select a template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map((template) => (
+                        <SelectItem 
+                          key={template.id} 
+                          value={template.id.toString()}
+                        >
+                          {template.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formik.touched.templateId && formik.errors.templateId ? (
+                    <div className="text-red-500 text-sm mt-1">{formik.errors.templateId as string}</div>
+                  ) : null}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dynamic Fields Card */}
+          {templateFields.length > 0 && (
+            <Card>
+              <CardHeader className="bg-gray-50/50 border-b">
+                <h2 className="text-xl font-semibold">Template Fields</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Fill in the required information based on the selected template.
+                </p>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Regular Fields */}
+                  {sortFields(templateFields)
+                    .filter(field => field.fieldType !== FieldType.Checkbox)
+                    .map((field) => (
+                      <div key={field.id} className={cn(
+                        "p-4 rounded-lg border",
+                        field.fieldType === FieldType.TextArea ? "md:col-span-2" : ""
+                      )}>
+                        {renderDynamicField(field)}
+                      </div>
+                    ))}
+                </div>
+
+                {/* Checkbox Fields Section */}
+                {templateFields.some(field => field.fieldType === FieldType.Checkbox) && (
+                  <div className="mt-8 pt-6 border-t">
+                    <h3 className="text-lg font-medium mb-4">Additional Options</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {sortFields(templateFields)
+                        .filter(field => field.fieldType === FieldType.Checkbox)
+                        .map((field) => (
+                          <div key={field.id} className="p-4 rounded-lg border">
+                            {renderDynamicField(field)}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/records')}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit"
+              disabled={isLoading || templates.length === 0}
+            >
+              {isLoading ? 'Creating...' : 'Create Record'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </Container>
+  );
+};
+
+export default NewRecordPage; 

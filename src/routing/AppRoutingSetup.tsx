@@ -87,6 +87,8 @@ import { SanctionSearchPage } from '@/pages/sanction-search';
 import { CreateTemplatePage } from '@/pages/create-template';
 import TemplatesPage from '@/pages/templates';
 import TemplateDetailsPage from '@/pages/templates/TemplateDetailsPage';
+import RecordsPage from '@/pages/records';
+import NewRecordPage from '@/pages/records/NewRecordPage';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -98,6 +100,8 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/templates/:id" element={<TemplateDetailsPage />} />
           <Route path="/create-template" element={<CreateTemplatePage />} />
+          <Route path="/records" element={<RecordsPage />} />
+          <Route path="/records/new" element={<NewRecordPage />} />
           <Route path="/dark-sidebar" element={<Demo1DarkSidebarPage />} />
           <Route path="/public-profile/profiles/default" element={<ProfileDefaultPage />} />
           <Route path="/public-profile/profiles/creator" element={<ProfileCreatorPage />} />

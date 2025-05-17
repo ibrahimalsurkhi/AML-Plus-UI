@@ -176,4 +176,53 @@ export const templateService = {
   deleteFieldOption: async (templateId: string, fieldId: number, optionId: number): Promise<void> => {
     await api.delete(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options/${optionId}`);
   }
+};
+
+export interface FieldResponse {
+  id: number;
+  fieldId: number;
+  valueText: string | null;
+  valueNumber: number | null;
+  valueDate: string | null;
+}
+
+export interface Record {
+  id: number;
+  templateId: number;
+  templateName: string;
+  firstName: string;
+  middleName: string | null;
+  lastName: string;
+  dateOfBirth: string;
+  identification: string;
+  tenantId: number;
+  fieldResponses: FieldResponse[];
+}
+
+export interface RecordQueryParams {
+  pageNumber: number;
+  pageSize: number;
+  templateId?: number;
+}
+
+export const recordService = {
+  getRecords: async (params: RecordQueryParams): Promise<PaginatedResponse<Record>> => {
+    const response = await api.get<PaginatedResponse<Record>>(API_CONFIG.endpoints.records.list, { params });
+    return response.data;
+  },
+  getRecordById: async (id: number): Promise<Record> => {
+    const response = await api.get<Record>(`${API_CONFIG.endpoints.records.list}/${id}`);
+    return response.data;
+  },
+  createRecord: async (data: Omit<Record, 'id'>): Promise<Record> => {
+    const response = await api.post<Record>(API_CONFIG.endpoints.records.list, data);
+    return response.data;
+  },
+  updateRecord: async (id: number, data: Omit<Record, 'id'>): Promise<Record> => {
+    const response = await api.put<Record>(`${API_CONFIG.endpoints.records.list}/${id}`, data);
+    return response.data;
+  },
+  deleteRecord: async (id: number): Promise<void> => {
+    await api.delete(`${API_CONFIG.endpoints.records.list}/${id}`);
+  }
 }; 

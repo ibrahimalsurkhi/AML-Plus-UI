@@ -17,6 +17,11 @@ export const MENU_SIDEBAR: TMenuConfig = [
     path: '/templates'
   },
   {
+    title: 'Records',
+    icon: 'folder-open',
+    path: '/records'
+  },
+  {
     title: 'Create Template',
     icon: 'document',
     path: '/create-template'
@@ -44,6 +49,13 @@ export const MENU_ROOT: TMenuConfig = [
     rootPath: '/templates',
     path: '/templates',
     childrenIndex: 2
+  },
+  {
+    title: 'Records',
+    icon: 'folder-open',
+    rootPath: '/records',
+    path: '/records',
+    childrenIndex: 3
   }
 ];
 
@@ -60,5 +72,9 @@ export const MENU_MEGA: TMenuConfig = [
   {
     title: 'Templates',
     path: '/templates'
+  },
+  {
+    title: 'Records',
+    path: '/records'
   }
 ];

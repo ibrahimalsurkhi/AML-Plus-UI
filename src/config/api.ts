@@ -11,5 +11,8 @@ export const API_CONFIG = {
       create: 'templates',
       list: 'templates',
     },
+    records: {
+      list: 'Templates/records',
+    },
   },
 } as const; 
