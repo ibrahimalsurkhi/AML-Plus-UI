@@ -2146,9 +2146,23 @@ export const TemplateDetailsPage = () => {
     }
   };
 
-  const handleOpenOptionsDialog = (fieldId: number) => {
+  const handleOpenOptionsDialog = async (fieldId: number) => {
+    if (!id) return;
+    
     setOptionFieldId(fieldId);
-    setOptionsDialogOpen(true);
+    
+    try {
+      const options = await templateService.getFieldOptions(id, fieldId);
+      setFieldOptions(options);
+      setOptionsDialogOpen(true);
+    } catch (err) {
+      console.error('Error fetching field options:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch field options",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {

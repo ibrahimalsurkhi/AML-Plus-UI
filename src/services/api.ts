@@ -187,7 +187,7 @@ export const templateService = {
   },
   getTemplateScoreCriteriaRanges: async (templateId: string, fieldId: number): Promise<ScoreCriteriaRange[]> => {
     const response = await api.get<ScoreCriteriaRange[]>(
-      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria-ranges`
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria`
     );
     return response.data;
   },
@@ -197,7 +197,7 @@ export const templateService = {
     data: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>
   ): Promise<ScoreCriteriaRange> => {
     const response = await api.post<ScoreCriteriaRange>(
-      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria-ranges`,
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria`,
       data
     );
     return response.data;
@@ -209,7 +209,7 @@ export const templateService = {
     data: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>
   ): Promise<ScoreCriteriaRange> => {
     const response = await api.put<ScoreCriteriaRange>(
-      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria-ranges/${rangeId}`,
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria/${rangeId}`,
       data
     );
     return response.data;
@@ -220,7 +220,7 @@ export const templateService = {
     rangeId: number
   ): Promise<void> => {
     await api.delete(
-      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria-ranges/${rangeId}`
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria/${rangeId}`
     );
   }
 };
