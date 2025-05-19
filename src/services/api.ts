@@ -222,7 +222,13 @@ export const templateService = {
     await api.delete(
       `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria/${rangeId}`
     );
-  }
+  },
+  updateTemplateStatus: async (templateId: string, status: TemplateStatus): Promise<Template> => {
+    const response = await api.put<Template>(`${API_CONFIG.endpoints.templates.list}/${templateId}/status`, {
+      status
+    });
+    return response.data;
+  },
 };
 
 export interface FieldResponse {
@@ -256,7 +262,7 @@ export const recordService = {
   getRecords: async (params: RecordQueryParams): Promise<PaginatedResponse<Record>> => {
     const { templateId, ...queryParams } = params;
     const endpoint = templateId 
-      ? `${API_CONFIG.endpoints.templates.list}/${templateId}/records`
+      ? `${API_CONFIG.endpoints.templates.list}/records`
       : API_CONFIG.endpoints.records.list.replace('{templateId}', 'all');
     const response = await api.get<PaginatedResponse<Record>>(endpoint, { params: queryParams });
     return response.data;

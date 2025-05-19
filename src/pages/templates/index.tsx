@@ -6,6 +6,13 @@ import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
 
 const getStatusBadge = (status: TemplateStatus) => {
   switch (status) {
@@ -17,6 +24,32 @@ const getStatusBadge = (status: TemplateStatus) => {
       return <Badge variant="destructive">Archived</Badge>;
     default:
       return <Badge variant="outline">Unknown</Badge>;
+  }
+};
+
+const getStatusLabel = (status: TemplateStatus) => {
+  switch (status) {
+    case TemplateStatus.Draft:
+      return "Draft";
+    case TemplateStatus.Active:
+      return "Active";
+    case TemplateStatus.Archived:
+      return "Archived";
+    default:
+      return "Unknown";
+  }
+};
+
+const getStatusColor = (status: TemplateStatus) => {
+  switch (status) {
+    case TemplateStatus.Draft:
+      return "text-gray-800";
+    case TemplateStatus.Active:
+      return "text-[#1890FF]";
+    case TemplateStatus.Archived:
+      return "text-destructive";
+    default:
+      return "text-gray-800";
   }
 };
 
@@ -69,6 +102,24 @@ export default function TemplatesPage() {
     navigate('/create-template');
   };
 
+  const handleStatusChange = async (templateId: string, newStatus: TemplateStatus) => {
+    try {
+      await templateService.updateTemplateStatus(templateId, newStatus);
+      toast({
+        title: "Success",
+        description: `Template status updated to ${getStatusLabel(newStatus)}`,
+      });
+      fetchTemplates(); // Refresh the list
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to update template status",
+        variant: "destructive",
+      });
+      console.error('Error updating template status:', err);
+    }
+  };
+
   if (loading) {
     return <div>Loading templates...</div>;
   }
@@ -96,6 +147,7 @@ export default function TemplatesPage() {
                 <TableHead>Version</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Tenant</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -103,17 +155,58 @@ export default function TemplatesPage() {
                 <TableRow 
                   key={template.id}
                   className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => navigate(`/templates/${template.id}`)}
                 >
-                  <TableCell>{template.name}</TableCell>
-                  <TableCell>{template.version}</TableCell>
-                  <TableCell>{getStatusBadge(template.status)}</TableCell>
-                  <TableCell>{template.tenantName}</TableCell>
+                  <TableCell onClick={() => navigate(`/templates/${template.id}`)}>{template.name}</TableCell>
+                  <TableCell onClick={() => navigate(`/templates/${template.id}`)}>{template.version}</TableCell>
+                  <TableCell onClick={() => navigate(`/templates/${template.id}`)}>
+                    {getStatusBadge(template.status)}
+                  </TableCell>
+                  <TableCell onClick={() => navigate(`/templates/${template.id}`)}>{template.tenantName}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => navigate(`/templates/${template.id}`)}>
+                            View Details
+                          </DropdownMenuItem>
+                          {template.status !== TemplateStatus.Active && (
+                            <DropdownMenuItem
+                              className={getStatusColor(TemplateStatus.Active)}
+                              onClick={() => handleStatusChange(template.id.toString(), TemplateStatus.Active)}
+                            >
+                              Convert to Active
+                            </DropdownMenuItem>
+                          )}
+                          {template.status !== TemplateStatus.Draft && (
+                            <DropdownMenuItem
+                              className={getStatusColor(TemplateStatus.Draft)}
+                              onClick={() => handleStatusChange(template.id.toString(), TemplateStatus.Draft)}
+                            >
+                              Convert to Draft
+                            </DropdownMenuItem>
+                          )}
+                          {template.status !== TemplateStatus.Archived && (
+                            <DropdownMenuItem
+                              className={getStatusColor(TemplateStatus.Archived)}
+                              onClick={() => handleStatusChange(template.id.toString(), TemplateStatus.Archived)}
+                            >
+                              Convert to Archived
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
               {templates?.items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">
+                  <TableCell colSpan={5} className="text-center">
                     No templates found
                   </TableCell>
                 </TableRow>
