@@ -4,13 +4,25 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { recordService, type Record, type TemplateField, templateService, FieldType, type Template } from '@/services/api';
 import { Container } from '@/components/container';
-import { Loader2, ArrowLeft, User, Calendar, Hash, FileText, Globe, UserCircle, Flag } from 'lucide-react';
+import { 
+  Loader2, 
+  ArrowLeft, 
+  User, 
+  Calendar, 
+  Hash, 
+  FileText, 
+  IdCard,
+  FileType,
+  UserRound,
+  Cake
+} from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import {
   Toolbar,
   ToolbarHeading,
   ToolbarActions
 } from '@/partials/toolbar';
+import { cn } from "@/lib/utils";
 
 // Extend TemplateField type to include options and ranges
 interface ExtendedTemplateField extends TemplateField {
@@ -121,17 +133,6 @@ const RecordDetailsPage = () => {
     );
   }
 
-  // Helper to get country/nationality name (you might want to fetch these from an API)
-  const getCountryName = (countryId: number) => {
-    // This is a placeholder - you should implement proper country lookup
-    return `Country ${countryId}`;
-  };
-
-  const getNationalityName = (nationalityId: number) => {
-    // This is a placeholder - you should implement proper nationality lookup
-    return `Nationality ${nationalityId}`;
-  };
-
   // Helper to get field value from record.fieldResponses
   const getFieldValue = (fieldId: number, fieldType: FieldType, options?: ExtendedTemplateField['options']) => {
     const response = record.fieldResponses.find(fr => fr.fieldId === fieldId);
@@ -164,7 +165,7 @@ const RecordDetailsPage = () => {
     switch (fieldType) {
       case FieldType.Text:
       case FieldType.TextArea:
-        return <FileText className="w-4 h-4" />;
+        return <FileType className="w-4 h-4" />;
       case FieldType.Number:
         return <Hash className="w-4 h-4" />;
       case FieldType.Date:
@@ -185,16 +186,16 @@ const RecordDetailsPage = () => {
           <div className="flex flex-col gap-1">
             <ToolbarHeading>Record Details</ToolbarHeading>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Hash className="w-4 h-4" />
+              <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-md">
+                <Hash className="w-4 h-4 text-primary" />
                 <span>ID: {record?.id || '-'}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <UserCircle className="w-4 h-4" />
-                <span>User ID: {record?.identification || '-'}</span>
+              <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-md">
+                <IdCard className="w-4 h-4 text-primary" />
+                <span>Identification: {record?.identification || '-'}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
+              <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-md">
+                <FileText className="w-4 h-4 text-primary" />
                 <span>Template: {templateName || '-'}</span>
               </div>
             </div>
@@ -203,6 +204,7 @@ const RecordDetailsPage = () => {
             <Button
               variant="outline"
               onClick={() => navigate('/records')}
+              className="hover:bg-primary/5"
             >
               <ArrowLeft className="w-4 h-4 mr-2" /> Back to Records
             </Button>
@@ -210,50 +212,66 @@ const RecordDetailsPage = () => {
         </Toolbar>
 
         {/* Personal Information Card */}
-        <Card>
-          <CardHeader className="bg-gray-50/50 border-b">
-            <h2 className="text-xl font-semibold">Personal Information</h2>
+        <Card className="shadow-sm border-primary/10">
+          <CardHeader className="bg-primary/5 border-b">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <UserRound className="w-5 h-5 text-primary" />
+              Personal Information
+            </h2>
             <p className="text-sm text-muted-foreground mt-1">
               Basic information about the record holder.
             </p>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">ID</div>
-                <div className="text-base">{record?.id || '-'}</div>
+              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                  <Hash className="w-4 h-4" />
+                  ID
+                </div>
+                <div className="text-base font-medium">{record?.id || '-'}</div>
               </div>
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">User ID</div>
-                <div className="text-base">{record?.identification || '-'}</div>
+              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                  <IdCard className="w-4 h-4" />
+                  Identification
+                </div>
+                <div className="text-base font-medium">{record?.identification || '-'}</div>
               </div>
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">Template</div>
-                <div className="text-base">{templateName || '-'}</div>
+              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                  <FileText className="w-4 h-4" />
+                  Template
+                </div>
+                <div className="text-base font-medium">{templateName || '-'}</div>
               </div>
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">First Name</div>
-                <div className="text-base">{record.firstName}</div>
+              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                  <User className="w-4 h-4" />
+                  First Name
+                </div>
+                <div className="text-base font-medium">{record.firstName}</div>
               </div>
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">Middle Name</div>
-                <div className="text-base">{record.middleName || '-'}</div>
+              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                  <User className="w-4 h-4" />
+                  Middle Name
+                </div>
+                <div className="text-base font-medium">{record.middleName || '-'}</div>
               </div>
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">Last Name</div>
-                <div className="text-base">{record.lastName}</div>
+              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                  <User className="w-4 h-4" />
+                  Last Name
+                </div>
+                <div className="text-base font-medium">{record.lastName}</div>
               </div>
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">Date of Birth</div>
-                <div className="text-base">{new Date(record.dateOfBirth).toLocaleDateString()}</div>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">Country</div>
-                <div className="text-base">{getCountryName(record.country)}</div>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">Nationality</div>
-                <div className="text-base">{getNationalityName(record.nationality)}</div>
+              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                  <Cake className="w-4 h-4" />
+                  Date of Birth
+                </div>
+                <div className="text-base font-medium">{new Date(record.dateOfBirth).toLocaleDateString()}</div>
               </div>
             </div>
           </CardContent>
@@ -261,9 +279,12 @@ const RecordDetailsPage = () => {
 
         {/* Template Fields Card */}
         {fields.length > 0 && (
-          <Card>
-            <CardHeader className="bg-gray-50/50 border-b">
-              <h2 className="text-xl font-semibold">Template Fields</h2>
+          <Card className="shadow-sm border-primary/10">
+            <CardHeader className="bg-primary/5 border-b">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Template Fields
+              </h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Additional information based on the template requirements.
               </p>
@@ -273,10 +294,13 @@ const RecordDetailsPage = () => {
                 {fields.map(field => {
                   const value = getFieldValue(field.id!, field.fieldType, field.options);
                   return (
-                    <div key={field.id}>
-                      <div className="text-sm font-medium text-muted-foreground">{field.label}</div>
-                      <div className="text-base">
-                        {value !== null ? value : <span className="text-gray-400">-</span>}
+                    <div key={field.id} className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                        {getFieldIcon(field.fieldType)}
+                        {field.label}
+                      </div>
+                      <div className="text-base font-medium">
+                        {value !== null ? value : <span className="text-muted-foreground">-</span>}
                       </div>
                     </div>
                   );
