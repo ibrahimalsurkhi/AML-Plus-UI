@@ -652,191 +652,202 @@ const NewRecordPage = () => {
           </ToolbarActions>
         </Toolbar>
 
-        <form onSubmit={formik.handleSubmit} className="space-y-6">
-          {/* Personal Information Card */}
-          <Card>
-            <CardHeader className="bg-gray-50/50 border-b">
-              <h2 className="text-xl font-semibold">Personal Information</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Enter the basic information about the record holder.
-              </p>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="firstName" className="flex items-center">
-                    First Name <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <Input
-                    id="firstName"
-                    name="firstName"
-                    value={formik.values.firstName}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    className={formik.touched.firstName && formik.errors.firstName ? 'border-red-500' : ''}
-                  />
-                  {formik.touched.firstName && formik.errors.firstName ? (
-                    <div className="text-red-500 text-sm mt-1">{formik.errors.firstName as string}</div>
-                  ) : null}
-                </div>
-                
-                <div>
-                  <Label htmlFor="middleName">
-                    Middle Name
-                  </Label>
-                  <Input
-                    id="middleName"
-                    name="middleName"
-                    value={formik.values.middleName}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="lastName" className="flex items-center">
-                    Last Name <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    value={formik.values.lastName}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    className={formik.touched.lastName && formik.errors.lastName ? 'border-red-500' : ''}
-                  />
-                  {formik.touched.lastName && formik.errors.lastName ? (
-                    <div className="text-red-500 text-sm mt-1">{formik.errors.lastName as string}</div>
-                  ) : null}
-                </div>
-                
-                <div>
-                  <Label htmlFor="identification" className="flex items-center">
-                    Identification <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <Input
-                    id="identification"
-                    name="identification"
-                    value={formik.values.identification}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    className={formik.touched.identification && formik.errors.identification ? 'border-red-500' : ''}
-                  />
-                  {formik.touched.identification && formik.errors.identification ? (
-                    <div className="text-red-500 text-sm mt-1">{formik.errors.identification as string}</div>
-                  ) : null}
-                </div>
-                
-                <div>
-                  <Label htmlFor="dateOfBirth" className="flex items-center">
-                    Date of Birth <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <Input
-                    id="dateOfBirth"
-                    name="dateOfBirth"
-                    type="date"
-                    value={formik.values.dateOfBirth}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    className={formik.touched.dateOfBirth && formik.errors.dateOfBirth ? 'border-red-500' : ''}
-                  />
-                  {formik.touched.dateOfBirth && formik.errors.dateOfBirth ? (
-                    <div className="text-red-500 text-sm mt-1">{formik.errors.dateOfBirth as string}</div>
-                  ) : null}
-                </div>
-                
-                <div>
-                  <Label htmlFor="templateId" className="flex items-center">
-                    Template <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <Select 
-                    onValueChange={(value) => {
-                      formik.setFieldValue('templateId', parseInt(value));
-                    }}
-                    defaultValue={formik.values.templateId?.toString()}
-                    value={formik.values.templateId?.toString()}
-                  >
-                    <SelectTrigger className={formik.touched.templateId && formik.errors.templateId ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Select a template" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {templates.map((template) => (
-                        <SelectItem 
-                          key={template.id} 
-                          value={template.id.toString()}
-                        >
-                          {template.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formik.touched.templateId && formik.errors.templateId ? (
-                    <div className="text-red-500 text-sm mt-1">{formik.errors.templateId as string}</div>
-                  ) : null}
-                </div>
+        {/* Template Selection Card */}
+        <Card className="shadow-md border-2 border-primary/20">
+          <CardHeader className="bg-primary/5 border-b rounded-t-lg">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <span role="img" aria-label="template">📄</span> Select a Template
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Choose an <span className="font-semibold text-primary">Active</span> template to start creating a record.
+            </p>
+          </CardHeader>
+          <CardContent className="p-8 flex flex-col gap-4">
+            {templates.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">
+                <p className="text-lg font-medium mb-2">No active templates available</p>
+                <p className="text-sm">Please activate a template before creating a record.</p>
               </div>
-            </CardContent>
-          </Card>
+            ) : (
+              <Select
+                onValueChange={(value) => {
+                  formik.setFieldValue('templateId', parseInt(value));
+                }}
+                value={formik.values.templateId ? formik.values.templateId.toString() : ''}
+              >
+                <SelectTrigger className="w-full h-14 text-lg border-2 border-primary/40 focus:border-primary rounded-lg shadow-sm">
+                  <SelectValue placeholder="Select a template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((template) => (
+                    <SelectItem
+                      key={template.id}
+                      value={template.id.toString()}
+                      className="text-base"
+                    >
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Dynamic Fields Card */}
-          {templateFields.length > 0 && (
+        {/* Show the rest of the form only if a template is selected */}
+        {formik.values.templateId && templates.length > 0 && (
+          <form onSubmit={formik.handleSubmit} className="space-y-6 animate-fade-in">
+            {/* Personal Information Card */}
             <Card>
               <CardHeader className="bg-gray-50/50 border-b">
-                <h2 className="text-xl font-semibold">Template Fields</h2>
+                <h2 className="text-xl font-semibold">Personal Information</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Fill in the required information based on the selected template.
+                  Enter the basic information about the record holder.
                 </p>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Regular Fields */}
-                  {sortFields(templateFields)
-                    .filter(field => field.fieldType !== FieldType.Checkbox)
-                    .map((field) => (
-                      <div key={field.id} className={cn(
-                        "p-4 rounded-lg border",
-                        field.fieldType === FieldType.TextArea ? "md:col-span-2" : ""
-                      )}>
-                        {renderDynamicField(field)}
-                      </div>
-                    ))}
-                </div>
-
-                {/* Checkbox Fields Section */}
-                {templateFields.some(field => field.fieldType === FieldType.Checkbox) && (
-                  <div className="mt-8 pt-6 border-t">
-                    <h3 className="text-lg font-medium mb-4">Additional Options</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {sortFields(templateFields)
-                        .filter(field => field.fieldType === FieldType.Checkbox)
-                        .map((field) => (
-                          <div key={field.id} className="p-4 rounded-lg border">
-                            {renderDynamicField(field)}
-                          </div>
-                        ))}
-                    </div>
+                  <div>
+                    <Label htmlFor="firstName" className="flex items-center">
+                      First Name <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="firstName"
+                      name="firstName"
+                      value={formik.values.firstName}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                      className={formik.touched.firstName && formik.errors.firstName ? 'border-red-500' : ''}
+                    />
+                    {formik.touched.firstName && formik.errors.firstName ? (
+                      <div className="text-red-500 text-sm mt-1">{formik.errors.firstName as string}</div>
+                    ) : null}
                   </div>
-                )}
+                  <div>
+                    <Label htmlFor="middleName">
+                      Middle Name
+                    </Label>
+                    <Input
+                      id="middleName"
+                      name="middleName"
+                      value={formik.values.middleName}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName" className="flex items-center">
+                      Last Name <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="lastName"
+                      name="lastName"
+                      value={formik.values.lastName}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                      className={formik.touched.lastName && formik.errors.lastName ? 'border-red-500' : ''}
+                    />
+                    {formik.touched.lastName && formik.errors.lastName ? (
+                      <div className="text-red-500 text-sm mt-1">{formik.errors.lastName as string}</div>
+                    ) : null}
+                  </div>
+                  <div>
+                    <Label htmlFor="identification" className="flex items-center">
+                      Identification <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="identification"
+                      name="identification"
+                      value={formik.values.identification}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                      className={formik.touched.identification && formik.errors.identification ? 'border-red-500' : ''}
+                    />
+                    {formik.touched.identification && formik.errors.identification ? (
+                      <div className="text-red-500 text-sm mt-1">{formik.errors.identification as string}</div>
+                    ) : null}
+                  </div>
+                  <div>
+                    <Label htmlFor="dateOfBirth" className="flex items-center">
+                      Date of Birth <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="dateOfBirth"
+                      name="dateOfBirth"
+                      type="date"
+                      value={formik.values.dateOfBirth}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                      className={formik.touched.dateOfBirth && formik.errors.dateOfBirth ? 'border-red-500' : ''}
+                    />
+                    {formik.touched.dateOfBirth && formik.errors.dateOfBirth ? (
+                      <div className="text-red-500 text-sm mt-1">{formik.errors.dateOfBirth as string}</div>
+                    ) : null}
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          )}
 
-          <div className="flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/records')}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              disabled={isLoading || templates.length === 0}
-            >
-              {isLoading ? 'Creating...' : 'Create Record'}
-            </Button>
-          </div>
-        </form>
+            {/* Dynamic Fields Card */}
+            {templateFields.length > 0 && (
+              <Card>
+                <CardHeader className="bg-gray-50/50 border-b">
+                  <h2 className="text-xl font-semibold">Template Fields</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Fill in the required information based on the selected template.
+                  </p>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Regular Fields */}
+                    {sortFields(templateFields)
+                      .filter(field => field.fieldType !== FieldType.Checkbox)
+                      .map((field) => (
+                        <div key={field.id} className={cn(
+                          "p-4 rounded-lg border",
+                          field.fieldType === FieldType.TextArea ? "md:col-span-2" : ""
+                        )}>
+                          {renderDynamicField(field)}
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Checkbox Fields Section */}
+                  {templateFields.some(field => field.fieldType === FieldType.Checkbox) && (
+                    <div className="mt-8 pt-6 border-t">
+                      <h3 className="text-lg font-medium mb-4">Additional Options</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {sortFields(templateFields)
+                          .filter(field => field.fieldType === FieldType.Checkbox)
+                          .map((field) => (
+                            <div key={field.id} className="p-4 rounded-lg border">
+                              {renderDynamicField(field)}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/records')}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                disabled={isLoading || templates.length === 0}
+              >
+                {isLoading ? 'Creating...' : 'Create Record'}
+              </Button>
+            </div>
+          </form>
+        )}
       </div>
     </Container>
   );
