@@ -243,10 +243,13 @@ export interface Record {
   id: number;
   templateId: number;
   templateName: string;
+  userId: string;
   firstName: string;
   middleName: string | null;
   lastName: string;
   dateOfBirth: string;
+  country: number;
+  nationality: number;
   identification: string;
   tenantId: number;
   fieldResponses: FieldResponse[];

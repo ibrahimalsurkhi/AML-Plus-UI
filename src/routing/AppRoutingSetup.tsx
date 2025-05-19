@@ -89,6 +89,7 @@ import TemplatesPage from '@/pages/templates';
 import TemplateDetailsPage from '@/pages/templates/TemplateDetailsPage';
 import RecordsPage from '@/pages/records';
 import NewRecordPage from '@/pages/records/NewRecordPage';
+import RecordDetailsPage from '@/pages/records/RecordDetailsPage';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -102,6 +103,7 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/create-template" element={<CreateTemplatePage />} />
           <Route path="/records" element={<RecordsPage />} />
           <Route path="/records/new" element={<NewRecordPage />} />
+          <Route path="/records/:id" element={<RecordDetailsPage />} />
           <Route path="/dark-sidebar" element={<Demo1DarkSidebarPage />} />
           <Route path="/public-profile/profiles/default" element={<ProfileDefaultPage />} />
           <Route path="/public-profile/profiles/creator" element={<ProfileCreatorPage />} />
