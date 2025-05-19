@@ -260,8 +260,9 @@ const NewRecordPage = () => {
               );
 
               // Set the range ID in valueText if a matching range is found
-              response.valueText = matchingRange ? matchingRange.id.toString() : null;
+              response.templateFieldScoreCriteriaId = matchingRange ? matchingRange.id.toString() : null;
               response.valueDate = null;
+              response.valueText = null;
               break;
             case FieldType.Date:
               response.valueText = null;
@@ -289,7 +290,7 @@ const NewRecordPage = () => {
               }
 
               // Set the option ID in valueText if an option is found and has an ID
-              response.valueText = selectedOption?.id ? selectedOption.id.toString() : null;
+              response.optionId = selectedOption?.id ? selectedOption.id.toString() : null;
               response.valueNumber = null;
               response.valueDate = null;
               break;
@@ -309,10 +310,21 @@ const NewRecordPage = () => {
           dateOfBirth,
           identification: values.identification,
           tenantId: selectedTemplate.tenantId,
+          userId: '', // Placeholder, update as needed
+          country: 0, // Placeholder, update as needed
+          nationality: 0, // Placeholder, update as needed
           fieldResponses
         };
 
-        await recordService.createRecord(values.templateId, recordData);
+        const response = await recordService.createRecord(values.templateId, recordData) as any;
+        
+        if (response?.exceedsMediumThreshold) {
+          toast({
+            title: 'Case Created',
+            description: 'This record exceeds the medium threshold. A case has been created.',
+            variant: 'destructive',
+          });
+        }
         
         toast({
           title: 'Success',

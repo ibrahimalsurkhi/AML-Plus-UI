@@ -295,4 +295,11 @@ export const recordService = {
       `${API_CONFIG.endpoints.templates.list}/${templateId}/records/${recordId}`
     );
   }
+};
+
+export const caseService = {
+  async getCases({ pageNumber, pageSize }: { pageNumber: number; pageSize: number }) {
+    const response = await api.get('/cases', { params: { pageNumber, pageSize } });
+    return response.data;
+  }
 }; 

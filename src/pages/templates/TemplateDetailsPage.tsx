@@ -1103,7 +1103,7 @@ const OptionForm = ({
         >
           {scoreCriteria.map((criteria) => (
             <option key={`criteria-${criteria.id}`} value={criteria.id}>
-              {criteria.key} (Score: {criteria.score})
+              {criteria.key} (Score: {criteria.score.toFixed(2)})
             </option>
           ))}
         </select>
@@ -1311,7 +1311,7 @@ const FieldOptionsDialog = ({
                                   >
                                     {criteria.key}
                                   </Badge>
-                                  <span className="text-sm text-gray-500">({criteria.score})</span>
+                                  <span className="text-sm text-gray-500">({criteria.score.toFixed(2)})</span>
                                 </div>
                               ) : (
                                 <span className="text-gray-500">Not assigned</span>
@@ -1534,7 +1534,7 @@ const ScoreCriteriaRangeForm = ({
         >
           {scoreCriteria.map((criteria) => (
             <option key={`criteria-${criteria.id}`} value={criteria.id}>
-              {criteria.key} (Score: {criteria.score})
+              {criteria.key} (Score: {criteria.score.toFixed(2)})
             </option>
           ))}
         </select>
@@ -1720,7 +1720,7 @@ const ScoreCriteriaRangeDialog = ({
                                         color: criteria.color 
                                       }}
                                     >
-                                      {criteria.key} ({criteria.score})
+                                      {criteria.key} ({criteria.score.toFixed(2)})
                                     </Badge>
                                   )}
                                 </div>
@@ -1787,7 +1787,7 @@ const ScoreCriteriaRangeDialog = ({
                             color: scoreCriteria.find(c => c.id === rangeToDelete.scoreCriteriaId)?.color 
                           }}
                         >
-                          {scoreCriteria.find(c => c.id === rangeToDelete.scoreCriteriaId)?.key}
+                          {scoreCriteria.find(c => c.id === rangeToDelete.scoreCriteriaId)?.key} ({scoreCriteria.find(c => c.id === rangeToDelete.scoreCriteriaId)?.score.toFixed(2)})
                         </Badge>
                       </div>
                     )}
@@ -2803,7 +2803,7 @@ export const TemplateDetailsPage = () => {
                               color: scoreCriteria.find(c => c.id === optionToDelete.scoreCriteriaId)?.color 
                             }}
                           >
-                            {scoreCriteria.find(c => c.id === optionToDelete.scoreCriteriaId)?.key}
+                            {scoreCriteria.find(c => c.id === optionToDelete.scoreCriteriaId)?.key} ({scoreCriteria.find(c => c.id === optionToDelete.scoreCriteriaId)?.score.toFixed(2)})
                           </Badge>
                   </div>
                     )}

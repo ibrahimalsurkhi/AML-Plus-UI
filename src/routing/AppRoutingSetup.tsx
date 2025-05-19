@@ -90,6 +90,7 @@ import TemplateDetailsPage from '@/pages/templates/TemplateDetailsPage';
 import RecordsPage from '@/pages/records';
 import NewRecordPage from '@/pages/records/NewRecordPage';
 import RecordDetailsPage from '@/pages/records/RecordDetailsPage';
+import CasesPage from '@/pages/cases/CasesPage';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -200,6 +201,7 @@ const AppRoutingSetup = (): ReactElement => {
             element={<AuthenticationAccountDeactivatedPage />}
           />
           <Route path="/authentication/get-started" element={<AuthenticationGetStartedPage />} />
+          <Route path="/cases" element={<CasesPage />} />
         </Route>
       </Route>
       <Route path="error/*" element={<ErrorsRouting />} />
