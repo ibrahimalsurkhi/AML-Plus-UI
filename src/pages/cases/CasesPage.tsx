@@ -25,7 +25,8 @@ import {
   PaginationPrevious 
 } from '@/components/ui/pagination';
 import { toast } from '@/components/ui/use-toast';
-import { caseService } from '@/services/api';
+import { caseService, Case, PaginatedResponse } from '@/services/api';
+import { FileText } from 'lucide-react';
 
 interface CaseScreening {
   id: number;
@@ -54,6 +55,7 @@ interface CaseItem {
   recordId: number;
   fullName: string;
   score: number;
+  scoreBGColor: string;
   mediumThreshold: number;
   exceedsMediumThreshold: boolean;
   status: string;
@@ -71,36 +73,45 @@ interface PaginatedCases {
   hasNextPage: boolean;
 }
 
+const CaseStatusMap: Record<number, string> = {
+  1: 'New',
+  2: 'In Progress',
+  3: 'Completed',
+  4: 'Rejected',
+  5: 'Closed',
+};
+
+const SourceTypeMap: Record<number, string> = {
+  0: 'Web',
+  1: 'Api',
+};
+
 const CasesPage = () => {
   const navigate = useNavigate();
-  const [cases, setCases] = useState<CaseItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({
+  const [cases, setCases] = useState<Case[]>([]);
+  const [pagination, setPagination] = useState<PaginatedResponse<Case>>({
+    items: [],
     pageNumber: 1,
-    totalPages: 0,
+    pageSize: 10,
     totalCount: 0,
+    totalPages: 0,
     hasPreviousPage: false,
     hasNextPage: false
   });
+  const [expanded, setExpanded] = useState<{ [id: number]: boolean }>({});
 
-  const fetchCases = async (page = 1, pageSize = 10) => {
+  const fetchCases = async (pageNumber: number = 1) => {
     try {
       setLoading(true);
-      const data = await caseService.getCases({ pageNumber: page, pageSize });
-      setCases(data.items);
-      setPagination({
-        pageNumber: data.pageNumber,
-        totalPages: data.totalPages,
-        totalCount: data.totalCount,
-        hasPreviousPage: data.hasPreviousPage,
-        hasNextPage: data.hasNextPage
-      });
+      const response = await caseService.getCases({ pageNumber, pageSize: pagination.pageSize });
+      setCases(response.items);
+      setPagination(response);
     } catch (error) {
-      console.error('Error fetching cases:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to fetch cases. Please try again.',
-        variant: 'destructive'
+        title: "Error",
+        description: "Failed to fetch cases",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -116,8 +127,11 @@ const CasesPage = () => {
   };
 
   const handleViewCase = (id: number) => {
-    // You can navigate to a case details page if you have one
-    // navigate(`/cases/${id}`);
+    navigate(`/cases/${id}`);
+  };
+
+  const toggleExpand = (id: number) => {
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
@@ -155,7 +169,6 @@ const CasesPage = () => {
                       <TableHead>Record ID</TableHead>
                       <TableHead>Full Name</TableHead>
                       <TableHead>Score</TableHead>
-                      <TableHead>Medium Threshold</TableHead>
                       <TableHead>Exceeds Medium</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Source</TableHead>
@@ -168,11 +181,17 @@ const CasesPage = () => {
                         <TableCell className="font-medium">{item.id}</TableCell>
                         <TableCell>{item.recordId}</TableCell>
                         <TableCell>{item.fullName}</TableCell>
-                        <TableCell>{item.score}</TableCell>
-                        <TableCell>{item.mediumThreshold}</TableCell>
+                        <TableCell>
+                          <div 
+                            className="px-2 w-16 text-center py-1 rounded-md inline-block"
+                            style={{ backgroundColor: item.scoreBGColor }}
+                          >
+                            {item.score}
+                          </div>
+                        </TableCell>
                         <TableCell>{item.exceedsMediumThreshold ? 'Yes' : 'No'}</TableCell>
-                        <TableCell>{item.status}</TableCell>
-                        <TableCell>{item.source}</TableCell>
+                        <TableCell>{CaseStatusMap[Number(item.status)] || item.status}</TableCell>
+                        <TableCell>{SourceTypeMap[Number(item.source)] || item.source}</TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"

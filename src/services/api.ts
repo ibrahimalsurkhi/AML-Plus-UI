@@ -253,6 +253,8 @@ export interface Record {
   identification: string;
   tenantId: number;
   fieldResponses: FieldResponse[];
+  score: number;
+  scoreBGColor: string;
 }
 
 export interface RecordQueryParams {
@@ -297,9 +299,120 @@ export const recordService = {
   }
 };
 
+export interface Case {
+  id: number;
+  recordId: number;
+  fullName: string;
+  score: number;
+  scoreBGColor: string;
+  mediumThreshold: number;
+  exceedsMediumThreshold: boolean;
+  status: string;
+  source: string;
+  created?: string;
+  screeningHistories?: ScreeningHistory[];
+  activityLogs?: ActivityLog[];
+}
+
+export interface ScreeningHistory {
+  id: number;
+  noOfMatches: number;
+  caseScreenings: CaseScreening[];
+}
+
+export interface CaseScreening {
+  id: number;
+  individualId: number | null;
+  individualName?: string;
+  entityId: number | null;
+  matchScore: number;
+}
+
+export interface ActivityLog {
+  id: number;
+  description: string;
+  action: string;
+  module: string;
+  created: string;
+  createdBy: string;
+}
+
 export const caseService = {
-  async getCases({ pageNumber, pageSize }: { pageNumber: number; pageSize: number }) {
-    const response = await api.get('/cases', { params: { pageNumber, pageSize } });
+  async getCases({ pageNumber, pageSize }: { pageNumber: number; pageSize: number }): Promise<PaginatedResponse<Case>> {
+    const response = await api.get<PaginatedResponse<Case>>('/cases', { params: { pageNumber, pageSize } });
+    return response.data;
+  },
+  async getCaseById(id: number): Promise<Case> {
+    const response = await api.get<Case>(`/cases/${id}`);
+    return response.data;
+  },
+  async getCasesByRecordId(recordId: number): Promise<Case[]> {
+    const response = await api.get<Case[]>(`/cases/by-record/${recordId}`);
     return response.data;
   }
+}; 
+
+// Lookup types
+export interface Lookup {
+  id: number;
+  tenantId: number;
+  name: string;
+  isShared: boolean;
+}
+
+export interface LookupValue {
+  id: number;
+  lookupId: number;
+  value: string;
+}
+
+export interface LookupQueryParams {
+  pageNumber: number;
+  pageSize: number;
+}
+
+export interface LookupValueQueryParams {
+  pageNumber: number;
+  pageSize: number;
+}
+
+export const lookupService = {
+  getLookups: async (params: LookupQueryParams): Promise<PaginatedResponse<Lookup>> => {
+    const response = await api.get<PaginatedResponse<Lookup>>(`/Lookups`, { params });
+    return response.data;
+  },
+  getLookupById: async (id: number): Promise<Lookup> => {
+    const response = await api.get<Lookup>(`/Lookups/${id}`);
+    return response.data;
+  },
+  createLookup: async (data: Omit<Lookup, 'id'>): Promise<Lookup> => {
+    const response = await api.post<Lookup>(`/Lookups`, data);
+    return response.data;
+  },
+  updateLookup: async (id: number, data: Omit<Lookup, 'tenantId'>): Promise<Lookup> => {
+    const response = await api.put<Lookup>(`/Lookups/${id}`, data);
+    return response.data;
+  },
+  deleteLookup: async (id: number): Promise<void> => {
+    await api.delete(`/Lookups/${id}`);
+  },
+  getLookupValues: async (lookupId: number, params: LookupValueQueryParams): Promise<PaginatedResponse<LookupValue>> => {
+    const response = await api.get<PaginatedResponse<LookupValue>>(`/Lookups/${lookupId}/values`, { params });
+    return response.data;
+  },
+  getLookupValueById: async (id: number): Promise<LookupValue> => {
+    const response = await api.get<LookupValue>(`/Lookups/values/${id}`);
+    return response.data;
+  },
+  createLookupValue: async (lookupId: number, data: Omit<LookupValue, 'id' | 'lookupId'>): Promise<LookupValue> => {
+    const response = await api.post<LookupValue>(`/Lookups/${lookupId}/values`, data);
+    return response.data;
+  },
+  updateLookupValue: async (id: number, data: Omit<LookupValue, 'lookupId'>): Promise<LookupValue> => {
+    const response = await api.put<LookupValue>(`/Lookups/values/${id}`, data);
+    return response.data;
+  },
+  deleteLookupValue: async (id: number): Promise<void> => {
+    await api.delete(`/Lookups/values/${id}`);
+  },
 }; 

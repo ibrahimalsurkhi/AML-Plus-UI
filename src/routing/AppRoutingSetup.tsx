@@ -91,6 +91,10 @@ import RecordsPage from '@/pages/records';
 import NewRecordPage from '@/pages/records/NewRecordPage';
 import RecordDetailsPage from '@/pages/records/RecordDetailsPage';
 import CasesPage from '@/pages/cases/CasesPage';
+import CaseDetailsPage from '@/pages/cases/CaseDetailsPage';
+import LookupPage from '@/pages/lookup';
+import LookupDetailsPage from '@/pages/lookup/LookupDetailsPage';
+import NewLookupPage from '@/pages/lookup/NewLookupPage';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -202,6 +206,10 @@ const AppRoutingSetup = (): ReactElement => {
           />
           <Route path="/authentication/get-started" element={<AuthenticationGetStartedPage />} />
           <Route path="/cases" element={<CasesPage />} />
+          <Route path="/cases/:id" element={<CaseDetailsPage />} />
+          <Route path="/lookup" element={<LookupPage />} />
+          <Route path="/lookup/new" element={<NewLookupPage />} />
+          <Route path="/lookup/:id" element={<LookupDetailsPage />} />
         </Route>
       </Route>
       <Route path="error/*" element={<ErrorsRouting />} />

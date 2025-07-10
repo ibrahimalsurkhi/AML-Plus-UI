@@ -30,6 +30,11 @@ export const MENU_SIDEBAR: TMenuConfig = [
     title: 'Create Template',
     icon: 'document',
     path: '/create-template'
+  },
+  {
+    title: 'Lookup',
+    icon: 'document', // changed to match Create Template icon
+    path: '/lookup'
   }
 ];
 
@@ -68,6 +73,13 @@ export const MENU_ROOT: TMenuConfig = [
     rootPath: '/cases',
     path: '/cases',
     childrenIndex: 4
+  },
+  {
+    title: 'Lookup',
+    icon: 'document', // changed to match Create Template icon
+    rootPath: '/lookup',
+    path: '/lookup',
+    childrenIndex: 5
   }
 ];
 
@@ -92,5 +104,9 @@ export const MENU_MEGA: TMenuConfig = [
   {
     title: 'Cases',
     path: '/cases'
+  },
+  {
+    title: 'Lookup',
+    path: '/lookup'
   }
 ];

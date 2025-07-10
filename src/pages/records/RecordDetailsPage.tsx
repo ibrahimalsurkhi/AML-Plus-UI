@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { recordService, type Record, type TemplateField, templateService, FieldType, type Template } from '@/services/api';
+import { recordService, type Record, type TemplateField, templateService, FieldType, type Template, caseService, Case } from '@/services/api';
 import { Container } from '@/components/container';
 import { 
   Loader2, 
@@ -42,6 +42,7 @@ const RecordDetailsPage = () => {
   const [templateName, setTemplateName] = useState<string>('');
   const [fields, setFields] = useState<ExtendedTemplateField[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cases, setCases] = useState<Case[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -95,6 +96,9 @@ const RecordDetailsPage = () => {
         );
         
         setFields(fieldsWithOptions);
+
+        // Fetch cases by recordId
+        caseService.getCasesByRecordId(foundRecord.id).then(setCases);
       } catch (error) {
         console.error('Error fetching record details:', error);
         toast({
@@ -305,6 +309,57 @@ const RecordDetailsPage = () => {
                     </div>
                   );
                 })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {cases.length > 0 && (
+          <Card className="shadow-sm border-primary/10 mt-6">
+            <CardHeader className="bg-primary/5 border-b">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Related Cases
+              </h2>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="overflow-x-auto">
+                <table className="min-w-full border text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="border px-3 py-2 text-left">ID</th>
+                      <th className="border px-3 py-2 text-left">Full Name</th>
+                      <th className="border px-3 py-2 text-left">Score</th>
+                      <th className="border px-3 py-2 text-left">Medium Threshold</th>
+                      <th className="border px-3 py-2 text-left">Exceeds Medium</th>
+                      <th className="border px-3 py-2 text-left">Status</th>
+                      <th className="border px-3 py-2 text-left">Source</th>
+                      <th className="border px-3 py-2 text-left">Created</th>
+                      <th className="border px-3 py-2 text-left">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cases.map((c) => (
+                      <tr key={c.id}>
+                        <td className="border px-3 py-2">{c.id}</td>
+                        <td className="border px-3 py-2">{c.fullName}</td>
+                        <td className="border px-3 py-2">
+                          <span className="px-2 w-16 text-center py-1 rounded-md inline-block" style={{ backgroundColor: c.scoreBGColor }}>{c.score}</span>
+                        </td>
+                        <td className="border px-3 py-2">{c.mediumThreshold}</td>
+                        <td className="border px-3 py-2">{c.exceedsMediumThreshold ? 'Yes' : 'No'}</td>
+                        <td className="border px-3 py-2">{c.status}</td>
+                        <td className="border px-3 py-2">{c.source}</td>
+                        <td className="border px-3 py-2">{c.created}</td>
+                        <td className="border px-3 py-2">
+                          <Button variant="link" size="sm" onClick={() => navigate(`/cases/${c.id}`)}>
+                            View
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
