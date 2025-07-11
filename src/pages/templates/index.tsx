@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { templateService, type Template, type PaginatedResponse, TemplateStatus } from '@/services/api';
+import { templateService, type Template, type PaginatedResponse, TemplateStatus, TemplateType } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +50,19 @@ const getStatusColor = (status: TemplateStatus) => {
       return "text-destructive";
     default:
       return "text-gray-800";
+  }
+};
+
+const getTemplateTypeName = (templateType: number) => {
+  switch (templateType) {
+    case TemplateType.Record:
+      return "Record";
+    case TemplateType.Account:
+      return "Account";
+    case TemplateType.Transaction:
+      return "Transaction";
+    default:
+      return "Unknown";
   }
 };
 
@@ -144,6 +157,7 @@ export default function TemplatesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Version</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Tenant</TableHead>
@@ -157,6 +171,9 @@ export default function TemplatesPage() {
                   className="cursor-pointer hover:bg-gray-50"
                 >
                   <TableCell onClick={() => navigate(`/templates/${template.id}`)}>{template.name}</TableCell>
+                  <TableCell onClick={() => navigate(`/templates/${template.id}`)}>
+                    {getTemplateTypeName(template.templateType)}
+                  </TableCell>
                   <TableCell onClick={() => navigate(`/templates/${template.id}`)}>{template.version}</TableCell>
                   <TableCell onClick={() => navigate(`/templates/${template.id}`)}>
                     {getStatusBadge(template.status)}

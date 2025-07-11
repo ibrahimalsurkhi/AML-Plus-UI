@@ -11,7 +11,7 @@ import {
   ToolbarActions
 } from '@/partials/toolbar';
 import { Input } from '@/components/ui/input';
-import { recordService, templateService, type TemplateField, FieldType, ScoreCriteriaRange } from '@/services/api';
+import { recordService, templateService, type TemplateField, FieldType, ScoreCriteriaRange, TemplateType } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -89,7 +89,8 @@ const NewRecordPage = () => {
       try {
         const data = await templateService.getTemplates({
           pageNumber: 1,
-          pageSize: 100
+          pageSize: 100,
+          templateType: TemplateType.Record
         });
         setTemplates(data.items
           .filter(template => template.status === 1) // Only Active templates

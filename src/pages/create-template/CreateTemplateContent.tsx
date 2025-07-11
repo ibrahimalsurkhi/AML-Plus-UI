@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/services/api';
+import { api, TemplateType } from '@/services/api';
 import { API_CONFIG } from '@/config/api';
 import { toast } from 'sonner';
 
@@ -67,7 +67,8 @@ export const CreateTemplateContent = () => {
     try {
       await api.post(API_CONFIG.endpoints.templates.create, {
         name: formData.name,
-        description: formData.description
+        description: formData.description,
+        templateType: TemplateType.Record
       });
 
       toast.success('Template created successfully');

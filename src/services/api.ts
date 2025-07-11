@@ -49,6 +49,7 @@ export interface Template {
   description: string;
   status: TemplateStatus;
   version: number;
+  templateType: TemplateType;
 }
 
 export interface PaginatedResponse<T> {
@@ -64,6 +65,7 @@ export interface PaginatedResponse<T> {
 export interface TemplateQueryParams {
   pageNumber: number;
   pageSize: number;
+  templateType?: TemplateType;
 }
 
 export interface ScoreCriteria {
@@ -83,6 +85,13 @@ export enum FieldType {
   Date = 4,
   Number = 5,
   TextArea = 6
+}
+
+
+export enum TemplateType {
+  Record = 1,
+  Account = 2,
+  Transaction = 3
 }
 
 export interface TemplateField {

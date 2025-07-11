@@ -3,17 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { templateService, type Template, type ScoreCriteria, TemplateStatus, type TemplateField, FieldType, type FieldOption } from '@/services/api';
+import { templateService, type Template, type ScoreCriteria, TemplateStatus, type TemplateField, FieldType, type FieldOption, TemplateType } from '@/services/api';
 import { Container } from '@/components/container';
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarDescription,
-  ToolbarHeading,
-  ToolbarPageTitle
-} from '@/partials/toolbar';
 import { useLayout } from '@/providers';
-import { Tabs, Tab, TabPanel, TabsList } from '@/components/tabs';
 import { Separator } from '@/components/ui/separator';
 import { 
   Breadcrumb,
@@ -31,16 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
@@ -685,12 +667,14 @@ const TemplateFieldDialog = ({
   open, 
   onOpenChange,
   onSubmit,
-  initialData
+  initialData,
+  templateType
 }: { 
   open: boolean; 
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: Partial<TemplateField>) => void;
   initialData?: TemplateField;
+  templateType: TemplateType;
 }) => {
   const defaultField: Partial<TemplateField> = {
     label: '',
@@ -726,7 +710,7 @@ const TemplateFieldDialog = ({
       newErrors.fieldType = 'Field type is required';
     }
     
-    if (formData.weight === undefined || formData.weight < 0) {
+    if (templateType === TemplateType.Record && (formData.weight === undefined || formData.weight < 0)) {
       newErrors.weight = 'Weight must be greater than or equal to 0';
     }
     
@@ -835,29 +819,32 @@ const TemplateFieldDialog = ({
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="weight" className="flex items-center">
-                Weight <span className="text-red-500 ml-1">*</span>
-              </Label>
-              <Input
-                id="weight"
-                type="number"
-                min={0}
-                max={100}
-                value={formData.weight || 0}
-                onChange={(e) => {
-                  setFormData({ ...formData, weight: Number(e.target.value) });
-                  if (errors.weight) {
-                    setErrors({ ...errors, weight: '' });
-                  }
-                }}
-                placeholder="Enter weight"
-                className={errors.weight ? 'border-red-500 focus-visible:ring-red-500' : ''}
-              />
-              {errors.weight && (
-                <p className="text-red-500 text-sm mt-1">{errors.weight}</p>
-              )}
-            </div>
+            {/* Weight input, only for Record templates */}
+            {templateType === TemplateType.Record && (
+              <div className="space-y-2">
+                <Label htmlFor="weight" className="flex items-center">
+                  Weight <span className="text-red-500 ml-1">*</span>
+                </Label>
+                <Input
+                  id="weight"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={formData.weight || 0}
+                  onChange={(e) => {
+                    setFormData({ ...formData, weight: Number(e.target.value) });
+                    if (errors.weight) {
+                      setErrors({ ...errors, weight: '' });
+                    }
+                  }}
+                  placeholder="Enter weight"
+                  className={errors.weight ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                />
+                {errors.weight && (
+                  <p className="text-red-500 text-sm mt-1">{errors.weight}</p>
+                )}
+              </div>
+            )}
             
             <div className="flex items-center space-x-2">
               <input
@@ -1008,13 +995,15 @@ const OptionForm = ({
   initialData, 
   scoreCriteria,
   onCancel,
-  isCheckboxField
+  isCheckboxField,
+  templateType
 }: { 
   onSubmit: (data: Omit<FieldOption, 'id' | 'fieldId'>) => void;
   initialData?: FieldOption;
   scoreCriteria: ScoreCriteria[];
   onCancel: () => void;
   isCheckboxField?: boolean;
+  templateType: TemplateType;
 }) => {
   const defaultOption: Omit<FieldOption, 'id' | 'fieldId'> = {
     label: '',
@@ -1060,10 +1049,13 @@ const OptionForm = ({
     if (isCheckboxField && initialData) {
       onSubmit({
         ...initialData,
-        scoreCriteriaId: formData.scoreCriteriaId
+        scoreCriteriaId: templateType === TemplateType.Record ? formData.scoreCriteriaId : (null as any)
       });
     } else {
-      onSubmit(formData);
+      onSubmit({
+        ...formData,
+        scoreCriteriaId: templateType === TemplateType.Record ? formData.scoreCriteriaId : (null as any)
+      });
     }
   };
 
@@ -1093,21 +1085,23 @@ const OptionForm = ({
         </div>
       )}
       
-      <div className="space-y-2">
-        <Label htmlFor="scoreCriteriaId">Score Criteria</Label>
-        <select
-          id="scoreCriteriaId"
-          value={formData.scoreCriteriaId}
-          onChange={(e) => setFormData({ ...formData, scoreCriteriaId: Number(e.target.value) })}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {scoreCriteria.map((criteria) => (
-            <option key={`criteria-${criteria.id}`} value={criteria.id}>
-              {criteria.key} (Score: {criteria.score.toFixed(2)})
-            </option>
-          ))}
-        </select>
-      </div>
+      {templateType === TemplateType.Record && (
+        <>
+          <Label htmlFor="scoreCriteriaId">Score Criteria</Label>
+          <select
+            id="scoreCriteriaId"
+            value={formData.scoreCriteriaId}
+            onChange={(e) => setFormData({ ...formData, scoreCriteriaId: Number(e.target.value) })}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {scoreCriteria.map((criteria) => (
+              <option key={`criteria-${criteria.id}`} value={criteria.id}>
+                {criteria.key} (Score: {criteria.score.toFixed(2)})
+              </option>
+            ))}
+          </select>
+        </>
+      )}
       
       {!isCheckboxField && (
         <div className="space-y-2">
@@ -1145,6 +1139,7 @@ const FieldOptionsDialog = ({
   onCreateOption,
   onUpdateOption,
   onDeleteOption,
+  templateType
 }: { 
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1154,6 +1149,7 @@ const FieldOptionsDialog = ({
   onCreateOption: (option: Omit<FieldOption, 'id' | 'fieldId'>) => void;
   onUpdateOption: (optionId: number, option: Omit<FieldOption, 'id' | 'fieldId'>) => void;
   onDeleteOption: (option: FieldOption) => void;
+  templateType: TemplateType;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedOption, setSelectedOption] = useState<FieldOption | null>(null);
@@ -1247,6 +1243,7 @@ const FieldOptionsDialog = ({
             scoreCriteria={scoreCriteria}
             onCancel={handleCancelEdit}
             isCheckboxField={isCheckboxField}
+            templateType={templateType}
           />
         ) : (
           <div className="space-y-4">
@@ -2419,26 +2416,28 @@ export const TemplateDetailsPage = () => {
 
         {/* Main content in cards */}
         <div className="grid grid-cols-1 gap-8">
-          {/* Scoring Section */}
-          <Card className="overflow-hidden border shadow-sm">
-            <CardHeader className="bg-gray-50/50 border-b px-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Icon name="analytics" className="text-primary text-xl" />
-                  <h2 className="text-xl font-semibold">Scoring Criteria</h2>
+          {/* Scoring Section - Only show for Record templates */}
+          {template.templateType === TemplateType.Record && (
+            <Card className="overflow-hidden border shadow-sm">
+              <CardHeader className="bg-gray-50/50 border-b px-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Icon name="analytics" className="text-primary text-xl" />
+                    <h2 className="text-xl font-semibold">Scoring Criteria</h2>
+                  </div>
+                  <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+                    Applied to All Assessments
+                  </Badge>
                 </div>
-                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
-                  Applied to All Assessments
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="px-6 py-8">
-              <ScoreCriteriaBar 
-                criteria={scoreCriteria} 
-                onChange={handleScoreChange}
-              />
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className="px-6 py-8">
+                <ScoreCriteriaBar 
+                  criteria={scoreCriteria} 
+                  onChange={handleScoreChange}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           {/* Template Details Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -2549,7 +2548,7 @@ export const TemplateDetailsPage = () => {
                       <TableRow>
                         <TableHead>Field</TableHead>
                         <TableHead>Type</TableHead>
-                        <TableHead>Weight</TableHead>
+                        {template.templateType === TemplateType.Record && <TableHead>Weight</TableHead>}
                         <TableHead>Required</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -2587,48 +2586,50 @@ export const TemplateDetailsPage = () => {
                                 {FieldTypeMap[field.fieldType]}
                               </Badge>
                             </TableCell>
-                            <TableCell>
-                              {fieldId && (
-                                <div className="flex items-center gap-2">
-                                  {editingWeight?.id === fieldId ? (
-                                    <div className="flex items-center gap-2">
-                                      <Input
-                                        type="number"
-                                        min={0}
-                                        step={0.1}
-                                        value={editingWeight.value}
-                                        onChange={(e) => setEditingWeight({ id: fieldId, value: Number(e.target.value) })}
-                                        className="w-20"
-                                      />
-                                      <Button
-                                        size="sm"
-                                        onClick={() => handleUpdateWeight(fieldId, editingWeight.value)}
-                                      >
-                                        <Icon name="check" className="text-green-500" />
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => setEditingWeight(null)}
-                                      >
-                                        <Icon name="close" className="text-gray-500" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm font-medium">{field.weight}</span>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setEditingWeight({ id: fieldId, value: field.weight })}
-                                      >
-                                        <Icon name="edit" className="text-gray-500" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </TableCell>
+                            {template.templateType === TemplateType.Record && (
+                              <TableCell>
+                                {fieldId && (
+                                  <div className="flex items-center gap-2">
+                                    {editingWeight?.id === fieldId ? (
+                                      <div className="flex items-center gap-2">
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          step={0.1}
+                                          value={editingWeight.value}
+                                          onChange={(e) => setEditingWeight({ id: fieldId, value: Number(e.target.value) })}
+                                          className="w-20"
+                                        />
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleUpdateWeight(fieldId, editingWeight.value)}
+                                        >
+                                          <Icon name="check" className="text-green-500" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => setEditingWeight(null)}
+                                        >
+                                          <Icon name="close" className="text-gray-500" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">{field.weight}</span>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setEditingWeight({ id: fieldId, value: field.weight })}
+                                        >
+                                          <Icon name="edit" className="text-gray-500" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </TableCell>
+                            )}
                             <TableCell>
                               {field.isRequired ? (
                                 <Badge variant="destructive" className="text-xs">Required</Badge>
@@ -2638,7 +2639,7 @@ export const TemplateDetailsPage = () => {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
-                                {field.fieldType === FieldType.Number && fieldId && (
+                                {template.templateType === TemplateType.Record && field.fieldType === FieldType.Number && fieldId && (
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -2715,6 +2716,7 @@ export const TemplateDetailsPage = () => {
               handleCreateField(data);
             }
           }}
+          templateType={template.templateType}
         />
 
         {/* Delete Dialog */}
@@ -2838,6 +2840,7 @@ export const TemplateDetailsPage = () => {
           onCreateOption={handleCreateOption}
           onUpdateOption={handleUpdateOption}
           onDeleteOption={confirmDeleteOption}
+          templateType={template.templateType}
         />
 
         <ScoreCriteriaRangeDialog
