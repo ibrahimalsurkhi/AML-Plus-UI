@@ -425,3 +425,56 @@ export const lookupService = {
     await api.delete(`/Lookups/values/${id}`);
   },
 }; 
+
+export interface TransactionType {
+  id: number;
+  name: string;
+  tenantId?: number;
+  tenantName?: string;
+  isSenderRequired: boolean;
+  isRecipientRequired: boolean;
+  isActive: boolean;
+}
+
+export interface TransactionTypeQueryParams {
+  page: number;
+  pageSize: number;
+}
+
+export interface TransactionTypeCreate {
+  name: string;
+  isSenderRequired: boolean;
+  isRecipientRequired: boolean;
+  tenantId?: number;
+}
+
+export interface TransactionTypeUpdate {
+  name: string;
+  isSenderRequired: boolean;
+  isRecipientRequired: boolean;
+  tenantId?: number;
+}
+
+export const transactionTypeService = {
+  getTransactionTypes: async (params: TransactionTypeQueryParams): Promise<PaginatedResponse<TransactionType>> => {
+    const response = await api.get<PaginatedResponse<TransactionType>>(API_CONFIG.endpoints.transactionTypes.list, { params });
+    return response.data;
+  },
+  getTransactionTypeById: async (id: number): Promise<TransactionType> => {
+    const response = await api.get<TransactionType>(`${API_CONFIG.endpoints.transactionTypes.details}/${id}`);
+    return response.data;
+  },
+  createTransactionType: async (data: TransactionTypeCreate): Promise<number> => {
+    const response = await api.post<number>(API_CONFIG.endpoints.transactionTypes.create, data);
+    return response.data;
+  },
+  updateTransactionType: async (id: number, data: TransactionTypeUpdate): Promise<void> => {
+    await api.put(`${API_CONFIG.endpoints.transactionTypes.details}/${id}`, data);
+  },
+  deleteTransactionType: async (id: number): Promise<void> => {
+    await api.delete(`${API_CONFIG.endpoints.transactionTypes.details}/${id}`);
+  },
+  switchActive: async (id: number): Promise<void> => {
+    await api.put(`${API_CONFIG.endpoints.transactionTypes.details}/${id}/switch-active`);
+  },
+}; 

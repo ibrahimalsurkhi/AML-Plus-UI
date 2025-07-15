@@ -14,5 +14,10 @@ export const API_CONFIG = {
     records: {
       list: 'templates/records',
     },
+    transactionTypes: {
+      list: 'transactiontypes',
+      create: 'transactiontypes',
+      details: 'transactiontypes', // will use /transactiontypes/:id
+    },
   },
 } as const; 

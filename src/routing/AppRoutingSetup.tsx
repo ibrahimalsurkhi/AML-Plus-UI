@@ -95,6 +95,9 @@ import CaseDetailsPage from '@/pages/cases/CaseDetailsPage';
 import LookupPage from '@/pages/lookup';
 import LookupDetailsPage from '@/pages/lookup/LookupDetailsPage';
 import NewLookupPage from '@/pages/lookup/NewLookupPage';
+import TransactionTypesPage from '@/pages/transaction-types';
+import NewTransactionTypePage from '@/pages/transaction-types/NewTransactionTypePage';
+import TransactionTypeDetailsPage from '@/pages/transaction-types/TransactionTypeDetailsPage';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -210,6 +213,10 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/lookup" element={<LookupPage />} />
           <Route path="/lookup/new" element={<NewLookupPage />} />
           <Route path="/lookup/:id" element={<LookupDetailsPage />} />
+          <Route path="/transaction-types" element={<TransactionTypesPage />} />
+          <Route path="/transaction-types/new" element={<NewTransactionTypePage />} />
+          <Route path="/transaction-types/:id" element={<TransactionTypeDetailsPage />} />
+          {/* TODO: Add create and edit/detail pages when implemented */}
         </Route>
       </Route>
       <Route path="error/*" element={<ErrorsRouting />} />

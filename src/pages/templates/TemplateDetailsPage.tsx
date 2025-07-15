@@ -1230,7 +1230,7 @@ const FieldOptionsDialog = ({
               <p className="text-sm text-gray-500 mt-1">
                 {isCheckboxField 
                   ? "Update score criteria for checkbox field"
-                  : "Define selectable options with score values"}
+                  : "Define selectable options"}
               </p>
             </div>
           </div>
@@ -1284,7 +1284,7 @@ const FieldOptionsDialog = ({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Label</TableHead>
-                      <TableHead>Score Criteria</TableHead>
+                      {templateType === TemplateType.Record && <TableHead>Score Criteria</TableHead>}
                       <TableHead>Order</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -1297,23 +1297,25 @@ const FieldOptionsDialog = ({
                         return (
                           <TableRow key={option.id}>
                             <TableCell className="font-medium">{option.label}</TableCell>
-                            <TableCell>
-                              {criteria ? (
-                                <div className="flex items-center gap-2">
-                                  <Badge 
-                                    style={{ 
-                                      backgroundColor: criteria.bgColor, 
-                                      color: criteria.color 
-                                    }}
-                                  >
-                                    {criteria.key}
-                                  </Badge>
-                                  <span className="text-sm text-gray-500">({criteria.score.toFixed(2)})</span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-500">Not assigned</span>
-                              )}
-                            </TableCell>
+                            {templateType === TemplateType.Record && (
+                              <TableCell>
+                                {criteria ? (
+                                  <div className="flex items-center gap-2">
+                                    <Badge 
+                                      style={{ 
+                                        backgroundColor: criteria.bgColor, 
+                                        color: criteria.color 
+                                      }}
+                                    >
+                                      {criteria.key}
+                                    </Badge>
+                                    <span className="text-sm text-gray-500">({criteria.score.toFixed(2)})</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-500">Not assigned</span>
+                                )}
+                              </TableCell>
+                            )}
                             <TableCell>{option.displayOrder}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">

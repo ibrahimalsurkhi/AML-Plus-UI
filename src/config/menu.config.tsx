@@ -30,6 +30,11 @@ export const MENU_SIDEBAR: TMenuConfig = [
     title: 'Lookup',
     icon: 'sort', // changed to match Create Template icon
     path: '/lookup'
+  },
+  {
+    title: 'Transaction Types',
+    icon: 'sort',
+    path: '/transaction-types'
   }
 ];
 
