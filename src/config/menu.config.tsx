@@ -22,6 +22,11 @@ export const MENU_SIDEBAR: TMenuConfig = [
     path: '/records'
   },
   {
+    title: 'Rule Builder',
+    icon: 'document', 
+    path: '/rules'
+  },
+  {
     title: 'Cases',
     icon: 'devices-2',
     path: '/cases'

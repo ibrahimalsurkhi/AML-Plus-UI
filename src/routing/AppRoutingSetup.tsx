@@ -98,6 +98,7 @@ import NewLookupPage from '@/pages/lookup/NewLookupPage';
 import TransactionTypesPage from '@/pages/transaction-types';
 import NewTransactionTypePage from '@/pages/transaction-types/NewTransactionTypePage';
 import TransactionTypeDetailsPage from '@/pages/transaction-types/TransactionTypeDetailsPage';
+import RuleBuilderPage from '@/pages/rules/RuleBuilderPage';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -216,6 +217,7 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/transaction-types" element={<TransactionTypesPage />} />
           <Route path="/transaction-types/new" element={<NewTransactionTypePage />} />
           <Route path="/transaction-types/:id" element={<TransactionTypeDetailsPage />} />
+          <Route path="/rules" element={<RuleBuilderPage />} />
           {/* TODO: Add create and edit/detail pages when implemented */}
         </Route>
       </Route>
