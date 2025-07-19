@@ -23,6 +23,7 @@ import {
   ToolbarHeading,
   ToolbarActions,
 } from '@/partials/toolbar';
+import { ruleService } from '@/services/api';
 
 const defaultRootGroup: RuleGroupType = {
   operator: OperatorId.And,
@@ -152,6 +153,18 @@ const RuleBuilderPage = () => {
   };
 
   // TODO: Implement save handler to POST rule to backend
+  const [saving, setSaving] = useState(false);
+  const handleSaveRule = async () => {
+    setSaving(true);
+    try {
+      await ruleService.createRule(rule);
+      // Optionally show a toast or reset the form here
+    } catch (err) {
+      console.error('Failed to save rule:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Container>
@@ -198,7 +211,7 @@ const RuleBuilderPage = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {RuleTypeOptions.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -218,8 +231,8 @@ const RuleBuilderPage = () => {
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={handleResetRule}>Reset Rule</Button>
               <Button variant="outline">Cancel</Button>
-              <Button variant="default" className="bg-primary text-white">
-                Save Rule
+              <Button variant="default" className="bg-primary text-white" onClick={handleSaveRule} disabled={!rule.name || saving}>
+                {saving ? 'Saving...' : 'Save Rule'}
               </Button>
             </div>
           </CardContent>

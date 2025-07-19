@@ -478,3 +478,18 @@ export const transactionTypeService = {
     await api.put(`${API_CONFIG.endpoints.transactionTypes.details}/${id}/switch-active`);
   },
 }; 
+
+export interface Rule {
+  id?: number;
+  name: string;
+  ruleType: string;
+  root: any;
+}
+
+export const ruleService = {
+  createRule: async (data: Omit<Rule, 'id'>): Promise<Rule> => {
+    console.log('Posting rule to backend:', data);
+    const response = await api.post<Rule>(API_CONFIG.endpoints.rules.create, data);
+    return response.data;
+  },
+}; 

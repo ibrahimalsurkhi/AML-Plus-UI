@@ -19,5 +19,9 @@ export const API_CONFIG = {
       create: 'transactiontypes',
       details: 'transactiontypes', // will use /transactiontypes/:id
     },
+    rules: {
+      create: 'rules',
+      list: 'rules',
+    },
   },
 } as const; 

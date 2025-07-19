@@ -26,7 +26,7 @@ export interface Condition {
   isAggregatedCustomField: boolean;
   aggregateFieldId: number | null;
   customFieldId: number | null;
-  aggregateFunction: string | null; // now string for comparison operators
+  aggregateFunction: number | null; // now string for comparison operators
   aggregationBy: number | null;
   filterBy: number | null;
   duration: number | null;
@@ -265,8 +265,8 @@ const RuleCondition: React.FC<RuleConditionProps> = ({ condition, onChange, onRe
             </Select>
             {/* Operator dropdown, depends on field */}
             <Select
-              value={condition.aggregateFunction ?? ''}
-              onValueChange={v => onChange({ ...condition, aggregateFunction: v || null })}
+              value={condition.aggregateFunction?.toString() ?? ''}
+              onValueChange={v => onChange({ ...condition, aggregateFunction: Number(v) || null })}
               disabled={!condition.aggregateFieldId}
             >
               <SelectTrigger className="w-full min-w-[160px]">

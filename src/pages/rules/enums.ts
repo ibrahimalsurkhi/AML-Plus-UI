@@ -116,8 +116,8 @@ export const ComparisonOperatorOptions = [
 
 // Rule Type options for RuleBuilderPage
 export const RuleTypeOptions = [
-  { label: 'Transaction Monitoring (TM)', value: 'tm' },
-  { label: 'Transaction Screening (TS)', value: 'ts' },
-  { label: 'Financial Fraud (FF)', value: 'ff' },
-  { label: 'Anti-Concealment (AC)', value: 'ac' },
+  { label: 'Transaction Monitoring (TM)', value: 1 },
+  { label: 'Transaction Screening (TS)', value: 2 },
+  { label: 'Financial Fraud (FF)', value: 3 },
+  { label: 'Anti-Concealment (AC)', value: 4 },
 ]; 
