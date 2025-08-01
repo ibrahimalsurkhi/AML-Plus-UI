@@ -482,14 +482,116 @@ export const transactionTypeService = {
 export interface Rule {
   id?: number;
   name: string;
-  ruleType: string;
+  ruleType: string | number;
   root: any;
+  isActive: boolean;
+  tenantId: number;
+}
+
+export interface RuleListItem {
+  id: number;
+  name: string;
+  ruleType: string | number;
+  isActive: boolean;
+  tenantId: number;
+  ruleConditions: { id: number; condition: string }[];
+}
+
+export interface PaginatedRulesResponse {
+  items: RuleListItem[];
+  pageNumber: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
 }
 
 export const ruleService = {
   createRule: async (data: Omit<Rule, 'id'>): Promise<Rule> => {
     console.log('Posting rule to backend:', data);
     const response = await api.post<Rule>(API_CONFIG.endpoints.rules.create, data);
+    return response.data;
+  },
+  getRules: async (pageNumber: number, pageSize: number): Promise<PaginatedRulesResponse> => {
+    const response = await api.get<PaginatedRulesResponse>(`/Rules`, {
+      params: { PageNumber: pageNumber, PageSize: pageSize },
+    });
+    return response.data;
+  },
+  getRuleById: async (id: number): Promise<RuleListItem> => {
+    const response = await api.get<RuleListItem>(`/Rules/${id}`);
+    return response.data;
+  },
+  activateRule: async (id: number, isActive: boolean): Promise<void> => {
+    await api.put(`/Rules/${id}/status`, isActive, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  },
+}; 
+
+export const accountService = {
+  getAccountsByRecordId: async (recordId: number) => {
+    const response = await api.get(`/Accounts/by-record/${recordId}`);
+    return response.data;
+  },
+  createAccount: async (account: any) => {
+    const response = await api.post('/Accounts', account);
+    return response.data;
+  },
+};
+
+// Transaction interfaces
+export interface Transaction {
+  id?: number;
+  transactionTypeId: number;
+  transactionTypeName?: string;
+  tenantId?: number;
+  transactionStatus: number;
+  transactionID: string;
+  transactionTime: string;
+  transactionAmount: number;
+  transactionPurpose: string;
+  currencyAmount: number;
+  transactionCurrencyId: number;
+  transactionCurrencyName?: string;
+  senderId?: number;
+  senderName?: string;
+  senderNumber?: string;
+  recipientId?: number;
+  recipientName?: string;
+  recipientNumber?: string;
+  created?: string;
+  createdBy?: string;
+}
+
+export interface TransactionCreate {
+  transactionTypeId: number;
+  transactionCurrencyId: number;
+  transactionAmount: number;
+  currencyAmount: number;
+  transactionID: string;
+  transactionTime: string;
+  transactionPurpose: string;
+  transactionStatus: number;
+  senderId?: number;
+  recipientId?: number;
+}
+
+export const transactionService = {
+  createTransaction: async (data: TransactionCreate): Promise<Transaction> => {
+    const response = await api.post<Transaction>('/Transactions', data);
+    return response.data;
+  },
+  getTransactions: async (params: { pageNumber: number; pageSize: number }): Promise<PaginatedResponse<Transaction>> => {
+    const response = await api.get<PaginatedResponse<Transaction>>('/Transactions', { 
+      params: { 
+        Page: params.pageNumber, 
+        PageSize: params.pageSize 
+      } 
+    });
+    return response.data;
+  },
+  getTransactionById: async (id: number): Promise<Transaction> => {
+    const response = await api.get<Transaction>(`/Transactions/${id}`);
     return response.data;
   },
 }; 

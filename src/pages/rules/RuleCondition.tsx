@@ -10,6 +10,8 @@ import {
   TransactionStatusOptions,
   ComparisonOperatorOptions,
   StatusOperatorOptions, // <-- import
+  AggregateFunction,
+  RuleTypeOptions,
 } from './enums';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,6 +21,9 @@ import { Settings, Trash2 } from 'lucide-react';
 import { useRef, useEffect } from 'react';
 import clsx from 'clsx';
 import { KeenIcon } from '@/components';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { format } from 'date-fns';
 
 export interface Condition {
   title: string;
@@ -34,12 +39,15 @@ export interface Condition {
   lastTransactionCount: number | null;
   accountType: number | null;
   jsonValue: string;
+  operator?: string; // Added operator property
 }
 
 interface RuleConditionProps {
   condition: Condition;
   onChange: (condition: Condition) => void;
   onRemove: () => void;
+  conditionIndex: number;
+  readOnly?: boolean;
 }
 
 // Inline MultiSelect component (from SanctionSearchPage)
@@ -203,213 +211,424 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, value, onChange, pla
   );
 };
 
-const RuleCondition: React.FC<RuleConditionProps> = ({ condition, onChange, onRemove }) => {
+function getLabel(options: { label: string; value: any }[], value: any) {
+  const found = options.find(opt => opt.value === value);
+  return found ? found.label : value;
+}
+function getOperatorLabel(value: any, fieldId: any, operatorProp?: any) {
+  // Prefer operatorProp if present
+  if (operatorProp) {
+    if (fieldId === AggregateFieldId.TransactionStatus) {
+      return getLabel(StatusOperatorOptions, operatorProp) || '[Operator]';
+    }
+    if (
+      fieldId === AggregateFieldId.Amount ||
+      fieldId === AggregateFieldId.TransactionCount ||
+      fieldId === AggregateFieldId.TransactionTime ||
+      fieldId === AggregateFieldId.CurrencyAmount
+    ) {
+      return getLabel(ComparisonOperatorOptions, operatorProp) || '[Operator]';
+    }
+  }
+  // Fallback to aggregateFunction for legacy data
+  if (fieldId === AggregateFieldId.TransactionStatus) {
+    return getLabel(StatusOperatorOptions, value) || '[Operator]';
+  }
+  if (
+    fieldId === AggregateFieldId.Amount ||
+    fieldId === AggregateFieldId.TransactionCount ||
+    fieldId === AggregateFieldId.TransactionTime ||
+    fieldId === AggregateFieldId.CurrencyAmount
+  ) {
+    return getLabel(ComparisonOperatorOptions, value) || '[Operator]';
+  }
+  return getLabel(AggregateFunctionOptions, value) || '[Operator]';
+}
+function getDurationTypeLabel(value: any) {
+  return getLabel(DurationTypeOptions, value) || '[Duration Type]';
+}
+function getAccountTypeLabel(value: any) {
+  return getLabel(AccountTypeOptions, value) || '[Account Type]';
+}
+function getFilterByLabel(value: any) {
+  return getLabel(FilterByOptions, value) || '[Filter By]';
+}
+
+const RuleCondition: React.FC<RuleConditionProps> = ({ condition, onChange, onRemove, conditionIndex, readOnly }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [showAggError, setShowAggError] = useState(false);
 
   const handleFieldChange = (field: keyof Condition, value: any) => {
-    onChange({ ...condition, [field]: value });
+    if (readOnly) return;
+    // If user enables aggregation and aggregateFunction is not set, default to Sum
+    if (field === 'isAggregated' && value && !condition.aggregateFunction) {
+      onChange({ ...condition, isAggregated: value, aggregateFunction: AggregateFunction.Sum });
+    } else {
+      onChange({ ...condition, [field]: value });
+    }
+  };
+
+  // Helper for Transaction Time date value
+  const dateValue = condition.jsonValue ? new Date(condition.jsonValue) : undefined;
+
+  // Aggregate function validation
+  const handleAggregateFunctionChange = (v: string) => {
+    if (readOnly) return;
+    setShowAggError(false);
+    handleFieldChange('aggregateFunction', v ? Number(v) : null);
   };
 
   return (
     <div className="border rounded-xl shadow bg-white mb-6">
       {/* Header */}
       <div className="flex items-center justify-between bg-gray-50 px-4 py-2 rounded-t-xl border-b">
-        <span className="font-semibold text-gray-700">Condition 1</span>
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-gray-200"
-            onClick={() => setShowAdvanced(v => !v)}
-            aria-label="Show advanced settings"
-            type="button"
-          >
-            <Settings className={showAdvanced ? 'text-blue-600' : 'text-gray-500'} size={20} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-red-100"
-            onClick={onRemove}
-            aria-label="Remove condition"
-            type="button"
-          >
-            <Trash2 className="text-red-500" size={20} />
-          </Button>
-        </div>
+        <span className="font-semibold text-gray-700">Condition {conditionIndex + 1}</span>
+        {!readOnly && (
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:bg-gray-200"
+              onClick={() => setShowAdvanced(v => !v)}
+              aria-label="Show advanced settings"
+              type="button"
+            >
+              <Settings className={showAdvanced ? 'text-blue-600' : 'text-gray-500'} size={20} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:bg-red-100"
+              onClick={onRemove}
+              aria-label="Remove condition"
+              type="button"
+            >
+              <Trash2 className="text-red-500" size={20} />
+            </Button>
+          </div>
+        )}
       </div>
       {/* Main Fields */}
-      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-        <div>
-          <label className="block text-sm font-medium mb-1 text-gray-700">Field</label>
-          <div className="flex gap-2">
-            <Select
-              value={condition.aggregateFieldId?.toString() || ''}
-              onValueChange={v => {
-                onChange({
-                  ...condition,
-                  aggregateFieldId: v ? Number(v) : null,
-                  jsonValue: '',
-                  aggregateFunction: null, // reset operator when field changes
-                });
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Field" />
-              </SelectTrigger>
-              <SelectContent>
-                {AggregateFieldIdOptions.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {/* Operator dropdown, depends on field */}
-            <Select
-              value={condition.aggregateFunction?.toString() ?? ''}
-              onValueChange={v => onChange({ ...condition, aggregateFunction: Number(v) || null })}
-              disabled={!condition.aggregateFieldId}
-            >
-              <SelectTrigger className="w-full min-w-[160px]">
-                <SelectValue placeholder="Operator" />
-              </SelectTrigger>
-              <SelectContent>
-                {condition.aggregateFieldId === AggregateFieldId.TransactionStatus
-                  ? StatusOperatorOptions.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))
-                  : (condition.aggregateFieldId === AggregateFieldId.Amount ||
-                     condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
-                     condition.aggregateFieldId === AggregateFieldId.TransactionTime ||
-                     condition.aggregateFieldId === AggregateFieldId.CurrencyAmount
-                    )
-                    ? ComparisonOperatorOptions.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))
-                    : null
-                }
-              </SelectContent>
-            </Select>
+      {readOnly ? (
+        <div className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Field</div>
+              <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                {getLabel(AggregateFieldIdOptions, condition.aggregateFieldId)}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Operator</div>
+              <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                {getOperatorLabel(condition.aggregateFunction, condition.aggregateFieldId, condition.operator)}
+              </div>
+            </div>
+            {condition.isAggregated && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Aggregate Function</div>
+                <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                  {getLabel(AggregateFunctionOptions, condition.aggregateFunction)}
+                </div>
+              </div>
+            )}
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Value</div>
+              <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                {condition.jsonValue}
+              </div>
+            </div>
+            {condition.filterBy && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Filter By</div>
+                <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                  {getFilterByLabel(condition.filterBy)}
+                </div>
+              </div>
+            )}
+            {condition.duration && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Duration</div>
+                <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                  {condition.duration}
+                </div>
+              </div>
+            )}
+            {condition.durationType && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Duration Type</div>
+                <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                  {getDurationTypeLabel(condition.durationType)}
+                </div>
+              </div>
+            )}
+            {condition.lastTransactionCount && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Last Transaction Count</div>
+                <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                  {condition.lastTransactionCount}
+                </div>
+              </div>
+            )}
+            {condition.accountType && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Account Type</div>
+                <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                  {getAccountTypeLabel(condition.accountType)}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1 text-gray-700">Value</label>
-          {condition.aggregateFieldId === AggregateFieldId.TransactionStatus ? (
-            <MultiSelect
-              options={TransactionStatusOptions}
-              value={(() => {
-                try {
-                  return JSON.parse(condition.jsonValue || '[]').map(String);
-                } catch {
-                  return [];
-                }
-              })()}
-              onChange={selected => {
-                handleFieldChange('jsonValue', JSON.stringify(selected.map(Number)));
-              }}
-              placeholder="Select status(es)"
-            />
-          ) : (
-            <Input
-              value={condition.jsonValue}
-              onChange={e => handleFieldChange('jsonValue', e.target.value)}
-              placeholder="Value"
-              className="w-full"
-            />
-          )}
-        </div>
-      </div>
-      {/* Advanced Fields (collapsible) */}
-      <div
-        className={`transition-all duration-300 overflow-hidden ${showAdvanced ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'} bg-gray-50 border-t rounded-b-xl`}
-      >
-        <div className="p-0">
-          <div className="border rounded-lg bg-gray-50 p-6 mt-4">
-            <div className="flex items-center mb-6 gap-2">
-              <Switch
-                checked={!!condition.isAggregated}
-                onCheckedChange={v => handleFieldChange('isAggregated', v)}
-                id="use-aggregation"
+      ) : (
+        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Field</label>
+            {readOnly ? (
+              <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                {condition.aggregateFieldId}
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Select
+                  value={condition.aggregateFieldId?.toString() || ''}
+                  onValueChange={v => {
+                    onChange({
+                      ...condition,
+                      aggregateFieldId: v ? Number(v) : null,
+                      jsonValue: '',
+                      aggregateFunction: null, // reset operator when field changes
+                    });
+                  }}
+                  disabled={readOnly}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Field" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AggregateFieldIdOptions.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* Operator dropdown, depends on field */}
+                <Select
+                  value={
+                    condition.operator ?? condition.aggregateFunction?.toString() ?? ''
+                  }
+                  onValueChange={v => {
+                    // For comparison/status operators, store as 'operator'; for aggregate functions, store as number
+                    if (
+                      condition.aggregateFieldId === AggregateFieldId.Amount ||
+                      condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
+                      condition.aggregateFieldId === AggregateFieldId.TransactionTime ||
+                      condition.aggregateFieldId === AggregateFieldId.CurrencyAmount
+                    ) {
+                      onChange({ ...condition, operator: v, aggregateFunction: null });
+                    } else if (condition.aggregateFieldId === AggregateFieldId.TransactionStatus) {
+                      onChange({ ...condition, operator: v, aggregateFunction: null });
+                    } else {
+                      onChange({ ...condition, aggregateFunction: v ? Number(v) : null, operator: undefined });
+                    }
+                  }}
+                  disabled={!condition.aggregateFieldId || condition.isAggregated || readOnly}
+                >
+                  <SelectTrigger className="w-full min-w-[160px]">
+                    <SelectValue placeholder="Operator" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {condition.aggregateFieldId === AggregateFieldId.TransactionStatus
+                      ? StatusOperatorOptions.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))
+                      : (condition.aggregateFieldId === AggregateFieldId.Amount ||
+                         condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
+                         condition.aggregateFieldId === AggregateFieldId.TransactionTime ||
+                         condition.aggregateFieldId === AggregateFieldId.CurrencyAmount
+                        )
+                        ? ComparisonOperatorOptions.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))
+                        : null
+                    }
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Value</label>
+            {readOnly ? (
+              <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                {condition.jsonValue}
+              </div>
+            ) : condition.aggregateFieldId === AggregateFieldId.TransactionStatus ? (
+              <MultiSelect
+                options={TransactionStatusOptions}
+                value={(() => {
+                  try {
+                    return JSON.parse(condition.jsonValue || '[]').map(String);
+                  } catch {
+                    return [];
+                  }
+                })()}
+                onChange={selected => {
+                  handleFieldChange('jsonValue', JSON.stringify(selected.map(Number)));
+                }}
+                placeholder="Select status(es)"
               />
-              <label htmlFor="use-aggregation" className="font-semibold text-gray-800">
-                Use aggregation
-              </label>
-              <span className="text-gray-400 text-xs ml-2" title="Enable to use advanced aggregation options.">
-                <KeenIcon icon="info" />
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">Account Type</label>
-                <Select
-                  value={condition.accountType !== null && condition.accountType !== undefined ? condition.accountType.toString() : ''}
-                  onValueChange={v => handleFieldChange('accountType', v ? Number(v) : null)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Account type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AccountTypeOptions.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            ) : condition.aggregateFieldId === AggregateFieldId.TransactionTime ? (
+              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Input
+                    value={dateValue ? format(dateValue, 'yyyy-MM-dd') : ''}
+                    onClick={() => setDatePickerOpen(true)}
+                    readOnly
+                    placeholder="Select date"
+                    className="w-full cursor-pointer"
+                  />
+                </PopoverTrigger>
+                <PopoverContent align="start" className="p-0 w-auto bg-white">
+                  <Calendar
+                    mode="single"
+                    selected={dateValue}
+                    onSelect={date => {
+                      setDatePickerOpen(false);
+                      handleFieldChange('jsonValue', date ? date.toISOString() : '');
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Input
+                value={condition.jsonValue}
+                onChange={e => handleFieldChange('jsonValue', e.target.value)}
+                placeholder="Value"
+                className="w-full"
+              />
+            )}
+          </div>
+        </div>
+      )}
+      {/* Advanced Fields (collapsible) */}
+      {!readOnly && (
+        <div
+          className={`transition-all duration-300 overflow-hidden ${showAdvanced ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'} bg-gray-50 border-t rounded-b-xl`}
+        >
+          <div className="p-0">
+            <div className="border rounded-lg bg-gray-50 p-6 mt-4">
+              <div className="flex items-center mb-6 gap-2">
+                {condition.aggregateFieldId !== AggregateFieldId.TransactionStatus && (
+                  <>
+                    <Switch
+                      checked={!!condition.isAggregated}
+                      onCheckedChange={v => handleFieldChange('isAggregated', v)}
+                      id="use-aggregation"
+                    />
+                    <label htmlFor="use-aggregation" className="font-semibold text-gray-800">
+                      Use aggregation
+                    </label>
+                    <span className="text-gray-400 text-xs ml-2" title="Enable to use advanced aggregation options.">
+                      <KeenIcon icon="info" />
+                    </span>
+                  </>
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">Filter By</label>
-                <Select
-                  value={condition.filterBy !== null && condition.filterBy !== undefined ? condition.filterBy.toString() : ''}
-                  onValueChange={v => handleFieldChange('filterBy', v ? Number(v) : null)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Filter by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FilterByOptions.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Only show Duration & Type and Last Transaction Count if Use aggregation is enabled */}
-              {condition.isAggregated && (
-                <div className="md:col-span-2 flex gap-6">
-                  {/* Duration & Type */}
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium mb-1 text-gray-700">Duration & Type</label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        value={condition.duration ?? ''}
-                        onChange={e => {
-                          const durationVal = e.target.value ? Number(e.target.value) : null;
-                          if (durationVal && !condition.durationType) handleFieldChange('durationType', 1);
-                          if (!durationVal) handleFieldChange('durationType', null);
-                          handleFieldChange('duration', durationVal);
-                        }}
-                        placeholder="Duration"
-                        className="w-24"
-                        min={1}
-                        disabled={!!condition.lastTransactionCount}
-                      />
-                      <Select
-                        value={condition.durationType !== null && condition.durationType !== undefined ? condition.durationType.toString() : ''}
-                        onValueChange={v => handleFieldChange('durationType', v ? Number(v) : null)}
-                        disabled={!!condition.lastTransactionCount}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue placeholder="Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DurationTypeOptions.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+              {condition.aggregateFieldId !== AggregateFieldId.TransactionStatus && condition.isAggregated && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Aggregate Function <span className="text-red-500">*</span></label>
+                  <Select
+                    value={condition.aggregateFunction?.toString() ?? ''}
+                    onValueChange={handleAggregateFunctionChange}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select aggregate function" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AggregateFunctionOptions.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {showAggError && (
+                    <div className="text-xs text-red-500 mt-1">Aggregate function is required.</div>
+                  )}
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Account Type</label>
+                  <Select
+                    value={condition.accountType !== null && condition.accountType !== undefined ? condition.accountType.toString() : ''}
+                    onValueChange={v => handleFieldChange('accountType', v ? Number(v) : null)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Account type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AccountTypeOptions.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Filter By</label>
+                  <Select
+                    value={condition.filterBy !== null && condition.filterBy !== undefined ? condition.filterBy.toString() : ''}
+                    onValueChange={v => handleFieldChange('filterBy', v ? Number(v) : null)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Filter by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FilterByOptions.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* Only show Duration & Type and Last Transaction Count if Use aggregation is enabled */}
+                {condition.isAggregated && (
+                  <div className="md:col-span-2 flex gap-6 w-full">
+                    {/* Duration & Type */}
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Duration & Type</label>
+                      <div className="flex gap-3 w-full">
+                        <Input
+                          type="number"
+                          value={condition.duration ?? ''}
+                          onChange={e => {
+                            const durationVal = e.target.value ? Number(e.target.value) : null;
+                            if (durationVal && !condition.durationType) handleFieldChange('durationType', 1);
+                            if (!durationVal) handleFieldChange('durationType', null);
+                            handleFieldChange('duration', durationVal);
+                          }}
+                          placeholder="Duration"
+                          className="w-1/2"
+                          min={1}
+                          disabled={!!condition.lastTransactionCount}
+                        />
+                        <Select
+                          value={condition.durationType !== null && condition.durationType !== undefined ? condition.durationType.toString() : ''}
+                          onValueChange={v => handleFieldChange('durationType', v ? Number(v) : null)}
+                          disabled={!!condition.lastTransactionCount}
+                        >
+                          <SelectTrigger className="w-1/2">
+                            <SelectValue placeholder="Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DurationTypeOptions.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">Set both duration and type, or use transaction count below.</p>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">Set both duration and type, or use transaction count below.</p>
-                  </div>
-                  {/* Last Transaction Count */}
-                  {!condition.duration && (
+                    {/* Last Transaction Count */}
                     <div className="flex-1">
                       <label className="block text-sm font-medium mb-1 text-gray-700">Last Transaction Count</label>
                       <Input
@@ -422,13 +641,13 @@ const RuleCondition: React.FC<RuleConditionProps> = ({ condition, onChange, onRe
                       />
                       <p className="text-xs text-gray-400 mt-1">Or specify the number of last transactions to aggregate.</p>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

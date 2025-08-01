@@ -99,6 +99,11 @@ import TransactionTypesPage from '@/pages/transaction-types';
 import NewTransactionTypePage from '@/pages/transaction-types/NewTransactionTypePage';
 import TransactionTypeDetailsPage from '@/pages/transaction-types/TransactionTypeDetailsPage';
 import RuleBuilderPage from '@/pages/rules/RuleBuilderPage';
+import RuleListPage from '@/pages/rules/RuleListPage';
+import RuleDetailPage from '@/pages/rules/RuleDetailPage';
+import CreateTransactionPage from '@/pages/transactions/CreateTransactionPage';
+import TransactionsPage from '@/pages/transactions';
+import TransactionDetailsPage from '@/pages/transactions/TransactionDetailsPage';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -217,7 +222,12 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/transaction-types" element={<TransactionTypesPage />} />
           <Route path="/transaction-types/new" element={<NewTransactionTypePage />} />
           <Route path="/transaction-types/:id" element={<TransactionTypeDetailsPage />} />
-          <Route path="/rules" element={<RuleBuilderPage />} />
+          <Route path="/rules" element={<RuleListPage />} />
+          <Route path="/rules/new" element={<RuleBuilderPage />} />
+          <Route path="/rules/:id" element={<RuleDetailPage />} />
+          <Route path="/transactions/new" element={<CreateTransactionPage />} />
+          <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/transactions/:id" element={<TransactionDetailsPage />} />
           {/* TODO: Add create and edit/detail pages when implemented */}
         </Route>
       </Route>

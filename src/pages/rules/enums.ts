@@ -120,4 +120,14 @@ export const RuleTypeOptions = [
   { label: 'Transaction Screening (TS)', value: 2 },
   { label: 'Financial Fraud (FF)', value: 3 },
   { label: 'Anti-Concealment (AC)', value: 4 },
+];
+
+// ApplyTo enum
+export enum ApplyTo {
+  Sender = 1,
+  Receiver = 2,
+}
+export const ApplyToOptions = [
+  { label: 'Sender', value: ApplyTo.Sender },
+  { label: 'Receiver', value: ApplyTo.Receiver },
 ]; 

@@ -13,8 +13,10 @@ import {
   StatusOperatorOptions,
   TransactionStatusOptions,
   AggregateFieldId,
-  RuleTypeOptions, // <-- import
+  RuleTypeOptions,
   FilterByOptions,
+  ApplyTo,
+  ApplyToOptions,
 } from './enums';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -24,6 +26,8 @@ import {
   ToolbarActions,
 } from '@/partials/toolbar';
 import { ruleService } from '@/services/api';
+import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 const defaultRootGroup: RuleGroupType = {
   operator: OperatorId.And,
@@ -33,6 +37,7 @@ const defaultRootGroup: RuleGroupType = {
 const initialRule = {
   name: '',
   ruleType: 'simple', // Now a string: 'simple' or 'advanced'
+  applyTo: ApplyTo.Sender, // Default to Sender
   root: defaultRootGroup,
 };
 
@@ -76,23 +81,33 @@ function getRulePreview(group: RuleGroupType): string {
         const cond = child.condition;
         // Step-by-step preview building
         const metric = getLabel(AggregateFieldIdOptions, cond.aggregateFieldId) || '[Metric]';
-        const operator = cond.aggregateFunction ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId) : '[Operator]';
+        const operator = cond.aggregateFunction && !cond.isAggregated ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId) : '[Operator]';
+        let aggregateFn = '';
+        if (cond.isAggregated && cond.aggregateFunction) {
+          aggregateFn = getLabel(AggregateFunctionOptions, cond.aggregateFunction) || '[Aggregate Function]';
+        }
         let value = '[Value]';
         if (cond.jsonValue) {
           try {
-            const parsed = JSON.parse(cond.jsonValue);
-            if (Array.isArray(parsed)) {
-              // For Transaction Status, show all selected labels in brackets
-              if (cond.aggregateFieldId === AggregateFieldId.TransactionStatus) {
-                const labels = parsed
-                  .map((v: number) => getLabel(TransactionStatusOptions, v) || v)
-                  .join(', ');
-                value = labels ? `[${labels}]` : '[Value]';
-              } else {
-                value = parsed.length > 1 ? `[${parsed.join(', ')}]` : parsed.join(', ');
-              }
+            if (cond.aggregateFieldId === AggregateFieldId.TransactionTime) {
+              // Format as date
+              const date = new Date(cond.jsonValue);
+              value = isNaN(date.getTime()) ? '[Value]' : format(date, 'yyyy-MM-dd');
             } else {
-              value = parsed;
+              const parsed = JSON.parse(cond.jsonValue);
+              if (Array.isArray(parsed)) {
+                // For Transaction Status, show all selected labels in brackets
+                if (cond.aggregateFieldId === AggregateFieldId.TransactionStatus) {
+                  const labels = parsed
+                    .map((v: number) => getLabel(TransactionStatusOptions, v) || v)
+                    .join(', ');
+                  value = labels ? `[${labels}]` : '[Value]';
+                } else {
+                  value = parsed.length > 1 ? `[${parsed.join(', ')}]` : parsed.join(', ');
+                }
+              } else {
+                value = parsed;
+              }
             }
           } catch {
             value = cond.jsonValue;
@@ -104,7 +119,8 @@ function getRulePreview(group: RuleGroupType): string {
         // Build a natural language preview
         let preview = '';
         preview += metric !== '[Metric]' ? metric : '[Metric]';
-        preview += operator !== '[Operator]' ? ` ${operator}` : ' [Operator]';
+        preview += operator !== '[Operator]' ? ` ${operator}` : (cond.isAggregated ? '' : ' [Operator]');
+        preview += aggregateFn ? ` ${aggregateFn}` : (cond.isAggregated ? ' [Aggregate Function]' : '');
         preview += value !== '[Value]' ? ` ${value}` : ' [Value]';
         if (cond.filterBy) {
           const filterByLabel = getLabel(FilterByOptions, cond.filterBy);
@@ -135,6 +151,7 @@ function getRulePreview(group: RuleGroupType): string {
 
 const RuleBuilderPage = () => {
   const [rule, setRule] = useState(initialRule);
+  const navigate = useNavigate();
 
   const handleResetRule = () => {
     setRule(initialRule);
@@ -152,13 +169,25 @@ const RuleBuilderPage = () => {
     setRule(prev => ({ ...prev, ruleType: value }));
   };
 
+  const handleApplyToChange = (value: string) => {
+    setRule(prev => ({ ...prev, applyTo: Number(value) }));
+  };
+
   // TODO: Implement save handler to POST rule to backend
   const [saving, setSaving] = useState(false);
   const handleSaveRule = async () => {
     setSaving(true);
     try {
-      await ruleService.createRule(rule);
-      // Optionally show a toast or reset the form here
+      // Ensure ruleType and applyTo are sent as integers and required fields are present
+      const ruleToSend = {
+        ...rule,
+        ruleType: Number(rule.ruleType),
+        applyTo: Number(rule.applyTo),
+        isActive: true, // default to active
+        tenantId: 1,    // default tenant, adjust as needed
+      };
+      await ruleService.createRule(ruleToSend);
+      navigate('/rules'); // Redirect to rule list page
     } catch (err) {
       console.error('Failed to save rule:', err);
     } finally {
@@ -211,6 +240,19 @@ const RuleBuilderPage = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {RuleTypeOptions.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1 flex flex-col">
+                <label className="block font-semibold mb-2 text-gray-700">Apply To</label>
+                <Select value={rule.applyTo.toString()} onValueChange={handleApplyToChange}>
+                  <SelectTrigger className="h-11 px-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full">
+                    <SelectValue placeholder="Select apply to" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ApplyToOptions.map(opt => (
                       <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
