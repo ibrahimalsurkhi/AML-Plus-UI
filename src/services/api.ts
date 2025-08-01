@@ -576,9 +576,37 @@ export interface TransactionCreate {
   recipientId?: number;
 }
 
+export enum TransactionProcessingStatus {
+  Pending = 0,
+  Processing = 1,
+  Completed = 2,
+  Failed = 3
+}
+
+export interface RuleMatch {
+  ruleId: number;
+  ruleName: string;
+  isMatched: boolean;
+  executedAt: string;
+}
+
+export interface TransactionProcessingStatusResponse {
+  transactionId: number;
+  processingStatus: TransactionProcessingStatus;
+  transactionStatus: number;
+  hasRuleMatches: boolean;
+  matchedRulesCount: number;
+  totalRulesEvaluated: number;
+  processingStartedAt: string | null;
+  processingCompletedAt: string | null;
+  ruleMatches: RuleMatch[];
+}
+
 export const transactionService = {
-  createTransaction: async (data: TransactionCreate): Promise<Transaction> => {
-    const response = await api.post<Transaction>('/Transactions', data);
+  createTransaction: async (data: TransactionCreate): Promise<number> => {
+    console.log('Creating transaction with data:', data);
+    const response = await api.post< number>('/Transactions', data);
+    console.log('Transaction creation response:', response.data);
     return response.data;
   },
   getTransactions: async (params: { pageNumber: number; pageSize: number }): Promise<PaginatedResponse<Transaction>> => {
@@ -592,6 +620,10 @@ export const transactionService = {
   },
   getTransactionById: async (id: number): Promise<Transaction> => {
     const response = await api.get<Transaction>(`/Transactions/${id}`);
+    return response.data;
+  },
+  getTransactionProcessingStatus: async (id: number): Promise<TransactionProcessingStatusResponse> => {
+    const response = await api.get<TransactionProcessingStatusResponse>(`/Transactions/${id}/processing-status`);
     return response.data;
   },
 }; 

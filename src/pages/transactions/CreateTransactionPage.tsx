@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from "@/lib/utils";
 import { HelpCircle } from "lucide-react";
 
+
 // Define field option type
 interface FieldOption {
   id?: number;
@@ -90,6 +91,8 @@ const CreateTransactionPage = () => {
   const [templateFieldsLoading, setTemplateFieldsLoading] = useState(false);
   const [fieldResponses, setFieldResponses] = useState<any[]>([]);
 
+
+
   useEffect(() => {
     const fetchTypes = async () => {
       try {
@@ -112,7 +115,7 @@ const CreateTransactionPage = () => {
         const fieldsWithOptions = await Promise.all(
           fields.map(async (field) => {
             const extendedField: ExtendedTemplateField = { ...field };
-            
+
             // Fetch options for option-based fields
             if (
               field.fieldType === FieldType.Dropdown ||
@@ -126,13 +129,13 @@ const CreateTransactionPage = () => {
                 value: opt.label // Add value property while preserving all required fields
               }));
             }
-            
+
             // Fetch ranges for number fields
             if (field.fieldType === FieldType.Number) {
               const ranges = await templateService.getTemplateScoreCriteriaRanges('15', field.id!);
               extendedField.ranges = ranges;
             }
-            
+
             return extendedField;
           })
         );
@@ -250,18 +253,18 @@ const CreateTransactionPage = () => {
     if (!form.transactionTime) newErrors.transactionTime = 'Time is required';
     if (!form.transactionPurpose) newErrors.transactionPurpose = 'Purpose is required';
     if (!form.transactionStatus) newErrors.transactionStatus = 'Status is required';
-    
+
     // Debug logging
     console.log('Validation - showSender:', showSender, 'form.senderId:', form.senderId, 'selectedSenderAccount:', selectedSenderAccount);
     console.log('Validation - showRecipient:', showRecipient, 'form.recipientId:', form.recipientId, 'selectedRecipientAccount:', selectedRecipientAccount);
-    
+
     if (showSender && !form.senderId && !selectedSenderAccount) {
       newErrors.senderId = 'Sender account is required';
     }
     if (showRecipient && !form.recipientId && !selectedRecipientAccount) {
       newErrors.recipientId = 'Recipient account is required';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -354,7 +357,7 @@ const CreateTransactionPage = () => {
         const res = await accountService.createAccount(recipientAccount);
         recipientId = String(res.id);
       }
-      
+
       // Create the transaction
       const transactionData = {
         transactionTypeId: Number(form.transactionTypeId),
@@ -369,13 +372,73 @@ const CreateTransactionPage = () => {
         recipientId: recipientId ? Number(recipientId) : undefined,
         fieldResponses: fieldResponses // Include the field responses
       };
-      
+
       const createdTransaction = await transactionService.createTransaction(transactionData);
-      console.log('Transaction created:', createdTransaction);
+      console.log('Transaction creation response:', createdTransaction);
+
+      // Get the transaction ID and check processing status
+      // Handle both object response and direct ID response
+      let transactionId: number;
+
+
+      // API returned just the ID number
+      transactionId = createdTransaction;
+
+
+      console.log('Extracted transaction ID:', transactionId);
+
+      // Validate that we have a valid transaction ID
+      if (!transactionId || transactionId <= 0) {
+        console.error('Invalid transaction ID received:', transactionId);
+        setSuccess(true);
+        toast({ title: 'Success', description: 'Transaction created successfully!' });
+        return;
+      }
+
+            setSuccess(true);
+      toast({ title: 'Success', description: `Transaction #${transactionId} created successfully!` });
       
-      setSuccess(true);
-      toast({ title: 'Success', description: 'Transaction created successfully' });
-      setTimeout(() => navigate('/transactions'), 1200);
+      // Check processing status after a short delay
+      setTimeout(async () => {
+        try {
+          console.log('Checking processing status for transaction ID:', transactionId);
+          const statusResponse = await transactionService.getTransactionProcessingStatus(transactionId);
+          
+          if (statusResponse.hasRuleMatches && statusResponse.matchedRulesCount > 0) {
+            const matchedRules = statusResponse.ruleMatches.filter(rule => rule.isMatched);
+            const ruleNames = matchedRules.map(rule => rule.ruleName).join(', ');
+            
+            toast({
+              title: '⚠️ Rule Matches Detected',
+              description: `${statusResponse.matchedRulesCount} rule(s) matched: ${ruleNames}`,
+              variant: 'destructive'
+            });
+          } else {
+            toast({
+              title: '✅ Processing Complete',
+              description: `Transaction #${transactionId} processed successfully with no rule matches.`,
+            });
+          }
+          
+          // Redirect after status check is completed (success or error)
+          setTimeout(() => {
+            navigate('/transactions');
+          }, 2000);
+          
+        } catch (error) {
+          console.error('Error checking processing status:', error);
+          toast({
+            title: 'Processing Status Error',
+            description: 'Unable to check transaction processing status',
+            variant: 'destructive'
+          });
+          
+          // Redirect even if status check fails
+          setTimeout(() => {
+            navigate('/transactions');
+          }, 2000);
+        }
+      }, 2000); // Check status after 2 seconds
     } catch (error) {
       console.error('Error creating transaction:', error);
       toast({ title: 'Error', description: 'Failed to create transaction', variant: 'destructive' });
@@ -395,7 +458,7 @@ const CreateTransactionPage = () => {
       <div className="flex items-center gap-2 mb-6">
         {steps.map((label, idx) => (
           <React.Fragment key={label as string}>
-            <div className={`flex items-center gap-1 ${step === idx + 1 ? 'text-primary' : 'text-muted-foreground'}`}> 
+            <div className={`flex items-center gap-1 ${step === idx + 1 ? 'text-primary' : 'text-muted-foreground'}`}>
               <KeenIcon icon={step === idx + 1 ? 'check-circle' : 'circle'} style="solid" className="text-lg" />
               <span className="text-xs font-medium">{label}</span>
             </div>
@@ -424,7 +487,7 @@ const CreateTransactionPage = () => {
   // Add helper function to get min and max values from ranges
   const getRangeBounds = (ranges: ScoreCriteriaRange[] | undefined) => {
     if (!ranges || ranges.length === 0) return { min: undefined, max: undefined };
-    
+
     return ranges.reduce((acc, range) => ({
       min: acc.min === undefined ? range.minValue : Math.min(acc.min, range.minValue),
       max: acc.max === undefined ? range.maxValue : Math.max(acc.max, range.maxValue)
@@ -446,7 +509,7 @@ const CreateTransactionPage = () => {
     } else if (field.maxLength) {
       helpTexts.push(`Maximum length: ${field.maxLength} characters`);
     }
-    
+
     // For number fields with ranges, show the overall range
     if (field.fieldType === FieldType.Number && field.ranges) {
       const { min, max } = getRangeBounds(field.ranges);
@@ -467,7 +530,7 @@ const CreateTransactionPage = () => {
         helpTexts.push(`Maximum value: ${field.maxValue}`);
       }
     }
-    
+
     if (field.minDate && field.maxDate) {
       helpTexts.push(`Date range: ${field.minDate} to ${field.maxDate}`);
     } else if (field.minDate) {
@@ -518,12 +581,12 @@ const CreateTransactionPage = () => {
         case FieldType.Number:
           const numericValue = value !== undefined && value !== '' ? Number(value) : null;
           response.valueNumber = numericValue;
-          
+
           // Find the matching range based on the value
           const field = templateFields.find(f => f.id === fieldId);
-          const matchingRange = field?.ranges?.find(range => 
-            numericValue !== null && 
-            numericValue >= range.minValue && 
+          const matchingRange = field?.ranges?.find(range =>
+            numericValue !== null &&
+            numericValue >= range.minValue &&
             numericValue <= range.maxValue
           );
 
@@ -543,10 +606,10 @@ const CreateTransactionPage = () => {
           // For all option-based fields, find the selected option
           const fieldWithOptions = templateFields.find(f => f.id === fieldId);
           let selectedOption;
-          
+
           if (fieldType === FieldType.Checkbox) {
             // For checkbox fields, find the appropriate "Checked" or "Unchecked" option
-            selectedOption = fieldWithOptions?.options?.find(opt => 
+            selectedOption = fieldWithOptions?.options?.find(opt =>
               opt.label.toLowerCase() === (value === true ? "checked" : "unchecked")
             );
             // Fallback to first option if "Checked"/"Unchecked" not found
@@ -579,12 +642,12 @@ const CreateTransactionPage = () => {
   const renderDynamicField = (field: ExtendedTemplateField) => {
     const fieldName = `field_${field.id}`;
     const currentResponse = fieldResponses.find(fr => fr.fieldId === field.id);
-    const fieldValue = currentResponse ? 
+    const fieldValue = currentResponse ?
       (field.fieldType === FieldType.Number ? currentResponse.valueNumber :
-       field.fieldType === FieldType.Date ? currentResponse.valueDate :
-       field.fieldType === FieldType.Checkbox ? (currentResponse.optionId === currentResponse.optionId) :
-       field.fieldType === FieldType.Dropdown || field.fieldType === FieldType.Radio ? currentResponse.optionId :
-       currentResponse.valueText) : '';
+        field.fieldType === FieldType.Date ? currentResponse.valueDate :
+          field.fieldType === FieldType.Checkbox ? (currentResponse.optionId === currentResponse.optionId) :
+            field.fieldType === FieldType.Dropdown || field.fieldType === FieldType.Radio ? currentResponse.optionId :
+              currentResponse.valueText) : '';
 
     const fieldWrapperClasses = cn(
       "space-y-2",
@@ -726,7 +789,7 @@ const CreateTransactionPage = () => {
                       }}
                       className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
                     />
-                    <Label 
+                    <Label
                       htmlFor={`${fieldName}_${option.id}`}
                       className="text-sm font-normal"
                     >
@@ -1289,7 +1352,7 @@ const CreateTransactionPage = () => {
                   {errors.recipientId && <div className="text-xs text-destructive mt-1">{errors.recipientId}</div>}
                 </div>
               )}
-              
+
               {/* Template Fields Section */}
               {templateFields.length > 0 && (
                 <div className="mt-8">
@@ -1302,7 +1365,7 @@ const CreateTransactionPage = () => {
                       Additional information based on template requirements. Required fields are marked with <span className="text-primary">*</span>.
                     </p>
                   </div>
-                  
+
                   {templateFieldsLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -1351,6 +1414,7 @@ const CreateTransactionPage = () => {
               </div>
             </form>
           )}
+
         </CardContent>
       </Card>
     </Container>
