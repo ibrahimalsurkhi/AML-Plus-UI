@@ -281,9 +281,9 @@ export const recordService = {
     const response = await api.get<PaginatedResponse<Record>>(endpoint, { params: queryParams });
     return response.data;
   },
-  getRecordById: async (templateId: number, recordId: number): Promise<Record> => {
+  getRecordById: async (recordId: number): Promise<Record> => {
     const response = await api.get<Record>(
-      `${API_CONFIG.endpoints.templates.list}/${templateId}/records/${recordId}`
+      `${API_CONFIG.endpoints.templates.list}/records/${recordId}`
     );
     return response.data;
   },
@@ -664,7 +664,7 @@ export interface RuleDetails {
 export interface RuleCondition {
   id: number;
   field: string;
-  operator: string;
+  ComparisonOperator: number; // Changed property name to match backend expectation
   value: string;
   logicalOperator?: string;
 }
@@ -720,7 +720,7 @@ export interface TransactionCaseDetails {
 export const transactionService = {
   createTransaction: async (data: TransactionCreate): Promise<number> => {
     console.log('Creating transaction with data:', data);
-    const response = await api.post< number>('/Transactions', data);
+    const response = await api.post<number>(API_CONFIG.endpoints.transactions.create, data);
     console.log('Transaction creation response:', response.data);
     return response.data;
   },

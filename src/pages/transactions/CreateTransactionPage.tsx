@@ -218,9 +218,11 @@ const CreateTransactionPage = () => {
 
   // Fetch recipient records for dialog
   const fetchRecipientRecords = async () => {
+    console.log('Fetching recipient records...');
     setRecipientRecordsLoading(true);
     try {
       const res = await recordService.getRecords({ pageNumber: 1, pageSize: 10 });
+      console.log('Recipient records fetched:', res.items);
       setRecipientRecords(res.items);
     } catch {
       toast({ title: 'Error', description: 'Failed to fetch customers', variant: 'destructive' });
@@ -232,12 +234,17 @@ const CreateTransactionPage = () => {
   // Fetch accounts for selected recipient record
   useEffect(() => {
     if (selectedRecipientRecord) {
+      console.log('Selected recipient record:', selectedRecipientRecord);
       setRecipientAccountsLoading(true);
       accountService.getAccountsByRecordId(selectedRecipientRecord.id)
-        .then((accounts) => setRecipientAccounts(accounts))
+        .then((accounts) => {
+          console.log('Recipient accounts loaded:', accounts);
+          setRecipientAccounts(accounts);
+        })
         .catch(() => toast({ title: 'Error', description: 'Failed to fetch accounts', variant: 'destructive' }))
         .finally(() => setRecipientAccountsLoading(false));
     } else {
+      console.log('No recipient record selected, clearing accounts');
       setRecipientAccounts([]);
       setSelectedRecipientAccount(null);
     }
@@ -257,6 +264,7 @@ const CreateTransactionPage = () => {
     // Debug logging
     console.log('Validation - showSender:', showSender, 'form.senderId:', form.senderId, 'selectedSenderAccount:', selectedSenderAccount);
     console.log('Validation - showRecipient:', showRecipient, 'form.recipientId:', form.recipientId, 'selectedRecipientAccount:', selectedRecipientAccount);
+    console.log('Form data for validation:', form);
 
     if (showSender && !form.senderId && !selectedSenderAccount) {
       newErrors.senderId = 'Sender account is required';
@@ -265,6 +273,7 @@ const CreateTransactionPage = () => {
       newErrors.recipientId = 'Recipient account is required';
     }
 
+    console.log('Validation errors:', newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -342,20 +351,65 @@ const CreateTransactionPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    console.log('Form submission started');
+    console.log('Current form state:', form);
+    console.log('Selected sender account:', selectedSenderAccount);
+    console.log('Selected recipient account:', selectedRecipientAccount);
+    console.log('Sender account object:', senderAccount);
+    console.log('Recipient account object:', recipientAccount);
+    console.log('Recipient dialog open state:', recipientDialogOpen);
+    console.log('Recipient accounts list:', recipientAccounts);
+    
+    if (!validate()) {
+      console.log('Validation failed, returning early');
+      return;
+    }
+    console.log('Validation passed, proceeding with transaction creation');
     setLoading(true);
     try {
-      let senderId = form.senderId;
-      let recipientId = form.recipientId;
+      let senderId = form.senderId || (selectedSenderAccount?.id ? String(selectedSenderAccount.id) : undefined);
+      let recipientId = form.recipientId || (selectedRecipientAccount?.id ? String(selectedRecipientAccount.id) : undefined);
+      
+      console.log('Using senderId:', senderId, 'from selectedSenderAccount:', selectedSenderAccount?.id);
+      console.log('Using recipientId:', recipientId, 'from selectedRecipientAccount:', selectedRecipientAccount?.id);
+      
       // Create sender account if required and not already created
       if (showSender && !senderId) {
-        const res = await accountService.createAccount(senderAccount);
-        senderId = String(res.id);
+        console.log('Creating sender account...');
+        console.log('Sender account data:', senderAccount);
+        try {
+          const res = await accountService.createAccount(senderAccount);
+          console.log('Sender account created successfully:', res);
+          senderId = String(res.id);
+        } catch (error: any) {
+          console.error('Error creating sender account:', error);
+          console.error('Sender account error details:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            statusText: error.response?.statusText
+          });
+          throw error;
+        }
       }
       // Create recipient account if required and not already created
       if (showRecipient && !recipientId) {
-        const res = await accountService.createAccount(recipientAccount);
-        recipientId = String(res.id);
+        console.log('Creating recipient account...');
+        console.log('Recipient account data:', recipientAccount);
+        try {
+          const res = await accountService.createAccount(recipientAccount);
+          console.log('Recipient account created successfully:', res);
+          recipientId = String(res.id);
+        } catch (error: any) {
+          console.error('Error creating recipient account:', error);
+          console.error('Recipient account error details:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            statusText: error.response?.statusText
+          });
+          throw error;
+        }
       }
 
       // Create the transaction
@@ -369,12 +423,43 @@ const CreateTransactionPage = () => {
         transactionPurpose: form.transactionPurpose,
         transactionStatus: Number(form.transactionStatus),
         senderId: senderId ? Number(senderId) : undefined,
-        recipientId: recipientId ? Number(recipientId) : undefined,
-        fieldResponses: fieldResponses // Include the field responses
+        recipientId: recipientId ? Number(recipientId) : undefined
       };
 
-      const createdTransaction = await transactionService.createTransaction(transactionData);
-      console.log('Transaction creation response:', createdTransaction);
+      console.log('About to create transaction with data:', transactionData);
+      console.log('Transaction service:', transactionService);
+      
+      let createdTransaction: number;
+      try {
+        // DEBUGGING: Testing basic transaction creation without field responses
+        // The issue might be that fieldResponses are not supported in TransactionCreate interface
+        // or they need to be sent via a separate API call after transaction creation
+        const basicTransactionData = {
+          transactionTypeId: Number(form.transactionTypeId),
+          transactionCurrencyId: Number(form.transactionCurrencyId),
+          transactionAmount: Number(form.transactionAmount),
+          currencyAmount: Number(form.currencyAmount),
+          transactionID: form.transactionID,
+          transactionTime: form.transactionTime,
+          transactionPurpose: form.transactionPurpose,
+          transactionStatus: Number(form.transactionStatus),
+          senderId: senderId ? Number(senderId) : undefined,
+          recipientId: recipientId ? Number(recipientId) : undefined
+        };
+        
+        console.log('Testing basic transaction creation with data:', basicTransactionData);
+        createdTransaction = await transactionService.createTransaction(basicTransactionData);
+        console.log('Transaction creation response:', createdTransaction);
+      } catch (error: any) {
+        console.error('Error creating transaction:', error);
+        console.error('Error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          statusText: error.response?.statusText
+        });
+        throw error; // Re-throw to be caught by the outer try-catch
+      }
 
       // Get the transaction ID and check processing status
       // Handle both object response and direct ID response
@@ -1037,7 +1122,10 @@ const CreateTransactionPage = () => {
                                                 type="radio"
                                                 name="senderAccount"
                                                 checked={selectedSenderAccount?.id === acc.id}
-                                                onChange={() => setSelectedSenderAccount(acc)}
+                                                onChange={() => {
+                                                  console.log('Selecting sender account:', acc);
+                                                  setSelectedSenderAccount(acc);
+                                                }}
                                               />
                                             </td>
                                             <td className="border px-3 py-2">{acc.name}</td>
@@ -1118,10 +1206,13 @@ const CreateTransactionPage = () => {
                           </DialogBody>
                           <DialogFooter>
                             <Button type="button" onClick={() => {
+                              console.log('Done button clicked. selectedSenderAccount:', selectedSenderAccount);
                               if (selectedSenderAccount) {
+                                console.log('Setting form senderId to:', selectedSenderAccount.id);
                                 setForm(f => ({ ...f, senderId: selectedSenderAccount.id }));
                                 setSenderDialogOpen(false);
                               } else {
+                                console.log('No sender account selected');
                                 toast({ title: 'Select an account', description: 'Please select an account before continuing.', variant: 'destructive' });
                               }
                             }}>
@@ -1162,7 +1253,11 @@ const CreateTransactionPage = () => {
                   {/* Recipient selection button and dialog */}
                   {!selectedRecipientAccount ? (
                     <>
-                      <Button type="button" onClick={() => { setRecipientDialogOpen(true); fetchRecipientRecords(); }}>
+                      <Button type="button" onClick={() => { 
+                        console.log('Opening recipient dialog...');
+                        setRecipientDialogOpen(true); 
+                        fetchRecipientRecords(); 
+                      }}>
                         Select or Create Customer
                       </Button>
                       <Dialog open={recipientDialogOpen} onOpenChange={setRecipientDialogOpen}>
@@ -1246,7 +1341,10 @@ const CreateTransactionPage = () => {
                                                 type="radio"
                                                 name="recipientAccount"
                                                 checked={selectedRecipientAccount?.id === acc.id}
-                                                onChange={() => setSelectedRecipientAccount(acc)}
+                                                onChange={() => {
+                                                  console.log('Selecting recipient account:', acc);
+                                                  setSelectedRecipientAccount(acc);
+                                                }}
                                               />
                                             </td>
                                             <td className="border px-3 py-2">{acc.name}</td>
@@ -1325,10 +1423,13 @@ const CreateTransactionPage = () => {
                           </DialogBody>
                           <DialogFooter>
                             <Button type="button" onClick={() => {
+                              console.log('Recipient Done button clicked. selectedRecipientAccount:', selectedRecipientAccount);
                               if (selectedRecipientAccount) {
+                                console.log('Setting form recipientId to:', selectedRecipientAccount.id);
                                 setForm(f => ({ ...f, recipientId: selectedRecipientAccount.id }));
                                 setRecipientDialogOpen(false);
                               } else {
+                                console.log('No recipient account selected');
                                 toast({ title: 'Select an account', description: 'Please select an account before continuing.', variant: 'destructive' });
                               }
                             }}>

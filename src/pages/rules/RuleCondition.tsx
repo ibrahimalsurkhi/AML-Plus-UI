@@ -9,7 +9,9 @@ import {
   AggregateFieldId,
   TransactionStatusOptions,
   ComparisonOperatorOptions,
-  StatusOperatorOptions, // <-- import
+  StatusOperatorOptions,
+  StatusOperator,
+  ComparisonOperator,
   AggregateFunction,
   RuleTypeOptions,
 } from './enums';
@@ -39,7 +41,7 @@ export interface Condition {
   lastTransactionCount: number | null;
   accountType: number | null;
   jsonValue: string;
-  operator?: string; // Added operator property
+  ComparisonOperator?: number; // Changed property name to match backend expectation
 }
 
 interface RuleConditionProps {
@@ -321,9 +323,9 @@ const RuleCondition: React.FC<RuleConditionProps> = ({ condition, onChange, onRe
             </div>
             <div>
               <div className="text-xs text-muted-foreground mb-1">Operator</div>
-              <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
-                {getOperatorLabel(condition.aggregateFunction, condition.aggregateFieldId, condition.operator)}
-              </div>
+                              <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                  {getOperatorLabel(condition.aggregateFunction, condition.aggregateFieldId, condition.ComparisonOperator)}
+                </div>
             </div>
             {condition.isAggregated && (
               <div>
@@ -415,21 +417,21 @@ const RuleCondition: React.FC<RuleConditionProps> = ({ condition, onChange, onRe
                 {/* Operator dropdown, depends on field */}
                 <Select
                   value={
-                    condition.operator ?? condition.aggregateFunction?.toString() ?? ''
+                    (condition.ComparisonOperator ?? condition.aggregateFunction)?.toString() ?? ''
                   }
                   onValueChange={v => {
-                    // For comparison/status operators, store as 'operator'; for aggregate functions, store as number
+                    // For comparison/status operators, store as 'ComparisonOperator'; for aggregate functions, store as number
                     if (
                       condition.aggregateFieldId === AggregateFieldId.Amount ||
                       condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
                       condition.aggregateFieldId === AggregateFieldId.TransactionTime ||
                       condition.aggregateFieldId === AggregateFieldId.CurrencyAmount
                     ) {
-                      onChange({ ...condition, operator: v, aggregateFunction: null });
+                      onChange({ ...condition, ComparisonOperator: v ? Number(v) : undefined, aggregateFunction: null });
                     } else if (condition.aggregateFieldId === AggregateFieldId.TransactionStatus) {
-                      onChange({ ...condition, operator: v, aggregateFunction: null });
+                      onChange({ ...condition, ComparisonOperator: v ? Number(v) : undefined, aggregateFunction: null });
                     } else {
-                      onChange({ ...condition, aggregateFunction: v ? Number(v) : null, operator: undefined });
+                      onChange({ ...condition, aggregateFunction: v ? Number(v) : null, ComparisonOperator: undefined });
                     }
                   }}
                   disabled={!condition.aggregateFieldId || condition.isAggregated || readOnly}
@@ -440,7 +442,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({ condition, onChange, onRe
                   <SelectContent>
                     {condition.aggregateFieldId === AggregateFieldId.TransactionStatus
                       ? StatusOperatorOptions.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
                         ))
                       : (condition.aggregateFieldId === AggregateFieldId.Amount ||
                          condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
@@ -448,7 +450,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({ condition, onChange, onRe
                          condition.aggregateFieldId === AggregateFieldId.CurrencyAmount
                         )
                         ? ComparisonOperatorOptions.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
                           ))
                         : null
                     }

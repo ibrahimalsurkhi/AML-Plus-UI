@@ -11,6 +11,8 @@ import {
   AccountTypeOptions,
   ComparisonOperatorOptions,
   StatusOperatorOptions,
+  StatusOperator,
+  ComparisonOperator,
   TransactionStatusOptions,
   AggregateFieldId,
   RuleTypeOptions,
@@ -47,12 +49,26 @@ function getLabel(options: { label: string; value: any }[], value: any) {
   return found ? found.label : '';
 }
 
-function getOperatorLabel(value: any, fieldId: any) {
-  // Use status operator label for Transaction Status
+function getOperatorLabel(value: any, fieldId: any, operatorProp?: any) {
+  // Prefer operatorProp if present (new operator property)
+  if (operatorProp !== undefined) {
+    if (fieldId === AggregateFieldId.TransactionStatus) {
+      return getLabel(StatusOperatorOptions, operatorProp) || '[Operator]';
+    }
+    if (
+      fieldId === AggregateFieldId.Amount ||
+      fieldId === AggregateFieldId.TransactionCount ||
+      fieldId === AggregateFieldId.TransactionTime ||
+      fieldId === AggregateFieldId.CurrencyAmount
+    ) {
+      return getLabel(ComparisonOperatorOptions, operatorProp) || '[Operator]';
+    }
+  }
+  
+  // Fallback to aggregateFunction for legacy data
   if (fieldId === AggregateFieldId.TransactionStatus) {
     return getLabel(StatusOperatorOptions, value) || '[Operator]';
   }
-  // Use comparison operator label for numeric/comparable fields
   if (
     fieldId === AggregateFieldId.Amount ||
     fieldId === AggregateFieldId.TransactionCount ||
@@ -81,7 +97,8 @@ function getRulePreview(group: RuleGroupType): string {
         const cond = child.condition;
         // Step-by-step preview building
         const metric = getLabel(AggregateFieldIdOptions, cond.aggregateFieldId) || '[Metric]';
-        const operator = cond.aggregateFunction && !cond.isAggregated ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId) : '[Operator]';
+        const operator = cond.ComparisonOperator !== undefined ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId, cond.ComparisonOperator) : 
+                       (cond.aggregateFunction && !cond.isAggregated ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId) : '[Operator]');
         let aggregateFn = '';
         if (cond.isAggregated && cond.aggregateFunction) {
           aggregateFn = getLabel(AggregateFunctionOptions, cond.aggregateFunction) || '[Aggregate Function]';

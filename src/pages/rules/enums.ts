@@ -98,20 +98,44 @@ export const TransactionStatusOptions = [
   { label: 'Suspended', value: TransactionStatus.Suspended },
 ];
 
+// StatusOperator enum
+export enum StatusOperator {
+  In = 9,
+  NotIn = 10,
+}
+
 // Operators for Transaction Status
 export const StatusOperatorOptions = [
-  { label: 'Equal', value: 'eq' },
-  { label: 'Not Equal', value: 'neq' },
+  { label: 'In', value: StatusOperator.In },
+  { label: 'Not In', value: StatusOperator.NotIn },
 ];
+
+// ComparisonOperator enum
+export enum ComparisonOperator {
+  Equal = 1,
+  NotEqual = 2,
+  GreaterThan = 3,
+  GreaterThanOrEqual = 4,
+  LessThan = 5,
+  LessThanOrEqual = 6,
+  Contains = 7,
+  NotContains = 8,
+  In = 9,
+  NotIn = 10,
+}
 
 // Comparison operators for numeric/comparable fields
 export const ComparisonOperatorOptions = [
-  { label: 'Equal to =', value: 'eq' },
-  { label: 'Not equal to !=', value: 'neq' },
-  { label: 'Greater than >', value: 'gt' },
-  { label: 'Less than <', value: 'lt' },
-  { label: 'Greater than or equal to >=', value: 'gte' },
-  { label: 'Less than or equal to <=', value: 'lte' },
+  { label: 'Equal to =', value: ComparisonOperator.Equal },
+  { label: 'Not equal to !=', value: ComparisonOperator.NotEqual },
+  { label: 'Greater than >', value: ComparisonOperator.GreaterThan },
+  { label: 'Less than <', value: ComparisonOperator.LessThan },
+  { label: 'Greater than or equal to >=', value: ComparisonOperator.GreaterThanOrEqual },
+  { label: 'Less than or equal to <=', value: ComparisonOperator.LessThanOrEqual },
+  { label: 'Contains', value: ComparisonOperator.Contains },
+  { label: 'Not Contains', value: ComparisonOperator.NotContains },
+  { label: 'In', value: ComparisonOperator.In },
+  { label: 'Not In', value: ComparisonOperator.NotIn },
 ];
 
 // Rule Type options for RuleBuilderPage

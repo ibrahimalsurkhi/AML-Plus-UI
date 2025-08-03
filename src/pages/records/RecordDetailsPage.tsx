@@ -53,28 +53,18 @@ const RecordDetailsPage = () => {
           throw new Error('Invalid record ID');
         }
 
-        // First get the record to get the template ID
-        const recordData = await recordService.getRecords({
-          pageNumber: 1,
-          pageSize: 1,
-          templateId: undefined // We'll get all records and filter by ID
-        });
         
-        const foundRecord = recordData.items.find(r => r.id === recordId);
-        if (!foundRecord) {
-          throw new Error('Record not found');
-        }
 
         // Now get the full record details using the template ID
-        const fullRecord = await recordService.getRecordById(foundRecord.templateId, recordId);
+        const fullRecord = await recordService.getRecordById(recordId);
         setRecord(fullRecord);
 
         // Get the template name
-        const templateDetails = await templateService.getTemplateById(foundRecord.templateId.toString());
+        const templateDetails = await templateService.getTemplateById(fullRecord.templateId.toString());
         setTemplateName(templateDetails.name);
 
         // Get the template fields and their options
-        const templateFields = await templateService.getTemplateFields(foundRecord.templateId.toString());
+        const templateFields = await templateService.getTemplateFields(fullRecord.templateId.toString());
         
         // Fetch options for fields that need them
         const fieldsWithOptions = await Promise.all(
@@ -87,7 +77,7 @@ const RecordDetailsPage = () => {
               field.fieldType === FieldType.Radio ||
               field.fieldType === FieldType.Checkbox
             ) {
-              const options = await templateService.getFieldOptions(foundRecord.templateId.toString(), field.id!);
+              const options = await templateService.getFieldOptions(fullRecord.templateId.toString(), field.id!);
               extendedField.options = options;
             }
             
@@ -98,7 +88,7 @@ const RecordDetailsPage = () => {
         setFields(fieldsWithOptions);
 
         // Fetch cases by recordId
-        caseService.getCasesByRecordId(foundRecord.id).then(setCases);
+        caseService.getCasesByRecordId(fullRecord.id).then(setCases);
       } catch (error) {
         console.error('Error fetching record details:', error);
         toast({
