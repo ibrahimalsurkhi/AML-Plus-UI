@@ -104,6 +104,8 @@ import RuleDetailPage from '@/pages/rules/RuleDetailPage';
 import CreateTransactionPage from '@/pages/transactions/CreateTransactionPage';
 import TransactionsPage from '@/pages/transactions';
 import TransactionDetailsPage from '@/pages/transactions/TransactionDetailsPage';
+import TransactionCasesPage from '@/pages/transaction-cases';
+import TransactionCaseDetailsPage from '@/pages/transaction-cases/TransactionCaseDetailsPage';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -228,6 +230,8 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/transactions/new" element={<CreateTransactionPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/transactions/:id" element={<TransactionDetailsPage />} />
+          <Route path="/transaction-cases" element={<TransactionCasesPage />} />
+          <Route path="/transaction-cases/:uuid" element={<TransactionCaseDetailsPage />} />
           {/* TODO: Add create and edit/detail pages when implemented */}
         </Route>
       </Route>

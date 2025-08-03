@@ -602,6 +602,121 @@ export interface TransactionProcessingStatusResponse {
   ruleMatches: RuleMatch[];
 }
 
+// Transaction Case interfaces
+export interface TransactionCase {
+  id: number;
+  caseUuid: string;
+  tenantId: number;
+  type: number;
+  status: number;
+  amount: number;
+  currencyId: number;
+  accountId: number | null;
+  ruleExecutionId: number;
+  recordName: string | null;
+  created: string;
+  createdBy: string;
+  lastModified: string;
+  lastModifiedBy: string;
+}
+
+// Extended interfaces for case details
+export interface TransactionType {
+  id: number;
+  uuid: string;
+  name: string;
+  description: string;
+}
+
+export interface Currency {
+  id: number;
+  uuid: string;
+  value: string;
+  description: string;
+}
+
+export interface MatchedRule {
+  id: number;
+  uuid: string;
+  name: string;
+  ruleType: number;
+  isActive: boolean;
+  applyTo: number;
+  created: string;
+  createdBy: string;
+}
+
+// Rule details for preview
+export interface RuleDetails {
+  id: number;
+  uuid: string;
+  name: string;
+  ruleType: number;
+  isActive: boolean;
+  applyTo: number;
+  created: string;
+  createdBy: string;
+  description?: string;
+  conditions?: RuleCondition[];
+  actions?: RuleAction[];
+}
+
+export interface RuleCondition {
+  id: number;
+  field: string;
+  operator: string;
+  value: string;
+  logicalOperator?: string;
+}
+
+export interface RuleAction {
+  id: number;
+  actionType: string;
+  parameters: { [key: string]: any };
+}
+
+export interface Account {
+  id: number;
+  uuid: string;
+  name: string;
+  number: string;
+  bankOfCountryName: string;
+  bankOfCity: string;
+  creationDate: string;
+  accountStatus: number;
+}
+
+export interface Record {
+  id: number;
+  uuid: string;
+  firstName: string;
+  middleName: string | null;
+  lastName: string;
+  dateOfBirth: string;
+  identification: string;
+}
+
+export interface TransactionCaseDetails {
+  uuid: string;
+  id: number;
+  tenantId: number;
+  type: number;
+  status: number;
+  amount: number;
+  currencyId: number;
+  accountId: number;
+  ruleExecutionId: number;
+  created: string;
+  createdBy: string;
+  lastModified: string;
+  lastModifiedBy: string;
+  transactionType?: TransactionType;
+  currency?: Currency;
+  matchedRule?: MatchedRule;
+  account?: Account;
+  record?: Record;
+}
+
 export const transactionService = {
   createTransaction: async (data: TransactionCreate): Promise<number> => {
     console.log('Creating transaction with data:', data);
@@ -624,6 +739,24 @@ export const transactionService = {
   },
   getTransactionProcessingStatus: async (id: number): Promise<TransactionProcessingStatusResponse> => {
     const response = await api.get<TransactionProcessingStatusResponse>(`/Transactions/${id}/processing-status`);
+    return response.data;
+  },
+  getTransactionCases: async (params: { pageNumber: number; pageSize: number; accountId?: number }): Promise<PaginatedResponse<TransactionCase>> => {
+    const response = await api.get<PaginatedResponse<TransactionCase>>('/Transactions/cases', { 
+      params: { 
+        pageNumber: params.pageNumber, 
+        pageSize: params.pageSize,
+        accountId: params.accountId
+      } 
+    });
+    return response.data;
+  },
+  getTransactionCaseByUuid: async (uuid: string): Promise<TransactionCaseDetails> => {
+    const response = await api.get<TransactionCaseDetails>(`/Transactions/cases/by-uuid/${uuid}`);
+    return response.data;
+  },
+  getRuleDetails: async (ruleId: number): Promise<RuleDetails> => {
+    const response = await api.get<RuleDetails>(`/Rules/${ruleId}`);
     return response.data;
   },
 }; 

@@ -45,6 +45,11 @@ export const MENU_SIDEBAR: TMenuConfig = [
     title: 'Transactions',
     icon: 'sort',
     path: '/transactions'
+  },
+  {
+    title: 'Transaction Cases',
+    icon: 'shield-tick',
+    path: '/transaction-cases'
   }
 ];
 
