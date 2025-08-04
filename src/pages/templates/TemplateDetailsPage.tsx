@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { templateService, type Template, type ScoreCriteria, TemplateStatus, type TemplateField, FieldType, type FieldOption, TemplateType } from '@/services/api';
+import { templateService, type Template, type ScoreCriteria, TemplateStatus, type TemplateField, FieldType, type FieldOption, TemplateType, type Lookup, lookupService } from '@/services/api';
 import { Container } from '@/components/container';
 import { useLayout } from '@/providers';
 import { Separator } from '@/components/ui/separator';
@@ -660,7 +660,8 @@ const FieldTypeMap = {
   [FieldType.Checkbox]: 'Checkbox',
   [FieldType.Date]: 'Date',
   [FieldType.Number]: 'Number',
-  [FieldType.TextArea]: 'Text Area'
+  [FieldType.TextArea]: 'Text Area',
+  [FieldType.Lookup]: 'Lookup'
 };
 
 const TemplateFieldDialog = ({ 
@@ -682,12 +683,15 @@ const TemplateFieldDialog = ({
     weight: 0,
     isRequired: false,
     placeholder: '',
-    displayOrder: 1
+    displayOrder: 1,
+    lookupId: null
   };
 
   const [formData, setFormData] = useState<Partial<TemplateField>>(initialData || defaultField);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lookups, setLookups] = useState<Lookup[]>([]);
+  const [loadingLookups, setLoadingLookups] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -697,6 +701,30 @@ const TemplateFieldDialog = ({
     }
     setErrors({});
   }, [initialData, open]);
+
+  // Fetch lookups when dialog opens and field type is Lookup
+  useEffect(() => {
+    if (open && formData.fieldType === FieldType.Lookup) {
+      fetchLookups();
+    }
+  }, [open, formData.fieldType]);
+
+  const fetchLookups = async () => {
+    try {
+      setLoadingLookups(true);
+      const response = await lookupService.getLookups({ pageNumber: 1, pageSize: 100 });
+      setLookups(response.items);
+    } catch (err) {
+      console.error('Error fetching lookups:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch lookups",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingLookups(false);
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -708,6 +736,11 @@ const TemplateFieldDialog = ({
     
     if (formData.fieldType === undefined) {
       newErrors.fieldType = 'Field type is required';
+    }
+    
+    // Validate lookupId is required for Lookup field type
+    if (formData.fieldType === FieldType.Lookup && (!formData.lookupId || formData.lookupId <= 0)) {
+      newErrors.lookupId = 'Lookup selection is required';
     }
     
     if (templateType === TemplateType.Record && (formData.weight === undefined || formData.weight < 0)) {
@@ -791,7 +824,13 @@ const TemplateFieldDialog = ({
                 id="fieldType"
                 value={formData.fieldType}
                 onChange={(e) => {
-                  setFormData({ ...formData, fieldType: Number(e.target.value) });
+                  const newFieldType = Number(e.target.value);
+                  setFormData({ 
+                    ...formData, 
+                    fieldType: newFieldType,
+                    // Reset lookupId when field type changes (unless it's still Lookup)
+                    lookupId: newFieldType === FieldType.Lookup ? formData.lookupId : null
+                  });
                   if (errors.fieldType) {
                     setErrors({ ...errors, fieldType: '' });
                   }
@@ -818,6 +857,40 @@ const TemplateFieldDialog = ({
                 placeholder="Enter placeholder text"
               />
             </div>
+            
+            {/* Lookup selection for Lookup field type */}
+            {formData.fieldType === FieldType.Lookup && (
+              <div className="space-y-2">
+                <Label htmlFor="lookupId" className="flex items-center">
+                  Lookup <span className="text-red-500 ml-1">*</span>
+                </Label>
+                <select
+                  id="lookupId"
+                  value={formData.lookupId || ''}
+                  onChange={(e) => {
+                    setFormData({ ...formData, lookupId: Number(e.target.value) });
+                    if (errors.lookupId) {
+                      setErrors({ ...errors, lookupId: '' });
+                    }
+                  }}
+                  className={`flex h-10 w-full rounded-md border ${errors.lookupId ? 'border-red-500' : 'border-input'} bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 ${errors.lookupId ? 'focus-visible:ring-red-500' : 'focus-visible:ring-ring'} focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
+                  disabled={loadingLookups}
+                >
+                  <option value="">Select a lookup</option>
+                  {lookups.map((lookup) => (
+                    <option key={lookup.id} value={lookup.id}>
+                      {lookup.name} {lookup.isShared ? '(Shared)' : ''}
+                    </option>
+                  ))}
+                </select>
+                {loadingLookups && (
+                  <p className="text-sm text-gray-500">Loading lookups...</p>
+                )}
+                {errors.lookupId && (
+                  <p className="text-red-500 text-sm mt-1">{errors.lookupId}</p>
+                )}
+              </div>
+            )}
             
             {/* Weight input, only for Record templates */}
             {templateType === TemplateType.Record && (
@@ -1938,7 +2011,8 @@ export const TemplateDetailsPage = () => {
         maxValue: field.maxValue,
         minDate: field.minDate,
         maxDate: field.maxDate,
-        pattern: field.pattern
+        pattern: field.pattern,
+        lookupId: field.lookupId || null
       };
 
       await templateService.createTemplateField(id, newField);
@@ -1971,7 +2045,8 @@ export const TemplateDetailsPage = () => {
       const updatedField: Omit<TemplateField, 'id' | 'templateId'> = {
         ...currentField,
         ...field,
-        weight: field.weight ?? 0
+        weight: field.weight ?? 0,
+        lookupId: field.lookupId || null
       };
 
       await templateService.updateTemplateField(id, fieldId, updatedField);
@@ -2570,7 +2645,8 @@ export const TemplateDetailsPage = () => {
                                       field.fieldType === FieldType.Number ? "numbers" :
                                       field.fieldType === FieldType.Dropdown ? "arrow_drop_down_circle" :
                                       field.fieldType === FieldType.Radio ? "radio_button_checked" :
-                                      field.fieldType === FieldType.Checkbox ? "check_box" : "list"
+                                      field.fieldType === FieldType.Checkbox ? "check_box" :
+                                      field.fieldType === FieldType.Lookup ? "list_alt" : "list"
                                     } 
                                     className="text-primary text-xl"
                                   />
@@ -2584,9 +2660,16 @@ export const TemplateDetailsPage = () => {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline" className="text-xs">
-                                {FieldTypeMap[field.fieldType]}
-                              </Badge>
+                              <div className="flex flex-col gap-1">
+                                <Badge variant="outline" className="text-xs">
+                                  {FieldTypeMap[field.fieldType]}
+                                </Badge>
+                                {field.fieldType === FieldType.Lookup && field.lookupId && (
+                                  <div className="text-xs text-gray-500">
+                                    Lookup ID: {field.lookupId}
+                                  </div>
+                                )}
+                              </div>
                             </TableCell>
                             {template.templateType === TemplateType.Record && (
                               <TableCell>
@@ -2744,6 +2827,7 @@ export const TemplateDetailsPage = () => {
                           fieldToDelete.fieldType === FieldType.Checkbox ? "check_box" :
                           fieldToDelete.fieldType === FieldType.Date ? "calendar_month" :
                           fieldToDelete.fieldType === FieldType.Number ? "pin" :
+                          fieldToDelete.fieldType === FieldType.Lookup ? "list_alt" :
                           "notes"
                         } 
                         className="text-red-600 text-xl" 

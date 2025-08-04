@@ -12,6 +12,7 @@ import {
 } from '@/partials/toolbar';
 import { Input } from '@/components/ui/input';
 import { recordService, templateService, type TemplateField, FieldType, ScoreCriteriaRange, TemplateType } from '@/services/api';
+import type { Record as ApiRecord } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -25,6 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { lookupService } from '@/services/api';
 
 // Define the base form values type
 interface BaseFormValues {
@@ -135,6 +137,25 @@ const NewRecordPage = () => {
             }));
           }
           
+          // Fetch lookup values for Lookup fields
+          if (field.fieldType === FieldType.Lookup && field.lookupId) {
+            try {
+              const lookupValues = await lookupService.getLookupValues(field.lookupId, { pageNumber: 1, pageSize: 100 });
+              // Convert lookup values to field options format
+              extendedField.options = lookupValues.items.map((lookupValue, index) => ({
+                id: lookupValue.id,
+                fieldId: field.id!,
+                label: lookupValue.value,
+                scoreCriteriaId: 0, // Default score criteria
+                displayOrder: index + 1,
+                value: lookupValue.value
+              }));
+            } catch (error) {
+              console.error(`Error fetching lookup values for field ${field.id}:`, error);
+              extendedField.options = [];
+            }
+          }
+          
           // Fetch ranges for number fields
           if (field.fieldType === FieldType.Number) {
             const ranges = await templateService.getTemplateScoreCriteriaRanges(templateId.toString(), field.id!);
@@ -157,6 +178,7 @@ const NewRecordPage = () => {
             case FieldType.TextArea:
             case FieldType.Dropdown:
             case FieldType.Radio:
+            case FieldType.Lookup:
               fieldSchema = Yup.string();
               break;
             case FieldType.Number:
@@ -273,6 +295,7 @@ const NewRecordPage = () => {
             case FieldType.Dropdown:
             case FieldType.Radio:
             case FieldType.Checkbox:
+            case FieldType.Lookup:
               // For all option-based fields, find the selected option
               let selectedOption;
               
@@ -286,7 +309,7 @@ const NewRecordPage = () => {
                   selectedOption = field.options[0];
                 }
               } else {
-                // For dropdown and radio, find by option ID
+                // For dropdown, radio, and lookup, find by option ID
                 selectedOption = field.options?.find(opt => opt.id && opt.id.toString() === value);
               }
 
@@ -314,7 +337,9 @@ const NewRecordPage = () => {
           userId: '', // Placeholder, update as needed
           country: 0, // Placeholder, update as needed
           nationality: 0, // Placeholder, update as needed
-          fieldResponses
+          fieldResponses,
+          score: 0, // Default score
+          scoreBGColor: '#ffffff' // Default background color
         };
 
         const response = await recordService.createRecord(values.templateId, recordData) as any;
@@ -623,6 +648,36 @@ const NewRecordPage = () => {
                 )
               ))}
             </div>
+            {fieldError && (
+              <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
+            )}
+          </div>
+        );
+
+      case FieldType.Lookup:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            <Select
+              name={fieldName}
+              value={fieldValue as string || ''}
+              onValueChange={(value: string) => {
+                formik.setFieldValue(fieldName, value);
+              }}
+            >
+              <SelectTrigger className={cn(inputClasses, "w-full")}>
+                <SelectValue placeholder={field.placeholder || "Select an option"} />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options?.map((option: FieldOption) => (
+                  option.id && (
+                    <SelectItem key={option.id} value={option.id.toString()}>
+                      {option.label}
+                    </SelectItem>
+                  )
+                ))}
+              </SelectContent>
+            </Select>
             {fieldError && (
               <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
             )}

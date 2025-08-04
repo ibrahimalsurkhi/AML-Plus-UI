@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { recordService, type Record, type TemplateField, templateService, FieldType, type Template, caseService, Case } from '@/services/api';
+import { recordService, type Record, type TemplateField, templateService, FieldType, type Template, caseService, Case, lookupService, type LookupValue } from '@/services/api';
 import { Container } from '@/components/container';
 import { 
   Loader2, 
@@ -80,6 +80,24 @@ const RecordDetailsPage = () => {
               const options = await templateService.getFieldOptions(fullRecord.templateId.toString(), field.id!);
               extendedField.options = options;
             }
+
+            // Fetch lookup values for Lookup fields
+            if (field.fieldType === FieldType.Lookup && field.lookupId) {
+              try {
+                const lookupValues = await lookupService.getLookupValues(field.lookupId, { pageNumber: 1, pageSize: 100 });
+                // Convert lookup values to field options format
+                extendedField.options = lookupValues.items.map((lookupValue: LookupValue, index: number) => ({
+                  id: lookupValue.id,
+                  fieldId: field.id!,
+                  label: lookupValue.value,
+                  scoreCriteriaId: 0, // Default score criteria
+                  displayOrder: index + 1
+                }));
+              } catch (error) {
+                console.error(`Error fetching lookup values for field ${field.id}:`, error);
+                extendedField.options = [];
+              }
+            }
             
             return extendedField;
           })
@@ -143,6 +161,7 @@ const RecordDetailsPage = () => {
       case FieldType.Dropdown:
       case FieldType.Radio:
       case FieldType.Checkbox:
+      case FieldType.Lookup:
         if (response.valueText) {
           // Find the option that matches the valueText (which is the option ID)
           const option = options?.find(opt => opt.id?.toString() === response.valueText);
@@ -167,6 +186,7 @@ const RecordDetailsPage = () => {
       case FieldType.Dropdown:
       case FieldType.Radio:
       case FieldType.Checkbox:
+      case FieldType.Lookup:
         return <FileText className="w-4 h-4" />;
       default:
         return <FileText className="w-4 h-4" />;

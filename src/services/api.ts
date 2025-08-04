@@ -84,7 +84,8 @@ export enum FieldType {
   Checkbox = 3,
   Date = 4,
   Number = 5,
-  TextArea = 6
+  TextArea = 6,
+  Lookup = 7
 }
 
 
@@ -110,6 +111,7 @@ export interface TemplateField {
   minDate?: string | null;
   maxDate?: string | null;
   pattern?: string | null;
+  lookupId?: number | null;
 }
 
 export interface FieldOption {

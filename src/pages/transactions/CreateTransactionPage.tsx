@@ -130,6 +130,25 @@ const CreateTransactionPage = () => {
               }));
             }
 
+            // Fetch lookup values for Lookup fields
+            if (field.fieldType === FieldType.Lookup && field.lookupId) {
+              try {
+                const lookupValues = await lookupService.getLookupValues(field.lookupId, { pageNumber: 1, pageSize: 100 });
+                // Convert lookup values to field options format
+                extendedField.options = lookupValues.items.map((lookupValue, index) => ({
+                  id: lookupValue.id,
+                  fieldId: field.id!,
+                  label: lookupValue.value,
+                  scoreCriteriaId: 0, // Default score criteria
+                  displayOrder: index + 1,
+                  value: lookupValue.value
+                }));
+              } catch (error) {
+                console.error(`Error fetching lookup values for field ${field.id}:`, error);
+                extendedField.options = [];
+              }
+            }
+
             // Fetch ranges for number fields
             if (field.fieldType === FieldType.Number) {
               const ranges = await templateService.getTemplateScoreCriteriaRanges('15', field.id!);
@@ -688,6 +707,7 @@ const CreateTransactionPage = () => {
         case FieldType.Dropdown:
         case FieldType.Radio:
         case FieldType.Checkbox:
+        case FieldType.Lookup:
           // For all option-based fields, find the selected option
           const fieldWithOptions = templateFields.find(f => f.id === fieldId);
           let selectedOption;
@@ -702,7 +722,7 @@ const CreateTransactionPage = () => {
               selectedOption = fieldWithOptions.options[0];
             }
           } else {
-            // For dropdown and radio, find by option ID
+            // For dropdown, radio, and lookup, find by option ID
             selectedOption = fieldWithOptions?.options?.find(opt => opt.id && opt.id.toString() === value);
           }
 
@@ -731,7 +751,7 @@ const CreateTransactionPage = () => {
       (field.fieldType === FieldType.Number ? currentResponse.valueNumber :
         field.fieldType === FieldType.Date ? currentResponse.valueDate :
           field.fieldType === FieldType.Checkbox ? (currentResponse.optionId === currentResponse.optionId) :
-            field.fieldType === FieldType.Dropdown || field.fieldType === FieldType.Radio ? currentResponse.optionId :
+            field.fieldType === FieldType.Dropdown || field.fieldType === FieldType.Radio || field.fieldType === FieldType.Lookup ? currentResponse.optionId :
               currentResponse.valueText) : '';
 
     const fieldWrapperClasses = cn(
@@ -842,6 +862,32 @@ const CreateTransactionPage = () => {
             >
               <SelectTrigger className={cn(inputClasses, "w-full")}>
                 <SelectValue placeholder={field.placeholder || "Select an option"} />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options?.map((option: FieldOption) => (
+                  option.id && (
+                    <SelectItem key={option.id} value={option.id.toString()}>
+                      {option.label}
+                    </SelectItem>
+                  )
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+
+      case FieldType.Lookup:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            <Select
+              value={fieldValue as string || ''}
+              onValueChange={(value: string) => {
+                handleFieldChange(field.id!, value, field.fieldType);
+              }}
+            >
+              <SelectTrigger className={cn(inputClasses, "w-full")}>
+                <SelectValue placeholder={field.placeholder || "Select a lookup value"} />
               </SelectTrigger>
               <SelectContent>
                 {field.options?.map((option: FieldOption) => (
