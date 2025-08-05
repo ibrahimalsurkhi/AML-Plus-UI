@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { lookupService } from '@/services/api';
+import { uniqueID } from '@/lib/helpers';
 
 // Define the base form values type
 interface BaseFormValues {
@@ -36,7 +37,10 @@ interface BaseFormValues {
   dateOfBirth: string;
   identification: string;
   templateId: number;
-  [key: string]: string | number | boolean | undefined; // Allow dynamic field values
+  countryOfBirthLookupValueId: number | null;
+  nationalityLookupValueId: number | null;
+  customerReferenceId: string;
+  [key: string]: string | number | boolean | null | undefined; // Allow dynamic field values
 }
 
 // Define field option type
@@ -62,7 +66,10 @@ const baseValidationSchema = Yup.object().shape({
   lastName: Yup.string().required('Last name is required'),
   dateOfBirth: Yup.string().required('Date of birth is required'),
   identification: Yup.string().required('Identification is required'),
-  templateId: Yup.number().required('Template is required')
+  templateId: Yup.number().required('Template is required'),
+  countryOfBirthLookupValueId: Yup.number().nullable(),
+  nationalityLookupValueId: Yup.number().nullable(),
+  customerReferenceId: Yup.string()
 }) as Yup.ObjectSchema<BaseFormValues>;
 
 // Add helper function to get min and max values from ranges
@@ -84,6 +91,8 @@ const NewRecordPage = () => {
   const [templates, setTemplates] = useState<Array<{ id: number; name: string; tenantId: number }>>([]);
   const [templateFields, setTemplateFields] = useState<ExtendedTemplateField[]>([]);
   const [validationSchema, setValidationSchema] = useState<Yup.ObjectSchema<BaseFormValues>>(baseValidationSchema);
+  const [countryOfBirthOptions, setCountryOfBirthOptions] = useState<Array<{ id: number; value: string }>>([]);
+  const [nationalityOptions, setNationalityOptions] = useState<Array<{ id: number; value: string }>>([]);
 
   // Fetch templates
   useEffect(() => {
@@ -114,13 +123,43 @@ const NewRecordPage = () => {
     fetchTemplates();
   }, []);
 
+  // Fetch lookup values for country of birth and nationality
+  useEffect(() => {
+    const fetchLookupValues = async () => {
+      try {
+        // Fetch country of birth lookup values (lookupId = 4)
+        const countryOfBirthData = await lookupService.getLookupValues(4, { pageNumber: 1, pageSize: 100 });
+        setCountryOfBirthOptions(countryOfBirthData.items.map(item => ({ id: item.id, value: item.value })));
+
+        // Fetch nationality lookup values (lookupId = 7)
+        const nationalityData = await lookupService.getLookupValues(7, { pageNumber: 1, pageSize: 100 });
+        setNationalityOptions(nationalityData.items.map(item => ({ id: item.id, value: item.value })));
+      } catch (error) {
+        console.error('Error fetching lookup values:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch lookup values. Please try again.',
+          variant: 'destructive'
+        });
+      }
+    };
+
+    fetchLookupValues();
+  }, []);
+
   // Fetch template fields when template is selected
   const fetchTemplateFields = async (templateId: number) => {
     try {
-      const fields = await templateService.getTemplateFields(templateId.toString());
+      const fieldsResponse = await templateService.getTemplateFields(templateId.toString());
+      // Get all fields from sections and fields without section
+      const allFields = [
+        ...fieldsResponse.sections.flatMap(section => section.fields),
+        ...fieldsResponse.fieldsWithoutSection
+      ];
+      
       // Fetch options and ranges for fields that need them
       const fieldsWithOptions = await Promise.all(
-        fields.map(async (field) => {
+        allFields.map(async (field) => {
           const extendedField: ExtendedTemplateField = { ...field };
           
           // Fetch options for option-based fields
@@ -241,6 +280,9 @@ const NewRecordPage = () => {
       dateOfBirth: '',
       identification: '',
       templateId: templateIdParam ? parseInt(templateIdParam) : (templates.length > 0 ? templates[0].id : 0),
+      countryOfBirthLookupValueId: null,
+      nationalityLookupValueId: null,
+      customerReferenceId: '',
     },
     validationSchema,
     enableReinitialize: true,
@@ -335,11 +377,13 @@ const NewRecordPage = () => {
           identification: values.identification,
           tenantId: selectedTemplate.tenantId,
           userId: '', // Placeholder, update as needed
-          country: 0, // Placeholder, update as needed
-          nationality: 0, // Placeholder, update as needed
+          country: values.countryOfBirthLookupValueId || 0,
+          nationality: values.nationalityLookupValueId || 0,
           fieldResponses,
           score: 0, // Default score
-          scoreBGColor: '#ffffff' // Default background color
+          scoreBGColor: '#ffffff', // Default background color
+          uuid: uniqueID(), // Generate unique ID
+          customerReferenceId: values.customerReferenceId || ''
         };
 
         const response = await recordService.createRecord(values.templateId, recordData) as any;
@@ -851,6 +895,64 @@ const NewRecordPage = () => {
                     {formik.touched.dateOfBirth && formik.errors.dateOfBirth ? (
                       <div className="text-red-500 text-sm mt-1">{formik.errors.dateOfBirth as string}</div>
                     ) : null}
+                  </div>
+                  <div>
+                    <Label htmlFor="countryOfBirthLookupValueId">
+                      Country of Birth
+                    </Label>
+                    <Select
+                      name="countryOfBirthLookupValueId"
+                      value={formik.values.countryOfBirthLookupValueId?.toString() || ''}
+                      onValueChange={(value: string) => {
+                        formik.setFieldValue('countryOfBirthLookupValueId', value ? parseInt(value) : null);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select country of birth" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {countryOfBirthOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.id.toString()}>
+                            {option.value}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="nationalityLookupValueId">
+                      Nationality
+                    </Label>
+                    <Select
+                      name="nationalityLookupValueId"
+                      value={formik.values.nationalityLookupValueId?.toString() || ''}
+                      onValueChange={(value: string) => {
+                        formik.setFieldValue('nationalityLookupValueId', value ? parseInt(value) : null);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select nationality" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {nationalityOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.id.toString()}>
+                            {option.value}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="customerReferenceId">
+                      Customer Reference ID
+                    </Label>
+                    <Input
+                      id="customerReferenceId"
+                      name="customerReferenceId"
+                      value={formik.values.customerReferenceId}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                    />
                   </div>
                 </div>
               </CardContent>

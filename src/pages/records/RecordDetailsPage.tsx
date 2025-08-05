@@ -64,11 +64,16 @@ const RecordDetailsPage = () => {
         setTemplateName(templateDetails.name);
 
         // Get the template fields and their options
-        const templateFields = await templateService.getTemplateFields(fullRecord.templateId.toString());
+        const fieldsResponse = await templateService.getTemplateFields(fullRecord.templateId.toString());
+        // Get all fields from sections and fields without section
+        const allFields = [
+          ...fieldsResponse.sections.flatMap(section => section.fields),
+          ...fieldsResponse.fieldsWithoutSection
+        ];
         
         // Fetch options for fields that need them
         const fieldsWithOptions = await Promise.all(
-          templateFields.map(async (field) => {
+          allFields.map(async (field) => {
             const extendedField: ExtendedTemplateField = { ...field };
             
             // Fetch options for option-based fields

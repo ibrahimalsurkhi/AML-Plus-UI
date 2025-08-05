@@ -99,11 +99,16 @@ const TransactionDetailsPage = () => {
         setTransaction(data as TransactionDetails);
 
         // Fetch template fields for template ID 15 (transaction template)
-        const templateFields = await templateService.getTemplateFields('15');
+        const fieldsResponse = await templateService.getTemplateFields('15');
+        // Get all fields from sections and fields without section
+        const allFields = [
+          ...fieldsResponse.sections.flatMap(section => section.fields),
+          ...fieldsResponse.fieldsWithoutSection
+        ];
         
         // Fetch options for fields that need them
         const fieldsWithOptions = await Promise.all(
-          templateFields.map(async (field) => {
+          allFields.map(async (field) => {
             const extendedField: ExtendedTemplateField = { ...field };
             
             // Fetch options for option-based fields

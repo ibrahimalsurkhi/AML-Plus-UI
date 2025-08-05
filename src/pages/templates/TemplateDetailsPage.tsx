@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { templateService, type Template, type ScoreCriteria, TemplateStatus, type TemplateField, FieldType, type FieldOption, TemplateType, type Lookup, lookupService } from '@/services/api';
+import { templateService, type Template, type ScoreCriteria, TemplateStatus, type TemplateField, FieldType, type FieldOption, TemplateType, type Lookup, lookupService, type TemplateSection, type TemplateFieldsResponse } from '@/services/api';
 import { Container } from '@/components/container';
 import { useLayout } from '@/providers';
 import { Separator } from '@/components/ui/separator';
@@ -1624,6 +1624,91 @@ const ScoreCriteriaRangeForm = ({
   );
 };
 
+const SectionDialog = ({ 
+  open, 
+  onOpenChange,
+  onSubmit,
+  initialData
+}: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: Omit<TemplateSection, 'id' | 'fields'>) => void;
+  initialData?: TemplateSection;
+}) => {
+  const [formData, setFormData] = useState<Omit<TemplateSection, 'id' | 'fields'>>({
+    title: '',
+    displayOrder: 1
+  });
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        title: initialData.title,
+        displayOrder: initialData.displayOrder
+      });
+    } else {
+      setFormData({
+        title: '',
+        displayOrder: 1
+      });
+    }
+  }, [initialData, open]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md p-6">
+        <DialogTitle>{initialData ? 'Edit Section' : 'Add Section'}</DialogTitle>
+        <DialogHeader className="mb-4">
+          <DialogDescription>
+            {initialData ? 'Update the section details below.' : 'Configure the details for the new section.'}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="title" className="flex items-center">
+                Title <span className="text-red-500 ml-1">*</span>
+              </Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="Enter section title"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="displayOrder">Display Order</Label>
+              <Input
+                id="displayOrder"
+                type="number"
+                min={1}
+                value={formData.displayOrder}
+                onChange={(e) => setFormData({ ...formData, displayOrder: Number(e.target.value) })}
+                placeholder="Enter display order"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              {initialData ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const ScoreCriteriaRangeDialog = ({ 
   open, 
   onOpenChange,
@@ -1889,7 +1974,8 @@ export const TemplateDetailsPage = () => {
   const { currentLayout } = useLayout();
   const [template, setTemplate] = useState<Template | null>(null);
   const [scoreCriteria, setScoreCriteria] = useState<ScoreCriteria[]>([]);
-  const [templateFields, setTemplateFields] = useState<TemplateField[]>([]);
+  const [templateSections, setTemplateSections] = useState<TemplateSection[]>([]);
+  const [fieldsWithoutSection, setFieldsWithoutSection] = useState<TemplateField[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fieldDialogOpen, setFieldDialogOpen] = useState(false);
@@ -1911,6 +1997,18 @@ export const TemplateDetailsPage = () => {
   const [rangeFieldId, setRangeFieldId] = useState<number | null>(null);
   const [deleteRangeDialogOpen, setDeleteRangeDialogOpen] = useState(false);
   const [rangeToDelete, setRangeToDelete] = useState<ScoreCriteriaRange | null>(null);
+  
+  // Section management states
+  const [sectionDialogOpen, setSectionDialogOpen] = useState(false);
+  const [selectedSection, setSelectedSection] = useState<TemplateSection | null>(null);
+  const [deleteSectionDialogOpen, setDeleteSectionDialogOpen] = useState(false);
+  const [sectionToDelete, setSectionToDelete] = useState<TemplateSection | null>(null);
+  const [fieldSectionId, setFieldSectionId] = useState<number | null>(null);
+
+  // Collapse states
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [isPersonalInfoCollapsed, setIsPersonalInfoCollapsed] = useState(false);
+  const [isFieldsWithoutSectionCollapsed, setIsFieldsWithoutSectionCollapsed] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -1948,10 +2046,17 @@ export const TemplateDetailsPage = () => {
     }
   };
 
+  // Helper function to get all fields from sections and fields without section
+  const getAllTemplateFields = (): TemplateField[] => {
+    const sectionFields = templateSections.flatMap(section => section.fields);
+    return [...sectionFields, ...fieldsWithoutSection];
+  };
+
   const fetchTemplateFields = async (templateId: string) => {
     try {
       const data = await templateService.getTemplateFields(templateId);
-      setTemplateFields(data);
+      setTemplateSections(data.sections);
+      setFieldsWithoutSection(data.fieldsWithoutSection);
     } catch (err) {
       console.error('Error fetching template fields:', err);
       toast({
@@ -2003,7 +2108,7 @@ export const TemplateDetailsPage = () => {
         fieldType: field.fieldType || FieldType.Text,
         weight: field.weight ?? 0,
         isRequired: field.isRequired || false,
-        displayOrder: templateFields.length + 1,
+        displayOrder: getAllTemplateFields().length + 1,
         placeholder: field.placeholder || '',
         minLength: field.minLength,
         maxLength: field.maxLength,
@@ -2012,7 +2117,8 @@ export const TemplateDetailsPage = () => {
         minDate: field.minDate,
         maxDate: field.maxDate,
         pattern: field.pattern,
-        lookupId: field.lookupId || null
+        lookupId: field.lookupId || null,
+        sectionId: fieldSectionId || null
       };
 
       await templateService.createTemplateField(id, newField);
@@ -2020,10 +2126,13 @@ export const TemplateDetailsPage = () => {
       // Refresh fields from server to get the latest data
       await fetchTemplateFields(id);
       setFieldDialogOpen(false);
+      setFieldSectionId(null); // Clear section context
       
       toast({
         title: "Success",
-        description: "Field created successfully",
+        description: fieldSectionId 
+          ? `Field created successfully in section.`
+          : "Field created successfully",
       });
     } catch (err) {
       console.error('Error creating field:', err);
@@ -2039,7 +2148,7 @@ export const TemplateDetailsPage = () => {
     if (!id) return;
 
     try {
-      const currentField = templateFields.find(f => f.id === fieldId);
+      const currentField = getAllTemplateFields().find(f => f.id === fieldId);
       if (!currentField) return;
 
       const updatedField: Omit<TemplateField, 'id' | 'templateId'> = {
@@ -2362,16 +2471,17 @@ export const TemplateDetailsPage = () => {
     if (!id) return;
     
     try {
-      const fieldToUpdate = templateFields.find(f => f.id === fieldId);
+      const fieldToUpdate = getAllTemplateFields().find(f => f.id === fieldId);
       if (!fieldToUpdate) return;
       
-      const updatedField = await templateService.updateTemplateField(id, fieldId, {
-        ...fieldToUpdate,
-        weight: newWeight
-      });
-      
-      setTemplateFields(prev => prev.map(f => f.id === fieldId ? updatedField : f));
-      setEditingWeight(null);
+              const updatedField = await templateService.updateTemplateField(id, fieldId, {
+          ...fieldToUpdate,
+          weight: newWeight
+        });
+        
+        // Refresh fields from server to get the latest data
+        await fetchTemplateFields(id);
+        setEditingWeight(null);
       
       toast({
         title: "Success",
@@ -2403,6 +2513,87 @@ export const TemplateDetailsPage = () => {
         description: "Failed to fetch field options",
         variant: "destructive",
       });
+    }
+  };
+
+  // Section management functions
+  const handleCreateSection = async (data: Omit<TemplateSection, 'id' | 'fields'>) => {
+    if (!id) return;
+
+    try {
+      await templateService.createTemplateSection(id, data);
+      
+      // Refresh fields from server to get the latest data
+      await fetchTemplateFields(id);
+      setSectionDialogOpen(false);
+      
+      toast({
+        title: "Success",
+        description: "Section created successfully",
+      });
+    } catch (err) {
+      console.error('Error creating section:', err);
+      toast({
+        title: "Error",
+        description: "Failed to create section",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateSection = async (sectionId: number, data: Omit<TemplateSection, 'id' | 'fields'>) => {
+    if (!id) return;
+
+    try {
+      await templateService.updateTemplateSection(id, sectionId, data);
+      
+      // Refresh fields from server to get the latest data
+      await fetchTemplateFields(id);
+      setSectionDialogOpen(false);
+      setSelectedSection(null);
+      
+      toast({
+        title: "Success",
+        description: "Section updated successfully",
+      });
+    } catch (err) {
+      console.error('Error updating section:', err);
+      toast({
+        title: "Error",
+        description: "Failed to update section",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const confirmDeleteSection = (section: TemplateSection) => {
+    setSectionToDelete(section);
+    setDeleteSectionDialogOpen(true);
+  };
+
+  const handleDeleteSection = async (sectionId: number) => {
+    if (!id) return;
+
+    try {
+      await templateService.deleteTemplateSection(id, sectionId);
+      
+      // Refresh fields from server to get the latest data
+      await fetchTemplateFields(id);
+      
+      toast({
+        title: "Success",
+        description: "Section deleted successfully",
+      });
+    } catch (err) {
+      console.error('Error deleting section:', err);
+      toast({
+        title: "Error",
+        description: "Failed to delete section",
+        variant: "destructive",
+      });
+    } finally {
+      setSectionToDelete(null);
+      setDeleteSectionDialogOpen(false);
     }
   };
 
@@ -2601,180 +2792,561 @@ export const TemplateDetailsPage = () => {
                   <Icon name="edit_note" className="text-primary text-xl" />
                   <h2 className="text-xl font-semibold">Template Fields</h2>
                 </div>
-                <Button onClick={() => setFieldDialogOpen(true)}>
+                <Button onClick={() => setSectionDialogOpen(true)}>
                   <Icon name="add" className="mr-1" />
-                  Add Field
+                  Add Section
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              {templateFields.length === 0 ? (
-                <div className="text-center py-12">
-                  <Icon name="edit_note" className="mx-auto text-gray-400 text-4xl mb-3" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-1">No fields defined</h3>
-                  <p className="text-gray-500 mb-4">Add fields to your template to start collecting data</p>
-                  <Button onClick={() => setFieldDialogOpen(true)}>
-                    <Icon name="add" className="mr-1" />
-                    Add Your First Field
-                  </Button>
-                </div>
-              ) : (
-                <div className="border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Field</TableHead>
-                        <TableHead>Type</TableHead>
-                        {template.templateType === TemplateType.Record && <TableHead>Weight</TableHead>}
-                        <TableHead>Required</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {templateFields.map((field) => {
-                        const fieldId = typeof field.id === 'number' ? field.id : null;
-                        
-                        return (
-                          <TableRow key={field.id}>
+              {/* Default Personal Information Section for Record Templates */}
+              {template.templateType === TemplateType.Record && (
+                <div className="border rounded-lg overflow-hidden mb-6">
+                  <div className="bg-blue-50 px-6 py-4 border-b">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Icon name="person" className="text-blue-600 text-xl" />
+                        <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                          Read Only
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm text-blue-600 font-medium">
+                          Default Section
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsPersonalInfoCollapsed(!isPersonalInfoCollapsed)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Icon 
+                            name="expand_more" 
+                            className={`text-blue-600 transition-transform duration-200 ${
+                              isPersonalInfoCollapsed ? 'rotate-180' : ''
+                            }`} 
+                          />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  {!isPersonalInfoCollapsed && (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Field</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Required</TableHead>
+                          <TableHead className="text-right">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {[
+                          { label: "First Name", type: "Text", icon: "person" },
+                          { label: "Last Name", type: "Text", icon: "person" },
+                          { label: "Date of Birth", type: "Date", icon: "calendar_today" },
+                          { label: "Nationality", type: "Dropdown", icon: "flag" },
+                          { label: "Middle Name", type: "Text", icon: "person" },
+                          { label: "Identification", type: "Text", icon: "badge" },
+                          { label: "Country of Birth", type: "Dropdown", icon: "public" },
+                          { label: "Customer Reference ID", type: "Text", icon: "tag" }
+                        ].map((field, index) => (
+                          <TableRow key={index}>
                             <TableCell>
                               <div className="flex items-start gap-4">
-                                <div className="rounded-lg p-2 bg-primary/10">
-                                  <Icon 
-                                    name={
-                                      field.fieldType === FieldType.Text ? "short_text" :
-                                      field.fieldType === FieldType.Number ? "numbers" :
-                                      field.fieldType === FieldType.Dropdown ? "arrow_drop_down_circle" :
-                                      field.fieldType === FieldType.Radio ? "radio_button_checked" :
-                                      field.fieldType === FieldType.Checkbox ? "check_box" :
-                                      field.fieldType === FieldType.Lookup ? "list_alt" : "list"
-                                    } 
-                                    className="text-primary text-xl"
-                                  />
+                                <div className="rounded-lg p-2 bg-blue-100">
+                                  <Icon name={field.icon} className="text-blue-600 text-xl" />
                                 </div>
                                 <div>
                                   <div className="font-medium text-gray-900">{field.label}</div>
-                                  {field.placeholder && (
-                                    <div className="text-sm text-gray-500 mt-1">{field.placeholder}</div>
-                                  )}
+                                  <div className="text-sm text-gray-500 mt-1">
+                                    {field.label === "Date of Birth" ? "mm/dd/yyyy" : 
+                                     field.label === "Nationality" ? "Select nationality" :
+                                     field.label === "Country of Birth" ? "Select country of birth" : ""}
+                                  </div>
                                 </div>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex flex-col gap-1">
-                                <Badge variant="outline" className="text-xs">
-                                  {FieldTypeMap[field.fieldType]}
-                                </Badge>
-                                {field.fieldType === FieldType.Lookup && field.lookupId && (
-                                  <div className="text-xs text-gray-500">
-                                    Lookup ID: {field.lookupId}
-                                  </div>
-                                )}
-                              </div>
+                              <Badge variant="outline" className="text-xs">
+                                {field.type}
+                              </Badge>
                             </TableCell>
-                            {template.templateType === TemplateType.Record && (
-                              <TableCell>
-                                {fieldId && (
-                                  <div className="flex items-center gap-2">
-                                    {editingWeight?.id === fieldId ? (
-                                      <div className="flex items-center gap-2">
-                                        <Input
-                                          type="number"
-                                          min={0}
-                                          step={0.1}
-                                          value={editingWeight.value}
-                                          onChange={(e) => setEditingWeight({ id: fieldId, value: Number(e.target.value) })}
-                                          className="w-20"
-                                        />
-                                        <Button
-                                          size="sm"
-                                          onClick={() => handleUpdateWeight(fieldId, editingWeight.value)}
-                                        >
-                                          <Icon name="check" className="text-green-500" />
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => setEditingWeight(null)}
-                                        >
-                                          <Icon name="close" className="text-gray-500" />
-                                        </Button>
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium">{field.weight}</span>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => setEditingWeight({ id: fieldId, value: field.weight })}
-                                        >
-                                          <Icon name="edit" className="text-gray-500" />
-                                        </Button>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </TableCell>
-                            )}
                             <TableCell>
-                              {field.isRequired ? (
-                                <Badge variant="destructive" className="text-xs">Required</Badge>
-                              ) : (
-                                <span className="text-gray-500 text-sm">Optional</span>
-                              )}
+                              <Badge variant="destructive" className="text-xs">Required</Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                {template.templateType === TemplateType.Record && field.fieldType === FieldType.Number && fieldId && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleOpenRangesDialog(field)}
-                                  >
-                                    <Icon name="score" className="mr-1" />
-                                    Score Ranges
-                                  </Button>
-                                )}
-                                {(field.fieldType === FieldType.Dropdown || 
-                                  field.fieldType === FieldType.Radio || 
-                                  field.fieldType === FieldType.Checkbox) && fieldId && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleOpenOptionsDialog(fieldId)}
-                                  >
-                                    <Icon name="list" className="mr-1" />
-                                    Options
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedField(field);
-                                    setFieldDialogOpen(true);
-                                  }}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Icon name="edit" className="text-gray-500" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setFieldToDelete(field);
-                                    setDeleteDialogOpen(true);
-                                  }}
-                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Icon name="delete" />
-                                </Button>
-                              </div>
+                              <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600">
+                                Read Only
+                              </Badge>
                             </TableCell>
                           </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              )}
+
+              {templateSections.length === 0 && fieldsWithoutSection.length === 0 ? (
+                <div className="text-center py-12">
+                  <Icon name="edit_note" className="mx-auto text-gray-400 text-4xl mb-3" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">No sections or fields defined</h3>
+                  <p className="text-gray-500 mb-4">Add sections and fields to your template to start collecting data</p>
+                  <Button onClick={() => setSectionDialogOpen(true)}>
+                    <Icon name="add" className="mr-1" />
+                    Add Your First Section
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Sections */}
+                  {templateSections.map((section) => (
+                    <div key={section.id} className="border rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 px-6 py-4 border-b">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-lg font-semibold text-gray-900">{section.title}</h3>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedField(null);
+                                setFieldSectionId(section.id);
+                                setFieldDialogOpen(true);
+                              }}
+                            >
+                              <Icon name="add" className="mr-1" />
+                              Add Field
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const sectionId = `section-${section.id}`;
+                                setCollapsedSections(prev => {
+                                  const newSet = new Set(prev);
+                                  if (newSet.has(sectionId)) {
+                                    newSet.delete(sectionId);
+                                  } else {
+                                    newSet.add(sectionId);
+                                  }
+                                  return newSet;
+                                });
+                              }}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Icon 
+                                name="expand_more" 
+                                className={`text-gray-500 transition-transform duration-200 ${
+                                  collapsedSections.has(`section-${section.id}`) ? 'rotate-180' : ''
+                                }`} 
+                              />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedSection(section);
+                                setSectionDialogOpen(true);
+                              }}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Icon name="edit" className="text-gray-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                confirmDeleteSection(section);
+                              }}
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Icon name="delete" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      {!collapsedSections.has(`section-${section.id}`) && (
+                        <div>
+                          {section.fields.length === 0 ? (
+                            <div className="text-center py-8 bg-gray-50">
+                              <Icon name="edit_note" className="mx-auto text-gray-400 text-2xl mb-2" />
+                              <p className="text-gray-500 mb-4">No fields in this section yet</p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedField(null);
+                                  setFieldSectionId(section.id);
+                                  setFieldDialogOpen(true);
+                                }}
+                              >
+                                <Icon name="add" className="mr-1" />
+                                Add Your First Field
+                              </Button>
+                            </div>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Field</TableHead>
+                                  <TableHead>Type</TableHead>
+                                  {template.templateType === TemplateType.Record && <TableHead>Weight</TableHead>}
+                                  <TableHead>Required</TableHead>
+                                  <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {section.fields.map((field) => {
+                                  const fieldId = typeof field.id === 'number' ? field.id : null;
+                                  
+                                  return (
+                                    <TableRow key={field.id}>
+                                      <TableCell>
+                                        <div className="flex items-start gap-4">
+                                          <div className="rounded-lg p-2 bg-primary/10">
+                                            <Icon 
+                                              name={
+                                                field.fieldType === FieldType.Text ? "short_text" :
+                                                field.fieldType === FieldType.Number ? "numbers" :
+                                                field.fieldType === FieldType.Dropdown ? "arrow_drop_down_circle" :
+                                                field.fieldType === FieldType.Radio ? "radio_button_checked" :
+                                                field.fieldType === FieldType.Checkbox ? "check_box" :
+                                                field.fieldType === FieldType.Lookup ? "list_alt" : "list"
+                                              } 
+                                              className="text-primary text-xl"
+                                            />
+                                          </div>
+                                          <div>
+                                            <div className="font-medium text-gray-900">{field.label}</div>
+                                            {field.placeholder && (
+                                              <div className="text-sm text-gray-500 mt-1">{field.placeholder}</div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex flex-col gap-1">
+                                          <Badge variant="outline" className="text-xs">
+                                            {FieldTypeMap[field.fieldType]}
+                                          </Badge>
+                                          {field.fieldType === FieldType.Lookup && field.lookupId && (
+                                            <div className="text-xs text-gray-500">
+                                              Lookup ID: {field.lookupId}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      {template.templateType === TemplateType.Record && (
+                                        <TableCell>
+                                          {fieldId && (
+                                            <div className="flex items-center gap-2">
+                                              {editingWeight?.id === fieldId ? (
+                                                <div className="flex items-center gap-2">
+                                                  <Input
+                                                    type="number"
+                                                    min={0}
+                                                    step={0.1}
+                                                    value={editingWeight.value}
+                                                    onChange={(e) => setEditingWeight({ id: fieldId, value: Number(e.target.value) })}
+                                                    className="w-20"
+                                                  />
+                                                  <Button
+                                                    size="sm"
+                                                    onClick={() => handleUpdateWeight(fieldId, editingWeight.value)}
+                                                  >
+                                                    <Icon name="check" className="text-green-500" />
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setEditingWeight(null)}
+                                                  >
+                                                    <Icon name="close" className="text-gray-500" />
+                                                  </Button>
+                                                </div>
+                                              ) : (
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-sm font-medium">{field.weight}</span>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setEditingWeight({ id: fieldId, value: field.weight })}
+                                                  >
+                                                    <Icon name="edit" className="text-gray-500" />
+                                                  </Button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </TableCell>
+                                      )}
+                                      <TableCell>
+                                        {field.isRequired ? (
+                                          <Badge variant="destructive" className="text-xs">Required</Badge>
+                                        ) : (
+                                          <span className="text-gray-500 text-sm">Optional</span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                          {template.templateType === TemplateType.Record && field.fieldType === FieldType.Number && fieldId && (
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => handleOpenRangesDialog(field)}
+                                            >
+                                              <Icon name="score" className="mr-1" />
+                                              Score Ranges
+                                            </Button>
+                                          )}
+                                          {(field.fieldType === FieldType.Dropdown || 
+                                            field.fieldType === FieldType.Radio || 
+                                            field.fieldType === FieldType.Checkbox) && fieldId && (
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => handleOpenOptionsDialog(fieldId)}
+                                            >
+                                              <Icon name="list" className="mr-1" />
+                                              Options
+                                            </Button>
+                                          )}
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              setSelectedField(field);
+                                              setFieldDialogOpen(true);
+                                            }}
+                                            className="h-8 w-8 p-0"
+                                          >
+                                            <Icon name="edit" className="text-gray-500" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              setFieldToDelete(field);
+                                              setDeleteDialogOpen(true);
+                                            }}
+                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                          >
+                                            <Icon name="delete" />
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {/* Fields without section */}
+                  {fieldsWithoutSection.length > 0 && (
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 px-6 py-4 border-b">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-lg font-semibold text-gray-900">Fields Without Section</h3>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedField(null);
+                                setFieldSectionId(null);
+                                setFieldDialogOpen(true);
+                              }}
+                            >
+                              <Icon name="add" className="mr-1" />
+                              Add Field
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setIsFieldsWithoutSectionCollapsed(!isFieldsWithoutSectionCollapsed)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Icon 
+                                name="expand_more" 
+                                className={`text-gray-500 transition-transform duration-200 ${
+                                  isFieldsWithoutSectionCollapsed ? 'rotate-180' : ''
+                                }`} 
+                              />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      {!isFieldsWithoutSectionCollapsed && (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Field</TableHead>
+                              <TableHead>Type</TableHead>
+                              {template.templateType === TemplateType.Record && <TableHead>Weight</TableHead>}
+                              <TableHead>Required</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {fieldsWithoutSection.map((field) => {
+                              const fieldId = typeof field.id === 'number' ? field.id : null;
+                              
+                              return (
+                                <TableRow key={field.id}>
+                                  <TableCell>
+                                    <div className="flex items-start gap-4">
+                                      <div className="rounded-lg p-2 bg-primary/10">
+                                        <Icon 
+                                          name={
+                                            field.fieldType === FieldType.Text ? "short_text" :
+                                            field.fieldType === FieldType.Number ? "numbers" :
+                                            field.fieldType === FieldType.Dropdown ? "arrow_drop_down_circle" :
+                                            field.fieldType === FieldType.Radio ? "radio_button_checked" :
+                                            field.fieldType === FieldType.Checkbox ? "check_box" :
+                                            field.fieldType === FieldType.Lookup ? "list_alt" : "list"
+                                          } 
+                                          className="text-primary text-xl"
+                                        />
+                                      </div>
+                                      <div>
+                                        <div className="font-medium text-gray-900">{field.label}</div>
+                                        {field.placeholder && (
+                                          <div className="text-sm text-gray-500 mt-1">{field.placeholder}</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex flex-col gap-1">
+                                      <Badge variant="outline" className="text-xs">
+                                        {FieldTypeMap[field.fieldType]}
+                                      </Badge>
+                                      {field.fieldType === FieldType.Lookup && field.lookupId && (
+                                        <div className="text-xs text-gray-500">
+                                          Lookup ID: {field.lookupId}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  {template.templateType === TemplateType.Record && (
+                                    <TableCell>
+                                      {fieldId && (
+                                        <div className="flex items-center gap-2">
+                                          {editingWeight?.id === fieldId ? (
+                                            <div className="flex items-center gap-2">
+                                              <Input
+                                                type="number"
+                                                min={0}
+                                                step={0.1}
+                                                value={editingWeight.value}
+                                                onChange={(e) => setEditingWeight({ id: fieldId, value: Number(e.target.value) })}
+                                                className="w-20"
+                                              />
+                                              <Button
+                                                size="sm"
+                                                onClick={() => handleUpdateWeight(fieldId, editingWeight.value)}
+                                              >
+                                                <Icon name="check" className="text-green-500" />
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => setEditingWeight(null)}
+                                              >
+                                                <Icon name="close" className="text-gray-500" />
+                                              </Button>
+                                            </div>
+                                          ) : (
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-sm font-medium">{field.weight}</span>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setEditingWeight({ id: fieldId, value: field.weight })}
+                                              >
+                                                <Icon name="edit" className="text-gray-500" />
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </TableCell>
+                                  )}
+                                  <TableCell>
+                                    {field.isRequired ? (
+                                      <Badge variant="destructive" className="text-xs">Required</Badge>
+                                    ) : (
+                                      <span className="text-gray-500 text-sm">Optional</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end gap-2">
+                                      {template.templateType === TemplateType.Record && field.fieldType === FieldType.Number && fieldId && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleOpenRangesDialog(field)}
+                                        >
+                                          <Icon name="score" className="mr-1" />
+                                          Score Ranges
+                                        </Button>
+                                      )}
+                                      {(field.fieldType === FieldType.Dropdown || 
+                                        field.fieldType === FieldType.Radio || 
+                                        field.fieldType === FieldType.Checkbox) && fieldId && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleOpenOptionsDialog(fieldId)}
+                                        >
+                                          <Icon name="list" className="mr-1" />
+                                          Options
+                                        </Button>
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedField(field);
+                                          setFieldDialogOpen(true);
+                                        }}
+                                        className="h-8 w-8 p-0"
+                                      >
+                                        <Icon name="edit" className="text-gray-500" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setFieldToDelete(field);
+                                          setDeleteDialogOpen(true);
+                                        }}
+                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                      >
+                                        <Icon name="delete" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -2792,7 +3364,12 @@ export const TemplateDetailsPage = () => {
         {/* Field Dialog */}
         <TemplateFieldDialog
           open={fieldDialogOpen}
-          onOpenChange={setFieldDialogOpen}
+          onOpenChange={(open) => {
+            setFieldDialogOpen(open);
+            if (!open) {
+              setFieldSectionId(null); // Clear section context when dialog closes
+            }
+          }}
           initialData={selectedField || undefined}
           onSubmit={(data) => {
             if (selectedField && selectedField.id) {
@@ -2920,7 +3497,7 @@ export const TemplateDetailsPage = () => {
         <FieldOptionsDialog
           open={optionsDialogOpen}
           onOpenChange={setOptionsDialogOpen}
-          field={templateFields.find(f => f.id === optionFieldId) || null}
+          field={getAllTemplateFields().find(f => f.id === optionFieldId) || null}
           options={fieldOptions}
           scoreCriteria={scoreCriteria}
           onCreateOption={handleCreateOption}
@@ -2939,7 +3516,7 @@ export const TemplateDetailsPage = () => {
               setRangeToDelete(null);
             }
           }}
-          field={templateFields.find(f => f.id === rangeFieldId) || null}
+          field={getAllTemplateFields().find(f => f.id === rangeFieldId) || null}
           ranges={scoreCriteriaRanges}
           scoreCriteria={scoreCriteria}
           onCreateRange={handleCreateRange}
@@ -2948,6 +3525,75 @@ export const TemplateDetailsPage = () => {
           templateId={id}
           fieldId={rangeFieldId || undefined}
         />
+
+        {/* Section Dialog */}
+        <SectionDialog
+          open={sectionDialogOpen}
+          onOpenChange={(open) => {
+            setSectionDialogOpen(open);
+            if (!open) {
+              setSelectedSection(null);
+              setFieldSectionId(null); // Clear section context
+            }
+          }}
+          initialData={selectedSection || undefined}
+          onSubmit={(data) => {
+            if (selectedSection && selectedSection.id) {
+              handleUpdateSection(selectedSection.id, data);
+            } else {
+              handleCreateSection(data);
+            }
+          }}
+        />
+
+        {/* Section Delete Confirmation Dialog */}
+        <Dialog open={deleteSectionDialogOpen} onOpenChange={setDeleteSectionDialogOpen}>
+          <DialogContent className="sm:max-w-md p-6">
+            <DialogTitle className="text-xl">Confirm Deletion</DialogTitle>
+            <DialogHeader className="mb-4">
+              <DialogDescription className="mt-2">
+                Are you sure you want to delete this section?
+              </DialogDescription>
+            </DialogHeader>
+            
+            {sectionToDelete && (
+              <div className="py-4 space-y-4">
+                <div className="bg-gray-50 p-5 rounded-lg border border-gray-100">
+                  <div className="flex items-center gap-4">
+                    <div className="rounded-full bg-red-100 p-3 flex-shrink-0">
+                      <Icon name="folder" className="text-red-600 text-xl" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-lg text-gray-900">{sectionToDelete.title}</h4>
+                      <p className="text-gray-500 mt-1">Display Order: {sectionToDelete.displayOrder}</p>
+                      <p className="text-gray-500">Fields: {sectionToDelete.fields.length}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {sectionToDelete.fields.length > 0 && (
+                  <div className="bg-yellow-50 text-yellow-800 p-4 rounded-md border border-yellow-100 flex items-start gap-3">
+                    <Icon name="warning" className="text-yellow-600 mt-0.5 flex-shrink-0" />
+                    <p>This section contains {sectionToDelete.fields.length} field(s). Deleting it will move all fields to "Fields Without Section".</p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <DialogFooter className="mt-6 gap-3">
+              <Button type="button" variant="outline" onClick={() => setDeleteSectionDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="destructive" onClick={() => {
+                if (sectionToDelete && sectionToDelete.id) {
+                  handleDeleteSection(sectionToDelete.id);
+                }
+              }}>
+                Delete Section
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         </div>
       </Container>
   );

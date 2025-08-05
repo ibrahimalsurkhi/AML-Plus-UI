@@ -110,10 +110,16 @@ const CreateTransactionPage = () => {
     const fetchTemplateFields = async () => {
       setTemplateFieldsLoading(true);
       try {
-        const fields = await templateService.getTemplateFields('15');
+        const fieldsResponse = await templateService.getTemplateFields('15');
+        // Get all fields from sections and fields without section
+        const allFields = [
+          ...fieldsResponse.sections.flatMap(section => section.fields),
+          ...fieldsResponse.fieldsWithoutSection
+        ];
+        
         // Fetch options and ranges for fields that need them
         const fieldsWithOptions = await Promise.all(
-          fields.map(async (field) => {
+          allFields.map(async (field) => {
             const extendedField: ExtendedTemplateField = { ...field };
 
             // Fetch options for option-based fields

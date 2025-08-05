@@ -98,6 +98,7 @@ export enum TemplateType {
 export interface TemplateField {
   id?: number;
   templateId?: number;
+  sectionId?: number | null;
   label: string;
   fieldType: FieldType;
   weight: number;
@@ -112,6 +113,19 @@ export interface TemplateField {
   maxDate?: string | null;
   pattern?: string | null;
   lookupId?: number | null;
+}
+
+export interface TemplateSection {
+  id: number;
+  title: string;
+  displayOrder: number;
+  fields: TemplateField[];
+}
+
+export interface TemplateFieldsResponse {
+  templateId: number;
+  sections: TemplateSection[];
+  fieldsWithoutSection: TemplateField[];
 }
 
 export interface FieldOption {
@@ -161,8 +175,8 @@ export const templateService = {
   deleteScoreCriteria: async (templateId: string, criteriaId: number): Promise<void> => {
     await api.delete(`${API_CONFIG.endpoints.templates.list}/${templateId}/score-criteria/${criteriaId}`);
   },
-  getTemplateFields: async (templateId: string): Promise<TemplateField[]> => {
-    const response = await api.get<TemplateField[]>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields`);
+  getTemplateFields: async (templateId: string): Promise<TemplateFieldsResponse> => {
+    const response = await api.get<TemplateFieldsResponse>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields`);
     return response.data;
   },
   createTemplateField: async (templateId: string, field: TemplateField): Promise<TemplateField> => {
@@ -234,6 +248,24 @@ export const templateService = {
       `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria/${rangeId}`
     );
   },
+  // Section management methods
+  createTemplateSection: async (templateId: string, data: Omit<TemplateSection, 'id' | 'fields'>): Promise<TemplateSection> => {
+    const response = await api.post<TemplateSection>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/sections`,
+      data
+    );
+    return response.data;
+  },
+  updateTemplateSection: async (templateId: string, sectionId: number, data: Omit<TemplateSection, 'id' | 'fields'>): Promise<TemplateSection> => {
+    const response = await api.put<TemplateSection>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/sections/${sectionId}`,
+      data
+    );
+    return response.data;
+  },
+  deleteTemplateSection: async (templateId: string, sectionId: number): Promise<void> => {
+    await api.delete(`${API_CONFIG.endpoints.templates.list}/${templateId}/sections/${sectionId}`);
+  },
   updateTemplateStatus: async (templateId: string, status: TemplateStatus): Promise<Template> => {
     const response = await api.put<Template>(`${API_CONFIG.endpoints.templates.list}/${templateId}/status`, {
       status
@@ -266,6 +298,8 @@ export interface Record {
   fieldResponses: FieldResponse[];
   score: number;
   scoreBGColor: string;
+  uuid: string;
+  customerReferenceId?: string;
 }
 
 export interface RecordQueryParams {
