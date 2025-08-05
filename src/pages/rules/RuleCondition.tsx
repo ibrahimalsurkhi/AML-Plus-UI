@@ -218,8 +218,8 @@ function getLabel(options: { label: string; value: any }[], value: any) {
   return found ? found.label : value;
 }
 function getOperatorLabel(value: any, fieldId: any, operatorProp?: any) {
-  // Prefer operatorProp if present
-  if (operatorProp) {
+  // First check for ComparisonOperator (new field from backend)
+  if (operatorProp !== undefined && operatorProp !== null) {
     if (fieldId === AggregateFieldId.TransactionStatus) {
       return getLabel(StatusOperatorOptions, operatorProp) || '[Operator]';
     }
@@ -232,6 +232,7 @@ function getOperatorLabel(value: any, fieldId: any, operatorProp?: any) {
       return getLabel(ComparisonOperatorOptions, operatorProp) || '[Operator]';
     }
   }
+  
   // Fallback to aggregateFunction for legacy data
   if (fieldId === AggregateFieldId.TransactionStatus) {
     return getLabel(StatusOperatorOptions, value) || '[Operator]';
@@ -323,9 +324,9 @@ const RuleCondition: React.FC<RuleConditionProps> = ({ condition, onChange, onRe
             </div>
             <div>
               <div className="text-xs text-muted-foreground mb-1">Operator</div>
-                              <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
-                  {getOperatorLabel(condition.aggregateFunction, condition.aggregateFieldId, condition.ComparisonOperator)}
-                </div>
+              <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
+                {getOperatorLabel(condition.aggregateFunction, condition.aggregateFieldId, condition.ComparisonOperator)}
+              </div>
             </div>
             {condition.isAggregated && (
               <div>
@@ -338,7 +339,31 @@ const RuleCondition: React.FC<RuleConditionProps> = ({ condition, onChange, onRe
             <div>
               <div className="text-xs text-muted-foreground mb-1">Value</div>
               <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
-                {condition.jsonValue}
+                {(() => {
+                  if (!condition.jsonValue) return '[Value]';
+                  try {
+                    if (condition.aggregateFieldId === AggregateFieldId.TransactionTime) {
+                      const date = new Date(condition.jsonValue);
+                      return isNaN(date.getTime()) ? condition.jsonValue : format(date, 'yyyy-MM-dd');
+                    } else {
+                      const parsed = JSON.parse(condition.jsonValue);
+                      if (Array.isArray(parsed)) {
+                        if (condition.aggregateFieldId === AggregateFieldId.TransactionStatus) {
+                          const labels = parsed
+                            .map((v: number) => getLabel(TransactionStatusOptions, v) || v)
+                            .join(', ');
+                          return labels || condition.jsonValue;
+                        } else {
+                          return parsed.join(', ');
+                        }
+                      } else {
+                        return parsed;
+                      }
+                    }
+                  } catch {
+                    return condition.jsonValue;
+                  }
+                })()}
               </div>
             </div>
             {condition.filterBy && (

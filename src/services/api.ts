@@ -485,7 +485,7 @@ export interface Rule {
   id?: number;
   name: string;
   ruleType: string | number;
-  root: any;
+  root?: any;
   isActive: boolean;
   tenantId: number;
 }
@@ -519,8 +519,8 @@ export const ruleService = {
     });
     return response.data;
   },
-  getRuleById: async (id: number): Promise<RuleListItem> => {
-    const response = await api.get<RuleListItem>(`/Rules/${id}`);
+  getRuleById: async (id: number): Promise<Rule> => {
+    const response = await api.get<Rule>(`/Rules/${id}`);
     return response.data;
   },
   activateRule: async (id: number, isActive: boolean): Promise<void> => {

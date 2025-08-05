@@ -4,21 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Container } from '@/components/container';
 import RuleGroup, { RuleGroupType } from './RuleGroup';
 import {
-  AggregateFieldIdOptions,
   OperatorId,
-  AggregateFunctionOptions,
-  DurationTypeOptions,
-  AccountTypeOptions,
-  ComparisonOperatorOptions,
-  StatusOperatorOptions,
-  StatusOperator,
-  ComparisonOperator,
-  TransactionStatusOptions,
-  AggregateFieldId,
-  RuleTypeOptions,
-  FilterByOptions,
   ApplyTo,
   ApplyToOptions,
+  RuleTypeOptions,
 } from './enums';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,8 +17,8 @@ import {
   ToolbarActions,
 } from '@/partials/toolbar';
 import { ruleService } from '@/services/api';
-import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { getRulePreview } from '@/services/rulePreviewService';
 
 const defaultRootGroup: RuleGroupType = {
   operator: OperatorId.And,
@@ -42,129 +31,6 @@ const initialRule = {
   applyTo: ApplyTo.Sender, // Default to Sender
   root: defaultRootGroup,
 };
-
-// Helper to get label from options
-function getLabel(options: { label: string; value: any }[], value: any) {
-  const found = options.find(opt => opt.value === value);
-  return found ? found.label : '';
-}
-
-function getOperatorLabel(value: any, fieldId: any, operatorProp?: any) {
-  // Prefer operatorProp if present (new operator property)
-  if (operatorProp !== undefined) {
-    if (fieldId === AggregateFieldId.TransactionStatus) {
-      return getLabel(StatusOperatorOptions, operatorProp) || '[Operator]';
-    }
-    if (
-      fieldId === AggregateFieldId.Amount ||
-      fieldId === AggregateFieldId.TransactionCount ||
-      fieldId === AggregateFieldId.TransactionTime ||
-      fieldId === AggregateFieldId.CurrencyAmount
-    ) {
-      return getLabel(ComparisonOperatorOptions, operatorProp) || '[Operator]';
-    }
-  }
-  
-  // Fallback to aggregateFunction for legacy data
-  if (fieldId === AggregateFieldId.TransactionStatus) {
-    return getLabel(StatusOperatorOptions, value) || '[Operator]';
-  }
-  if (
-    fieldId === AggregateFieldId.Amount ||
-    fieldId === AggregateFieldId.TransactionCount ||
-    fieldId === AggregateFieldId.TransactionTime ||
-    fieldId === AggregateFieldId.CurrencyAmount
-  ) {
-    return getLabel(ComparisonOperatorOptions, value) || '[Operator]';
-  }
-  return getLabel(AggregateFunctionOptions, value) || '[Operator]';
-}
-function getDurationTypeLabel(value: any) {
-  return getLabel(DurationTypeOptions, value) || '[Duration Type]';
-}
-function getAccountTypeLabel(value: any) {
-  return getLabel(AccountTypeOptions, value) || '[Account Type]';
-}
-
-// Helper to generate rule preview text dynamically
-function getRulePreview(group: RuleGroupType): string {
-  if (!group) return '';
-  if (group.children.length === 0) return '';
-  const op = group.operator === OperatorId.And ? 'AND' : 'OR';
-  return group.children
-    .map((child: any) => {
-      if ('condition' in child) {
-        const cond = child.condition;
-        // Step-by-step preview building
-        const metric = getLabel(AggregateFieldIdOptions, cond.aggregateFieldId) || '[Metric]';
-        const operator = cond.ComparisonOperator !== undefined ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId, cond.ComparisonOperator) : 
-                       (cond.aggregateFunction && !cond.isAggregated ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId) : '[Operator]');
-        let aggregateFn = '';
-        if (cond.isAggregated && cond.aggregateFunction) {
-          aggregateFn = getLabel(AggregateFunctionOptions, cond.aggregateFunction) || '[Aggregate Function]';
-        }
-        let value = '[Value]';
-        if (cond.jsonValue) {
-          try {
-            if (cond.aggregateFieldId === AggregateFieldId.TransactionTime) {
-              // Format as date
-              const date = new Date(cond.jsonValue);
-              value = isNaN(date.getTime()) ? '[Value]' : format(date, 'yyyy-MM-dd');
-            } else {
-              const parsed = JSON.parse(cond.jsonValue);
-              if (Array.isArray(parsed)) {
-                // For Transaction Status, show all selected labels in brackets
-                if (cond.aggregateFieldId === AggregateFieldId.TransactionStatus) {
-                  const labels = parsed
-                    .map((v: number) => getLabel(TransactionStatusOptions, v) || v)
-                    .join(', ');
-                  value = labels ? `[${labels}]` : '[Value]';
-                } else {
-                  value = parsed.length > 1 ? `[${parsed.join(', ')}]` : parsed.join(', ');
-                }
-              } else {
-                value = parsed;
-              }
-            }
-          } catch {
-            value = cond.jsonValue;
-          }
-        }
-        const duration = cond.duration ? cond.duration : '[Duration]';
-        const durationType = cond.durationType ? getDurationTypeLabel(cond.durationType) : '[Duration Type]';
-        const transferType = cond.accountType ? getAccountTypeLabel(cond.accountType) : '[Account Type]';
-        // Build a natural language preview
-        let preview = '';
-        preview += metric !== '[Metric]' ? metric : '[Metric]';
-        preview += operator !== '[Operator]' ? ` ${operator}` : (cond.isAggregated ? '' : ' [Operator]');
-        preview += aggregateFn ? ` ${aggregateFn}` : (cond.isAggregated ? ' [Aggregate Function]' : '');
-        preview += value !== '[Value]' ? ` ${value}` : ' [Value]';
-        if (cond.filterBy) {
-          const filterByLabel = getLabel(FilterByOptions, cond.filterBy);
-          preview += filterByLabel ? ` by ${filterByLabel}` : '';
-        }
-        // Show duration/durationType or lastTransactionCount
-        if (cond.duration) {
-          preview += ' in last';
-          preview += cond.duration ? ` ${cond.duration}` : ' [Duration]';
-          preview += cond.durationType ? ` ${getDurationTypeLabel(cond.durationType)}` : ' [Duration Type]';
-        } else if (cond.lastTransactionCount) {
-          preview += ` in last [${cond.lastTransactionCount}] transactions`;
-        }
-        if (transferType !== '[Account Type]') {
-          preview += ` for ${transferType}`;
-        } else {
-          preview += ' for [Account Type]';
-        }
-        return preview.trim();
-      } else if ('operator' in child && 'children' in child) {
-        return `(${getRulePreview(child as RuleGroupType)})`;
-      }
-      return '';
-    })
-    .filter(Boolean)
-    .join(` ${op} `);
-}
 
 const RuleBuilderPage = () => {
   const [rule, setRule] = useState(initialRule);
