@@ -204,7 +204,10 @@ export const templateService = {
     return response.data;
   },
   updateFieldOption: async (templateId: string, fieldId: number, optionId: number, option: Omit<FieldOption, 'id' | 'fieldId'>): Promise<FieldOption> => {
-    const response = await api.put<FieldOption>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options/${optionId}`, option);
+    const response = await api.put<FieldOption>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options/${optionId}`, {
+      ...option,
+      templateId: parseInt(templateId)
+    });
     return response.data;
   },
   deleteFieldOption: async (templateId: string, fieldId: number, optionId: number): Promise<void> => {

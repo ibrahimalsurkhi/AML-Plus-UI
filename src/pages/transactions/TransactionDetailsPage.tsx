@@ -645,8 +645,8 @@ const TransactionDetailsPage = () => {
                         <div className="text-base font-medium">
                           {value !== null ? value : <span className="text-muted-foreground">No value set</span>}
                         </div>
-                        {/* Show available options for dropdown/radio/checkbox fields */}
-                        {(field.fieldType === FieldType.Dropdown || field.fieldType === FieldType.Radio || field.fieldType === FieldType.Checkbox) && 
+                        {/* Show available options for dropdown/radio/checkbox/lookup fields */}
+                        {(field.fieldType === FieldType.Dropdown || field.fieldType === FieldType.Radio || field.fieldType === FieldType.Checkbox || field.fieldType === FieldType.Lookup) && 
                          field.options && field.options.length > 0 && (
                           <div className="mt-2">
                             <div className="text-xs text-muted-foreground mb-1">Available options:</div>

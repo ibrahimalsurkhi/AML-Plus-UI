@@ -1095,7 +1095,12 @@ const OptionForm = ({
         displayOrder: initialData.displayOrder
       });
     } else {
-      setFormData(defaultOption);
+      // Only set default scoreCriteriaId if there are score criteria available
+      setFormData({
+        label: '',
+        scoreCriteriaId: scoreCriteria.length > 0 ? scoreCriteria[0].id : 0,
+        displayOrder: 1
+      });
     }
     setErrors({});
   }, [initialData, scoreCriteria]);
@@ -1105,6 +1110,11 @@ const OptionForm = ({
     
     if (!isCheckboxField && !formData.label?.trim()) {
       newErrors.label = 'Label is required';
+    }
+    
+    // Validate score criteria for Record templates
+    if (templateType === TemplateType.Record && (formData.scoreCriteriaId === 0 || formData.scoreCriteriaId === null)) {
+      newErrors.scoreCriteria = 'Please select a valid score criteria.';
     }
     
     setErrors(newErrors);
@@ -1125,10 +1135,33 @@ const OptionForm = ({
         scoreCriteriaId: templateType === TemplateType.Record ? formData.scoreCriteriaId : (null as any)
       });
     } else {
-      onSubmit({
-        ...formData,
-        scoreCriteriaId: templateType === TemplateType.Record ? formData.scoreCriteriaId : (null as any)
-      });
+      // Check if we have valid score criteria for Record templates
+      if (templateType === TemplateType.Record && (formData.scoreCriteriaId === 0 || formData.scoreCriteriaId === null)) {
+        setErrors({ scoreCriteria: 'Please select a valid score criteria.' });
+        return;
+      }
+      
+      // Prepare the submission data
+      const submissionData: Omit<FieldOption, 'id' | 'fieldId'> = {
+        label: formData.label,
+        displayOrder: formData.displayOrder,
+        scoreCriteriaId: formData.scoreCriteriaId
+      };
+
+      // Only include scoreCriteriaId if it's valid (greater than 0) and template type is Record
+      if (templateType === TemplateType.Record) {
+        if (formData.scoreCriteriaId > 0) {
+          onSubmit(submissionData);
+        } else {
+          // For Record templates with invalid scoreCriteriaId, show error
+          setErrors({ scoreCriteria: 'Please select a valid score criteria.' });
+          return;
+        }
+      } else {
+        // For non-Record templates, don't include scoreCriteriaId
+        const { scoreCriteriaId, ...dataWithoutScoreCriteria } = submissionData;
+        onSubmit(dataWithoutScoreCriteria as any);
+      }
     }
   };
 
@@ -1161,18 +1194,27 @@ const OptionForm = ({
       {templateType === TemplateType.Record && (
         <>
           <Label htmlFor="scoreCriteriaId">Score Criteria</Label>
-          <select
-            id="scoreCriteriaId"
-            value={formData.scoreCriteriaId}
-            onChange={(e) => setFormData({ ...formData, scoreCriteriaId: Number(e.target.value) })}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {scoreCriteria.map((criteria) => (
-              <option key={`criteria-${criteria.id}`} value={criteria.id}>
-                {criteria.key} (Score: {criteria.score.toFixed(2)})
-              </option>
-            ))}
-          </select>
+          {scoreCriteria.length === 0 ? (
+            <div className="text-red-500 text-sm">
+              No score criteria available. Please create score criteria first.
+            </div>
+          ) : (
+            <select
+              id="scoreCriteriaId"
+              value={formData.scoreCriteriaId}
+              onChange={(e) => setFormData({ ...formData, scoreCriteriaId: Number(e.target.value) })}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {scoreCriteria.map((criteria) => (
+                <option key={`criteria-${criteria.id}`} value={criteria.id}>
+                  {criteria.key} (Score: {criteria.score.toFixed(2)})
+                </option>
+              ))}
+            </select>
+          )}
+          {errors.scoreCriteria && (
+            <p className="text-red-500 text-sm mt-1">{errors.scoreCriteria}</p>
+          )}
         </>
       )}
       
@@ -1195,7 +1237,7 @@ const OptionForm = ({
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit">
+        <Button type="submit" disabled={templateType === TemplateType.Record && scoreCriteria.length === 0}>
           {isCheckboxField ? 'Update Score' : (initialData ? 'Update' : 'Create')}
         </Button>
       </div>
@@ -1240,6 +1282,14 @@ const FieldOptionsDialog = ({
       toast({
         title: "Not Allowed",
         description: "Cannot create new options for checkbox fields. Only score updates are allowed.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (field?.fieldType === FieldType.Lookup) {
+      toast({
+        title: "Not Allowed",
+        description: "Cannot create new options for lookup fields. Options are managed through the lookup service.",
         variant: "destructive",
       });
       return;
@@ -1291,7 +1341,8 @@ const FieldOptionsDialog = ({
                 name={
                   field?.fieldType === FieldType.Dropdown ? "arrow_drop_down_circle" :
                   field?.fieldType === FieldType.Radio ? "radio_button_checked" :
-                  field?.fieldType === FieldType.Checkbox ? "check_box" : "list"
+                  field?.fieldType === FieldType.Checkbox ? "check_box" :
+                  field?.fieldType === FieldType.Lookup ? "list" : "list"
                 } 
                 className="text-primary text-xl"
               />
@@ -1324,7 +1375,7 @@ const FieldOptionsDialog = ({
               <h3 className="text-lg font-medium">
                 {isCheckboxField ? "Checkbox Score Criteria" : "Available Options"}
               </h3>
-              {!isCheckboxField && (
+              {!isCheckboxField && field?.fieldType !== FieldType.Lookup && (
                 <Button size="sm" onClick={handleCreateClick}>
                   <Icon name="add" className="mr-1" />
                   Add Option
@@ -1338,9 +1389,11 @@ const FieldOptionsDialog = ({
                 <p className="text-gray-600">
                   {isCheckboxField 
                     ? "No score criteria defined for this checkbox field yet."
+                    : field?.fieldType === FieldType.Lookup
+                    ? "Lookup options are managed through the lookup service."
                     : "No options defined for this field yet."}
                 </p>
-                {!isCheckboxField && (
+                {!isCheckboxField && field?.fieldType !== FieldType.Lookup && (
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -1400,7 +1453,7 @@ const FieldOptionsDialog = ({
                                 >
                                   <Icon name="edit" className="text-gray-500" />
                                 </Button>
-                                {!isCheckboxField && (
+                                {!isCheckboxField && field?.fieldType !== FieldType.Lookup && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -1472,7 +1525,13 @@ const ScoreCriteriaRangeForm = ({
         displayOrder: initialData.displayOrder
       });
     } else {
-      setFormData(defaultRange);
+      // Only set default scoreCriteriaId if there are score criteria available
+      setFormData({
+        minValue: 0,
+        maxValue: 0,
+        scoreCriteriaId: scoreCriteria.length > 0 ? scoreCriteria[0].id : 0,
+        displayOrder: 1
+      });
     }
     setErrors({});
   }, [initialData, scoreCriteria]);
@@ -1503,6 +1562,11 @@ const ScoreCriteriaRangeForm = ({
     // Check if min is greater than max
     if (formData.minValue > formData.maxValue) {
       newErrors.range = 'Minimum value cannot be greater than maximum value';
+    }
+
+    // Check if score criteria is valid
+    if (formData.scoreCriteriaId === 0 || formData.scoreCriteriaId === null) {
+      newErrors.scoreCriteria = 'Please select a valid score criteria.';
     }
 
     // Use serverRanges for validation when creating new range, otherwise use existingRanges
@@ -1548,6 +1612,12 @@ const ScoreCriteriaRangeForm = ({
     e.preventDefault();
     
     if (!validateForm()) {
+      return;
+    }
+    
+    // Check if we have valid score criteria
+    if (formData.scoreCriteriaId === 0 || formData.scoreCriteriaId === null) {
+      setErrors({ scoreCriteria: 'Please select a valid score criteria.' });
       return;
     }
     
@@ -1598,25 +1668,34 @@ const ScoreCriteriaRangeForm = ({
       
       <div className="space-y-2">
         <Label htmlFor="scoreCriteriaId">Score Criteria</Label>
-        <select
-          id="scoreCriteriaId"
-          value={formData.scoreCriteriaId}
-          onChange={(e) => setFormData({ ...formData, scoreCriteriaId: Number(e.target.value) })}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {scoreCriteria.map((criteria) => (
-            <option key={`criteria-${criteria.id}`} value={criteria.id}>
-              {criteria.key} (Score: {criteria.score.toFixed(2)})
-            </option>
-          ))}
-        </select>
+        {scoreCriteria.length === 0 ? (
+          <div className="text-red-500 text-sm">
+            No score criteria available. Please create score criteria first.
+          </div>
+        ) : (
+          <select
+            id="scoreCriteriaId"
+            value={formData.scoreCriteriaId}
+            onChange={(e) => setFormData({ ...formData, scoreCriteriaId: Number(e.target.value) })}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {scoreCriteria.map((criteria) => (
+              <option key={`criteria-${criteria.id}`} value={criteria.id}>
+                {criteria.key} (Score: {criteria.score.toFixed(2)})
+              </option>
+            ))}
+          </select>
+        )}
+        {errors.scoreCriteria && (
+          <p className="text-red-500 text-sm mt-1">{errors.scoreCriteria}</p>
+        )}
       </div>
       
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit">
+        <Button type="submit" disabled={scoreCriteria.length === 0}>
           {initialData ? 'Update' : 'Create'}
         </Button>
       </div>
@@ -3106,7 +3185,8 @@ export const TemplateDetailsPage = () => {
                                           )}
                                           {(field.fieldType === FieldType.Dropdown || 
                                             field.fieldType === FieldType.Radio || 
-                                            field.fieldType === FieldType.Checkbox) && fieldId && (
+                                            field.fieldType === FieldType.Checkbox ||
+                                            field.fieldType === FieldType.Lookup) && fieldId && (
                                             <Button
                                               variant="outline"
                                               size="sm"
@@ -3305,7 +3385,8 @@ export const TemplateDetailsPage = () => {
                                       )}
                                       {(field.fieldType === FieldType.Dropdown || 
                                         field.fieldType === FieldType.Radio || 
-                                        field.fieldType === FieldType.Checkbox) && fieldId && (
+                                        field.fieldType === FieldType.Checkbox ||
+                                        field.fieldType === FieldType.Lookup) && fieldId && (
                                         <Button
                                           variant="outline"
                                           size="sm"

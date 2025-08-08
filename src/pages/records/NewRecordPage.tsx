@@ -11,7 +11,7 @@ import {
   ToolbarActions
 } from '@/partials/toolbar';
 import { Input } from '@/components/ui/input';
-import { recordService, templateService, type TemplateField, FieldType, ScoreCriteriaRange, TemplateType } from '@/services/api';
+import { recordService, templateService, type TemplateField, FieldType, ScoreCriteriaRange, TemplateType, type TemplateSection } from '@/services/api';
 import type { Record as ApiRecord } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -59,6 +59,11 @@ interface ExtendedTemplateField extends TemplateField {
   ranges?: ScoreCriteriaRange[];
 }
 
+// Extend TemplateSection type to include extended fields
+interface ExtendedTemplateSection extends TemplateSection {
+  fields: ExtendedTemplateField[];
+}
+
 // Create base validation schema for required fields
 const baseValidationSchema = Yup.object().shape({
   firstName: Yup.string().required('First name is required'),
@@ -89,7 +94,8 @@ const NewRecordPage = () => {
   
   const [isLoading, setIsLoading] = useState(false);
   const [templates, setTemplates] = useState<Array<{ id: number; name: string; tenantId: number }>>([]);
-  const [templateFields, setTemplateFields] = useState<ExtendedTemplateField[]>([]);
+  const [templateSections, setTemplateSections] = useState<ExtendedTemplateSection[]>([]);
+  const [fieldsWithoutSection, setFieldsWithoutSection] = useState<ExtendedTemplateField[]>([]);
   const [validationSchema, setValidationSchema] = useState<Yup.ObjectSchema<BaseFormValues>>(baseValidationSchema);
   const [countryOfBirthOptions, setCountryOfBirthOptions] = useState<Array<{ id: number; value: string }>>([]);
   const [nationalityOptions, setNationalityOptions] = useState<Array<{ id: number; value: string }>>([]);
@@ -151,15 +157,65 @@ const NewRecordPage = () => {
   const fetchTemplateFields = async (templateId: number) => {
     try {
       const fieldsResponse = await templateService.getTemplateFields(templateId.toString());
-      // Get all fields from sections and fields without section
-      const allFields = [
-        ...fieldsResponse.sections.flatMap(section => section.fields),
-        ...fieldsResponse.fieldsWithoutSection
-      ];
       
-      // Fetch options and ranges for fields that need them
-      const fieldsWithOptions = await Promise.all(
-        allFields.map(async (field) => {
+      // Process sections with their fields
+      const sectionsWithExtendedFields = await Promise.all(
+        fieldsResponse.sections.map(async (section) => {
+          const extendedFields = await Promise.all(
+            section.fields.map(async (field) => {
+              const extendedField: ExtendedTemplateField = { ...field };
+              
+              // Fetch options for option-based fields
+              if (
+                field.fieldType === FieldType.Dropdown ||
+                field.fieldType === FieldType.Radio ||
+                field.fieldType === FieldType.Checkbox
+              ) {
+                const options = await templateService.getFieldOptions(templateId.toString(), field.id!);
+                extendedField.options = options.map(opt => ({
+                  ...opt,
+                  value: opt.label
+                }));
+              }
+              
+              // Fetch lookup values for Lookup fields
+              if (field.fieldType === FieldType.Lookup && field.lookupId) {
+                try {
+                  const lookupValues = await lookupService.getLookupValues(field.lookupId, { pageNumber: 1, pageSize: 100 });
+                  extendedField.options = lookupValues.items.map((lookupValue, index) => ({
+                    id: lookupValue.id,
+                    fieldId: field.id!,
+                    label: lookupValue.value,
+                    scoreCriteriaId: 0,
+                    displayOrder: index + 1,
+                    value: lookupValue.value
+                  }));
+                } catch (error) {
+                  console.error(`Error fetching lookup values for field ${field.id}:`, error);
+                  extendedField.options = [];
+                }
+              }
+              
+              // Fetch ranges for number fields
+              if (field.fieldType === FieldType.Number) {
+                const ranges = await templateService.getTemplateScoreCriteriaRanges(templateId.toString(), field.id!);
+                extendedField.ranges = ranges;
+              }
+              
+              return extendedField;
+            })
+          );
+          
+          return {
+            ...section,
+            fields: extendedFields
+          } as ExtendedTemplateSection;
+        })
+      );
+      
+      // Process fields without section
+      const fieldsWithoutSectionExtended = await Promise.all(
+        fieldsResponse.fieldsWithoutSection.map(async (field) => {
           const extendedField: ExtendedTemplateField = { ...field };
           
           // Fetch options for option-based fields
@@ -169,10 +225,9 @@ const NewRecordPage = () => {
             field.fieldType === FieldType.Checkbox
           ) {
             const options = await templateService.getFieldOptions(templateId.toString(), field.id!);
-            // Ensure all required fields are present and add value
             extendedField.options = options.map(opt => ({
               ...opt,
-              value: opt.label // Add value property while preserving all required fields
+              value: opt.label
             }));
           }
           
@@ -180,12 +235,11 @@ const NewRecordPage = () => {
           if (field.fieldType === FieldType.Lookup && field.lookupId) {
             try {
               const lookupValues = await lookupService.getLookupValues(field.lookupId, { pageNumber: 1, pageSize: 100 });
-              // Convert lookup values to field options format
               extendedField.options = lookupValues.items.map((lookupValue, index) => ({
                 id: lookupValue.id,
                 fieldId: field.id!,
                 label: lookupValue.value,
-                scoreCriteriaId: 0, // Default score criteria
+                scoreCriteriaId: 0,
                 displayOrder: index + 1,
                 value: lookupValue.value
               }));
@@ -204,11 +258,19 @@ const NewRecordPage = () => {
           return extendedField;
         })
       );
-      setTemplateFields(fieldsWithOptions);
+      
+      setTemplateSections(sectionsWithExtendedFields);
+      setFieldsWithoutSection(fieldsWithoutSectionExtended);
+
+      // Get all fields for validation schema
+      const allFields = [
+        ...sectionsWithExtendedFields.flatMap(section => section.fields),
+        ...fieldsWithoutSectionExtended
+      ];
 
       // Update the validation schema when template fields change
-      if (fieldsWithOptions.length > 0) {
-        const dynamicSchema = fieldsWithOptions.reduce<Yup.ObjectSchema<BaseFormValues>>((schema, field) => {
+      if (allFields.length > 0) {
+        const dynamicSchema = allFields.reduce<Yup.ObjectSchema<BaseFormValues>>((schema, field) => {
           const fieldName = `field_${field.id}`;
           let fieldSchema: Yup.Schema<any>;
 
@@ -298,72 +360,140 @@ const NewRecordPage = () => {
         }
 
         // Format field responses based on field types
-        const fieldResponses = templateFields.map(field => {
-          const value = values[`field_${field.id}`];
-          let response: any = {
-            id: 0,
-            fieldId: field.id
-          };
+        const fieldResponses = [
+          ...templateSections.flatMap(section => section.fields.map(field => {
+            const value = values[`field_${field.id}`];
+            let response: any = {
+              id: 0,
+              fieldId: field.id
+            };
 
-          switch (field.fieldType) {
-            case FieldType.Text:
-            case FieldType.TextArea:
-              response.valueText = String(value);
-              response.valueNumber = null;
-              response.valueDate = null;
-              break;
-            case FieldType.Number:
-              // For number fields, we need to find the matching range option
-              const numericValue = value !== undefined && value !== '' ? Number(value) : null;
-              response.valueNumber = numericValue;
-              
-              // Find the matching range based on the value
-              const matchingRange = field.ranges?.find(range => 
-                numericValue !== null && 
-                numericValue >= range.minValue && 
-                numericValue <= range.maxValue
-              );
-
-              // Set the range ID in valueText if a matching range is found
-              response.templateFieldScoreCriteriaId = matchingRange ? matchingRange.id.toString() : null;
-              response.valueDate = null;
-              response.valueText = null;
-              break;
-            case FieldType.Date:
-              response.valueText = null;
-              response.valueNumber = null;
-              response.valueDate = value ? new Date(String(value)).toISOString() : null;
-              break;
-            case FieldType.Dropdown:
-            case FieldType.Radio:
-            case FieldType.Checkbox:
-            case FieldType.Lookup:
-              // For all option-based fields, find the selected option
-              let selectedOption;
-              
-              if (field.fieldType === FieldType.Checkbox) {
-                // For checkbox fields, find the appropriate "Checked" or "Unchecked" option
-                selectedOption = field.options?.find(opt => 
-                  opt.label.toLowerCase() === (value === true ? "checked" : "unchecked")
+            switch (field.fieldType) {
+              case FieldType.Text:
+              case FieldType.TextArea:
+                response.valueText = String(value);
+                response.valueNumber = null;
+                response.valueDate = null;
+                break;
+              case FieldType.Number:
+                // For number fields, we need to find the matching range option
+                const numericValue = value !== undefined && value !== '' ? Number(value) : null;
+                response.valueNumber = numericValue;
+                
+                // Find the matching range based on the value
+                const matchingRange = field.ranges?.find(range => 
+                  numericValue !== null && 
+                  numericValue >= range.minValue && 
+                  numericValue <= range.maxValue
                 );
-                // Fallback to first option if "Checked"/"Unchecked" not found
-                if (!selectedOption && field.options?.[0]) {
-                  selectedOption = field.options[0];
+
+                // Set the range ID in valueText if a matching range is found
+                response.templateFieldScoreCriteriaId = matchingRange ? matchingRange.id.toString() : null;
+                response.valueDate = null;
+                response.valueText = null;
+                break;
+              case FieldType.Date:
+                response.valueText = null;
+                response.valueNumber = null;
+                response.valueDate = value ? new Date(String(value)).toISOString() : null;
+                break;
+              case FieldType.Dropdown:
+              case FieldType.Radio:
+              case FieldType.Checkbox:
+              case FieldType.Lookup:
+                // For all option-based fields, find the selected option
+                let selectedOption;
+                
+                if (field.fieldType === FieldType.Checkbox) {
+                  // For checkbox fields, find the appropriate "Checked" or "Unchecked" option
+                  selectedOption = field.options?.find(opt => 
+                    opt.label.toLowerCase() === (value === true ? "checked" : "unchecked")
+                  );
+                  // Fallback to first option if "Checked"/"Unchecked" not found
+                  if (!selectedOption && field.options?.[0]) {
+                    selectedOption = field.options[0];
+                  }
+                } else {
+                  // For dropdown, radio, and lookup, find by option ID
+                  selectedOption = field.options?.find(opt => opt.id && opt.id.toString() === value);
                 }
-              } else {
-                // For dropdown, radio, and lookup, find by option ID
-                selectedOption = field.options?.find(opt => opt.id && opt.id.toString() === value);
-              }
 
-              // Set the option ID in valueText if an option is found and has an ID
-              response.optionId = selectedOption?.id ? selectedOption.id.toString() : null;
-              response.valueNumber = null;
-              response.valueDate = null;
-              break;
-          }
+                // Set the option ID in valueText if an option is found and has an ID
+                response.optionId = selectedOption?.id ? selectedOption.id.toString() : null;
+                response.valueNumber = null;
+                response.valueDate = null;
+                break;
+            }
 
-          return response;
-        });
+            return response;
+          })),
+          ...fieldsWithoutSection.map(field => {
+            const value = values[`field_${field.id}`];
+            let response: any = {
+              id: 0,
+              fieldId: field.id
+            };
+
+            switch (field.fieldType) {
+              case FieldType.Text:
+              case FieldType.TextArea:
+                response.valueText = String(value);
+                response.valueNumber = null;
+                response.valueDate = null;
+                break;
+              case FieldType.Number:
+                // For number fields, we need to find the matching range option
+                const numericValue = value !== undefined && value !== '' ? Number(value) : null;
+                response.valueNumber = numericValue;
+                
+                // Find the matching range based on the value
+                const matchingRange = field.ranges?.find(range => 
+                  numericValue !== null && 
+                  numericValue >= range.minValue && 
+                  numericValue <= range.maxValue
+                );
+
+                // Set the range ID in valueText if a matching range is found
+                response.templateFieldScoreCriteriaId = matchingRange ? matchingRange.id.toString() : null;
+                response.valueDate = null;
+                response.valueText = null;
+                break;
+              case FieldType.Date:
+                response.valueText = null;
+                response.valueNumber = null;
+                response.valueDate = value ? new Date(String(value)).toISOString() : null;
+                break;
+              case FieldType.Dropdown:
+              case FieldType.Radio:
+              case FieldType.Checkbox:
+              case FieldType.Lookup:
+                // For all option-based fields, find the selected option
+                let selectedOption;
+                
+                if (field.fieldType === FieldType.Checkbox) {
+                  // For checkbox fields, find the appropriate "Checked" or "Unchecked" option
+                  selectedOption = field.options?.find(opt => 
+                    opt.label.toLowerCase() === (value === true ? "checked" : "unchecked")
+                  );
+                  // Fallback to first option if "Checked"/"Unchecked" not found
+                  if (!selectedOption && field.options?.[0]) {
+                    selectedOption = field.options[0];
+                  }
+                } else {
+                  // For dropdown, radio, and lookup, find by option ID
+                  selectedOption = field.options?.find(opt => opt.id && opt.id.toString() === value);
+                }
+
+                // Set the option ID in valueText if an option is found and has an ID
+                response.optionId = selectedOption?.id ? selectedOption.id.toString() : null;
+                response.valueNumber = null;
+                response.valueDate = null;
+                break;
+            }
+
+            return response;
+          })
+        ];
 
         // Format date string to ISO format
         const dateOfBirth = values.dateOfBirth ? new Date(String(values.dateOfBirth)).toISOString() : '';
@@ -423,7 +553,7 @@ const NewRecordPage = () => {
       // Reset dynamic field values
       const newValues: BaseFormValues = {
         ...formik.values,
-        ...templateFields.reduce((acc, field) => {
+        ...[...templateSections.flatMap(section => section.fields), ...fieldsWithoutSection].reduce((acc, field) => {
           const key = `field_${field.id}`;
           // Do not overwrite static fields like dateOfBirth
           if (key === 'dateOfBirth') return acc;
@@ -959,7 +1089,7 @@ const NewRecordPage = () => {
             </Card>
 
             {/* Dynamic Fields Card */}
-            {templateFields.length > 0 && (
+            {(templateSections.length > 0 || fieldsWithoutSection.length > 0) && (
               <Card>
                 <CardHeader className="bg-gray-50/50 border-b">
                   <h2 className="text-xl font-semibold">Template Fields</h2>
@@ -968,33 +1098,73 @@ const NewRecordPage = () => {
                   </p>
                 </CardHeader>
                 <CardContent className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Regular Fields */}
-                    {sortFields(templateFields)
-                      .filter(field => field.fieldType !== FieldType.Checkbox)
-                      .map((field) => (
-                        <div key={field.id} className={cn(
-                          "p-4 rounded-lg border",
-                          field.fieldType === FieldType.TextArea ? "md:col-span-2" : ""
-                        )}>
-                          {renderDynamicField(field)}
-                        </div>
-                      ))}
-                  </div>
-
-                  {/* Checkbox Fields Section */}
-                  {templateFields.some(field => field.fieldType === FieldType.Checkbox) && (
-                    <div className="mt-8 pt-6 border-t">
-                      <h3 className="text-lg font-medium mb-4">Additional Options</h3>
+                  {/* Sections */}
+                  {templateSections.map((section) => (
+                    <div key={section.id} className="mb-8">
+                      <h3 className="text-lg font-medium mb-4 text-primary border-b pb-2">{section.title}</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {sortFields(templateFields)
-                          .filter(field => field.fieldType === FieldType.Checkbox)
+                        {sortFields(section.fields)
+                          .filter(field => field.fieldType !== FieldType.Checkbox)
                           .map((field) => (
-                            <div key={field.id} className="p-4 rounded-lg border">
+                            <div key={field.id} className={cn(
+                              "p-4 rounded-lg border",
+                              field.fieldType === FieldType.TextArea ? "md:col-span-2" : ""
+                            )}>
                               {renderDynamicField(field)}
                             </div>
                           ))}
                       </div>
+                      
+                      {/* Checkbox fields for this section */}
+                      {section.fields.some(field => field.fieldType === FieldType.Checkbox) && (
+                        <div className="mt-6 pt-4 border-t">
+                          <h4 className="text-md font-medium mb-3 text-muted-foreground">Additional Options</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {sortFields(section.fields)
+                              .filter(field => field.fieldType === FieldType.Checkbox)
+                              .map((field) => (
+                                <div key={field.id} className="p-3 rounded-lg border bg-gray-50/50">
+                                  {renderDynamicField(field)}
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Fields without section */}
+                  {fieldsWithoutSection.length > 0 && (
+                    <div className="mt-8 pt-6 border-t">
+                      <h3 className="text-lg font-medium mb-4 text-muted-foreground">Additional Fields</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {sortFields(fieldsWithoutSection)
+                          .filter(field => field.fieldType !== FieldType.Checkbox)
+                          .map((field) => (
+                            <div key={field.id} className={cn(
+                              "p-4 rounded-lg border",
+                              field.fieldType === FieldType.TextArea ? "md:col-span-2" : ""
+                            )}>
+                              {renderDynamicField(field)}
+                            </div>
+                          ))}
+                      </div>
+                      
+                      {/* Checkbox fields without section */}
+                      {fieldsWithoutSection.some(field => field.fieldType === FieldType.Checkbox) && (
+                        <div className="mt-6 pt-4 border-t">
+                          <h4 className="text-md font-medium mb-3 text-muted-foreground">Additional Options</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {sortFields(fieldsWithoutSection)
+                              .filter(field => field.fieldType === FieldType.Checkbox)
+                              .map((field) => (
+                                <div key={field.id} className="p-3 rounded-lg border bg-gray-50/50">
+                                  {renderDynamicField(field)}
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>
