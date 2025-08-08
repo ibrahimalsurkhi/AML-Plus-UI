@@ -29,7 +29,7 @@ const TransactionProcessingDemoPage = () => {
       console.log('Transaction processing completed:', result);
       toast({
         title: 'Processing Complete',
-        description: 'Transaction processing has completed successfully',
+        description: 'Transaction processing has completed successfully'
       });
     },
     onError: (error) => {
@@ -48,7 +48,7 @@ const TransactionProcessingDemoPage = () => {
       startPolling();
       toast({
         title: 'Monitoring Started',
-        description: `Started monitoring transaction #${transactionId}`,
+        description: `Started monitoring transaction #${transactionId}`
       });
     } else {
       toast({
@@ -64,7 +64,7 @@ const TransactionProcessingDemoPage = () => {
     stopPolling();
     toast({
       title: 'Monitoring Stopped',
-      description: 'Transaction monitoring has been stopped',
+      description: 'Transaction monitoring has been stopped'
     });
   };
 
@@ -75,7 +75,7 @@ const TransactionProcessingDemoPage = () => {
         if (result.success) {
           toast({
             title: 'API Test Successful',
-            description: `Successfully tested transaction #${transactionId}`,
+            description: `Successfully tested transaction #${transactionId}`
           });
         } else {
           toast({
@@ -151,12 +151,22 @@ const TransactionProcessingDemoPage = () => {
             </div>
 
             <div className="text-sm text-muted-foreground">
-              <p><strong>Test Transaction IDs:</strong></p>
+              <p>
+                <strong>Test Transaction IDs:</strong>
+              </p>
               <ul className="list-disc list-inside mt-1 space-y-1">
-                <li><code>123</code> - Transaction with rule matches (High Value + Suspicious Pattern)</li>
-                <li><code>456</code> - Transaction with no rule matches</li>
-                <li><code>789</code> - Transaction still processing</li>
-                <li><code>999</code> - Non-existent transaction (will show error)</li>
+                <li>
+                  <code>123</code> - Transaction with rule matches (High Value + Suspicious Pattern)
+                </li>
+                <li>
+                  <code>456</code> - Transaction with no rule matches
+                </li>
+                <li>
+                  <code>789</code> - Transaction still processing
+                </li>
+                <li>
+                  <code>999</code> - Non-existent transaction (will show error)
+                </li>
               </ul>
             </div>
           </CardContent>
@@ -204,25 +214,26 @@ const TransactionProcessingDemoPage = () => {
                 Use one of the test transaction IDs above to simulate different scenarios.
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <h4 className="font-medium">2. Start Monitoring</h4>
               <p className="text-sm text-muted-foreground">
                 Click "Start Monitoring" to begin polling the API for processing status updates.
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <h4 className="font-medium">3. Watch Real-time Updates</h4>
               <p className="text-sm text-muted-foreground">
                 The system will poll every 2 seconds until processing is complete or failed.
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <h4 className="font-medium">4. Rule Match Alerts</h4>
               <p className="text-sm text-muted-foreground">
-                If any rules match the transaction, you'll see toast notifications and visual alerts.
+                If any rules match the transaction, you'll see toast notifications and visual
+                alerts.
               </p>
             </div>
           </CardContent>
@@ -232,4 +243,4 @@ const TransactionProcessingDemoPage = () => {
   );
 };
 
-export default TransactionProcessingDemoPage; 
+export default TransactionProcessingDemoPage;

@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Outlet, useLocation } from 'react-router';
-import {useMenuCurrentItem} from '@/components/menu';
+import { useMenuCurrentItem } from '@/components/menu';
 import { useMenus } from '@/providers';
 import { Header, Footer } from '..';
 import { Toolbar, ToolbarHeading, ToolbarActions } from '../toolbar';
@@ -21,7 +21,7 @@ const Main = () => {
   const menuConfig = getMenuConfig('primary');
   const { isRTL } = useLanguage();
   const menuItem = useMenuCurrentItem(pathname, menuConfig);
-  
+
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(2025, 0, 20),
     to: addDays(new Date(2025, 0, 20), 20)

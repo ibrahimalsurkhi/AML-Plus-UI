@@ -5,8 +5,8 @@ const mainMenuItems = [
   {
     label: 'Cases',
     to: '/cases',
-    icon: 'gavel', // or another appropriate icon
-  },
+    icon: 'gavel' // or another appropriate icon
+  }
   // ... existing menu items ...
 ];
-// ... existing code ... 
+// ... existing code ...

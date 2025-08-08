@@ -4,11 +4,7 @@ import { ruleService, RuleListItem, PaginatedRulesResponse } from '@/services/ap
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/container';
-import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarActions
-} from '@/partials/toolbar';
+import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
 import {
   Pagination,
   PaginationContent,
@@ -17,7 +13,14 @@ import {
   PaginationNext,
   PaginationPrevious
 } from '@/components/ui/pagination';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { toast } from '@/components/ui/use-toast';
 
 const PAGE_SIZE = 10;
@@ -52,16 +55,18 @@ const RuleListPage: React.FC = () => {
   const handleActivateToggle = async (rule: RuleListItem) => {
     try {
       await ruleService.activateRule(rule.id, !rule.isActive);
-      setRules(rules => rules.map(r => r.id === rule.id ? { ...r, isActive: !r.isActive } : r));
+      setRules((rules) =>
+        rules.map((r) => (r.id === rule.id ? { ...r, isActive: !r.isActive } : r))
+      );
       toast({
         title: 'Success',
-        description: `Rule ${!rule.isActive ? 'activated' : 'deactivated'} successfully.`,
+        description: `Rule ${!rule.isActive ? 'activated' : 'deactivated'} successfully.`
       });
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to update rule status.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   };
@@ -72,18 +77,14 @@ const RuleListPage: React.FC = () => {
         <Toolbar>
           <ToolbarHeading>Rules</ToolbarHeading>
           <ToolbarActions>
-            <Button onClick={() => navigate('/rules/new')}>
-              Create Rule
-            </Button>
+            <Button onClick={() => navigate('/rules/new')}>Create Rule</Button>
           </ToolbarActions>
         </Toolbar>
         <Card>
           <CardHeader className="bg-gray-50/50 border-b px-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">All Rules</h2>
-              <div className="text-sm text-gray-500">
-                Total: {totalCount} Rules
-              </div>
+              <div className="text-sm text-gray-500">Total: {totalCount} Rules</div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -95,10 +96,7 @@ const RuleListPage: React.FC = () => {
               <div className="p-8 text-center">
                 <h3 className="text-lg font-medium text-gray-900 mb-1">No rules found</h3>
                 <p className="text-gray-500 mb-4">Create your first rule to get started</p>
-                <Button 
-                  variant="outline" 
-                  onClick={() => navigate('/rules/new')}
-                >
+                <Button variant="outline" onClick={() => navigate('/rules/new')}>
                   Create Rule
                 </Button>
               </div>
@@ -121,7 +119,7 @@ const RuleListPage: React.FC = () => {
                         <TableCell>{rule.name}</TableCell>
                         <TableCell>{rule.ruleType}</TableCell>
                         <TableCell>{rule.isActive ? 'Yes' : 'No'}</TableCell>
-                        
+
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
@@ -180,4 +178,4 @@ const RuleListPage: React.FC = () => {
   );
 };
 
-export default RuleListPage; 
+export default RuleListPage;

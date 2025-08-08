@@ -24,7 +24,6 @@ const Main = () => {
     to: addDays(new Date(2025, 0, 20), 20)
   });
 
-
   return (
     <Fragment>
       <Helmet>

@@ -1,1 +1,1 @@
-export * from './SanctionSearchPage'; 
+export * from './SanctionSearchPage';

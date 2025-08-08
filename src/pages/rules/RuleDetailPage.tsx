@@ -5,19 +5,13 @@ import { Button } from '@/components/ui/button';
 import { ruleService, Rule } from '@/services/api';
 import { Container } from '@/components/container';
 import { Loader2, ArrowLeft, FileText, Hash, User } from 'lucide-react';
-import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarActions
-} from '@/partials/toolbar';
+import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
 import RuleGroup from './RuleGroup';
-import {
-  RuleTypeOptions,
-} from './enums';
+import { RuleTypeOptions } from './enums';
 import { getRulePreview } from '@/services/rulePreviewService';
 
 function getLabel(options: { label: string; value: any }[], value: any) {
-  const found = options.find(opt => opt.value === value);
+  const found = options.find((opt) => opt.value === value);
   return found ? found.label : value;
 }
 
@@ -100,9 +94,7 @@ const RuleDetailPage: React.FC = () => {
               <FileText className="w-5 h-5 text-primary" />
               Rule Information
             </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Basic information about the rule.
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Basic information about the rule.</p>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -125,7 +117,9 @@ const RuleDetailPage: React.FC = () => {
                   <FileText className="w-4 h-4" />
                   Rule Type
                 </div>
-                <div className="text-base font-medium">{getLabel(RuleTypeOptions, rule.ruleType)}</div>
+                <div className="text-base font-medium">
+                  {getLabel(RuleTypeOptions, rule.ruleType)}
+                </div>
               </div>
               <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
@@ -141,7 +135,9 @@ const RuleDetailPage: React.FC = () => {
         <div>
           <label className="block font-medium mb-2">Rule Preview</label>
           <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm font-mono text-gray-800">
-            {rule.root ? getRulePreview(rule.root) : '[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]'}
+            {rule.root
+              ? getRulePreview(rule.root)
+              : '[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]'}
           </div>
         </div>
         <Card className="shadow-sm border-primary/10">
@@ -167,4 +163,4 @@ const RuleDetailPage: React.FC = () => {
   );
 };
 
-export default RuleDetailPage; 
+export default RuleDetailPage;

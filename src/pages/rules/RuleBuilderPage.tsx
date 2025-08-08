@@ -3,33 +3,30 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/container';
 import RuleGroup, { RuleGroupType } from './RuleGroup';
-import {
-  OperatorId,
-  ApplyTo,
-  ApplyToOptions,
-  RuleTypeOptions,
-} from './enums';
+import { OperatorId, ApplyTo, ApplyToOptions, RuleTypeOptions } from './enums';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarActions,
-} from '@/partials/toolbar';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
 import { ruleService } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
 import { getRulePreview } from '@/services/rulePreviewService';
 
 const defaultRootGroup: RuleGroupType = {
   operator: OperatorId.And,
-  children: [],
+  children: []
 };
 
 const initialRule = {
   name: '',
   ruleType: 'simple', // Now a string: 'simple' or 'advanced'
   applyTo: ApplyTo.Sender, // Default to Sender
-  root: defaultRootGroup,
+  root: defaultRootGroup
 };
 
 const RuleBuilderPage = () => {
@@ -41,19 +38,19 @@ const RuleBuilderPage = () => {
   };
 
   const handleRootGroupChange = (group: RuleGroupType) => {
-    setRule(prev => ({ ...prev, root: group }));
+    setRule((prev) => ({ ...prev, root: group }));
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setRule(prev => ({ ...prev, name: e.target.value }));
+    setRule((prev) => ({ ...prev, name: e.target.value }));
   };
 
   const handleRuleTypeChange = (value: string) => {
-    setRule(prev => ({ ...prev, ruleType: value }));
+    setRule((prev) => ({ ...prev, ruleType: value }));
   };
 
   const handleApplyToChange = (value: string) => {
-    setRule(prev => ({ ...prev, applyTo: Number(value) }));
+    setRule((prev) => ({ ...prev, applyTo: Number(value) }));
   };
 
   // TODO: Implement save handler to POST rule to backend
@@ -67,7 +64,7 @@ const RuleBuilderPage = () => {
         ruleType: Number(rule.ruleType),
         applyTo: Number(rule.applyTo),
         isActive: true, // default to active
-        tenantId: 1,    // default tenant, adjust as needed
+        tenantId: 1 // default tenant, adjust as needed
       };
       await ruleService.createRule(ruleToSend);
       navigate('/rules'); // Redirect to rule list page
@@ -85,13 +82,17 @@ const RuleBuilderPage = () => {
           <ToolbarHeading>
             <div className="flex flex-col gap-1">
               <span className="text-2xl font-bold text-primary">Rule Builder</span>
-              <span className="text-base text-muted-foreground">Create complex conditional logic with visual grouping and operators</span>
+              <span className="text-base text-muted-foreground">
+                Create complex conditional logic with visual grouping and operators
+              </span>
             </div>
           </ToolbarHeading>
           <ToolbarActions>
             <Button variant="outline">Export</Button>
             <Button variant="outline">Save</Button>
-            <Button variant="default" className="bg-primary text-white">Execute</Button>
+            <Button variant="default" className="bg-primary text-white">
+              Execute
+            </Button>
           </ToolbarActions>
         </Toolbar>
 
@@ -99,7 +100,8 @@ const RuleBuilderPage = () => {
         <div>
           <label className="block font-medium mb-2">Rule Preview</label>
           <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm font-mono text-gray-800">
-            {getRulePreview(rule.root) || '[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]'}
+            {getRulePreview(rule.root) ||
+              '[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]'}
           </div>
         </div>
 
@@ -122,8 +124,10 @@ const RuleBuilderPage = () => {
                     <SelectValue placeholder="Select rule type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {RuleTypeOptions.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
+                    {RuleTypeOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value.toString()}>
+                        {opt.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -135,8 +139,10 @@ const RuleBuilderPage = () => {
                     <SelectValue placeholder="Select apply to" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ApplyToOptions.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
+                    {ApplyToOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value.toString()}>
+                        {opt.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -154,9 +160,16 @@ const RuleBuilderPage = () => {
               />
             </div>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={handleResetRule}>Reset Rule</Button>
+              <Button variant="outline" onClick={handleResetRule}>
+                Reset Rule
+              </Button>
               <Button variant="outline">Cancel</Button>
-              <Button variant="default" className="bg-primary text-white" onClick={handleSaveRule} disabled={!rule.name || saving}>
+              <Button
+                variant="default"
+                className="bg-primary text-white"
+                onClick={handleSaveRule}
+                disabled={!rule.name || saving}
+              >
                 {saving ? 'Saving...' : 'Save Rule'}
               </Button>
             </div>
@@ -167,4 +180,4 @@ const RuleBuilderPage = () => {
   );
 };
 
-export default RuleBuilderPage; 
+export default RuleBuilderPage;

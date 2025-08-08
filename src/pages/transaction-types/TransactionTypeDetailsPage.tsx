@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogCancel
 } from '@/components/ui/alert-dialog';
 
 const TransactionTypeDetailsPage = () => {
@@ -52,12 +52,21 @@ const TransactionTypeDetailsPage = () => {
         name: editName,
         isSenderRequired: editIsSenderRequired,
         isRecipientRequired: editIsRecipientRequired,
-        tenantId: transactionType.tenantId,
+        tenantId: transactionType.tenantId
       });
       toast({ title: 'Success', description: 'Transaction type updated' });
-      setTransactionType({ ...transactionType, name: editName, isSenderRequired: editIsSenderRequired, isRecipientRequired: editIsRecipientRequired });
+      setTransactionType({
+        ...transactionType,
+        name: editName,
+        isSenderRequired: editIsSenderRequired,
+        isRecipientRequired: editIsRecipientRequired
+      });
     } catch (err) {
-      toast({ title: 'Error', description: 'Failed to update transaction type', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to update transaction type',
+        variant: 'destructive'
+      });
     } finally {
       setSaving(false);
     }
@@ -70,12 +79,20 @@ const TransactionTypeDetailsPage = () => {
       toast({ title: 'Success', description: 'Transaction type deleted' });
       navigate('/transaction-types');
     } catch (err) {
-      toast({ title: 'Error', description: 'Failed to delete transaction type', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to delete transaction type',
+        variant: 'destructive'
+      });
     }
   };
 
   if (loading || !transactionType) {
-    return <Container><div className="p-8 text-center">Loading...</div></Container>;
+    return (
+      <Container>
+        <div className="p-8 text-center">Loading...</div>
+      </Container>
+    );
   }
 
   return (
@@ -88,24 +105,52 @@ const TransactionTypeDetailsPage = () => {
           <h2 className="text-xl font-semibold">Edit Transaction Type</h2>
         </CardHeader>
         <CardContent>
-          <form onSubmit={e => { e.preventDefault(); setUpdateDialogOpen(true); }} className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setUpdateDialogOpen(true);
+            }}
+            className="space-y-4"
+          >
             <div>
               <label className="block mb-1 font-medium">Name</label>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} required disabled={saving} />
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                required
+                disabled={saving}
+              />
             </div>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2">
-                <Checkbox checked={editIsSenderRequired} onCheckedChange={checked => setEditIsSenderRequired(checked === true)} disabled={saving} />
+                <Checkbox
+                  checked={editIsSenderRequired}
+                  onCheckedChange={(checked) => setEditIsSenderRequired(checked === true)}
+                  disabled={saving}
+                />
                 Sender Required
               </label>
               <label className="flex items-center gap-2">
-                <Checkbox checked={editIsRecipientRequired} onCheckedChange={checked => setEditIsRecipientRequired(checked === true)} disabled={saving} />
+                <Checkbox
+                  checked={editIsRecipientRequired}
+                  onCheckedChange={(checked) => setEditIsRecipientRequired(checked === true)}
+                  disabled={saving}
+                />
                 Recipient Required
               </label>
             </div>
             <div className="flex gap-4">
-              <Button type="submit" disabled={saving}>Save</Button>
-              <Button type="button" variant="destructive" onClick={() => setDeleteDialogOpen(true)} disabled={saving}>Delete</Button>
+              <Button type="submit" disabled={saving}>
+                Save
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={saving}
+              >
+                Delete
+              </Button>
             </div>
           </form>
         </CardContent>
@@ -158,4 +203,4 @@ const TransactionTypeDetailsPage = () => {
   );
 };
 
-export default TransactionTypeDetailsPage; 
+export default TransactionTypeDetailsPage;

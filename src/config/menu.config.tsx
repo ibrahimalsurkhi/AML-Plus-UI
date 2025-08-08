@@ -77,9 +77,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
   }
 ];
 
-export const MENU_ROOT: TMenuConfig = [
-  
-];
+export const MENU_ROOT: TMenuConfig = [];
 
 // Minimal mega menu configuration
 export const MENU_MEGA: TMenuConfig = [

@@ -1,7 +1,11 @@
 import React from 'react';
 import { KeenIcon } from '@/components/keenicons';
 import { Alert } from '@/components/alert';
-import { TransactionProcessingStatus as ProcessingStatus, TransactionProcessingStatusResponse, RuleMatch } from '@/services/api';
+import {
+  TransactionProcessingStatus as ProcessingStatus,
+  TransactionProcessingStatusResponse,
+  RuleMatch
+} from '@/services/api';
 
 interface TransactionProcessingStatusProps {
   status: TransactionProcessingStatusResponse | null;
@@ -63,20 +67,24 @@ const formatDateTime = (dateString: string | null) => {
 };
 
 const RuleMatchItem: React.FC<{ rule: RuleMatch }> = ({ rule }) => (
-  <div className={`flex items-center justify-between p-3 rounded-lg border ${
-    rule.isMatched ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
-  }`}>
+  <div
+    className={`flex items-center justify-between p-3 rounded-lg border ${
+      rule.isMatched ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
+    }`}
+  >
     <div className="flex items-center gap-2">
-      <KeenIcon 
-        icon={rule.isMatched ? 'alert-circle' : 'check-circle'} 
+      <KeenIcon
+        icon={rule.isMatched ? 'alert-circle' : 'check-circle'}
         className={`text-lg ${rule.isMatched ? 'text-red-500' : 'text-green-500'}`}
       />
       <span className="font-medium text-sm">{rule.ruleName}</span>
     </div>
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <span className={`px-2 py-1 rounded-full ${
-        rule.isMatched ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-      }`}>
+      <span
+        className={`px-2 py-1 rounded-full ${
+          rule.isMatched ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+        }`}
+      >
         {rule.isMatched ? 'Matched' : 'No Match'}
       </span>
       <span>{formatDateTime(rule.executedAt)}</span>
@@ -132,16 +140,16 @@ export const TransactionProcessingStatus: React.FC<TransactionProcessingStatusPr
     );
   }
 
-  const matchedRules = status.ruleMatches.filter(rule => rule.isMatched);
-  const unmatchedRules = status.ruleMatches.filter(rule => !rule.isMatched);
+  const matchedRules = status.ruleMatches.filter((rule) => rule.isMatched);
+  const unmatchedRules = status.ruleMatches.filter((rule) => !rule.isMatched);
 
   return (
     <div className="space-y-6">
       {/* Header with status and controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <KeenIcon 
-            icon={getStatusIcon(status.processingStatus)} 
+          <KeenIcon
+            icon={getStatusIcon(status.processingStatus)}
             className={`text-2xl ${getStatusColor(status.processingStatus)}`}
           />
           <div>
@@ -151,7 +159,7 @@ export const TransactionProcessingStatus: React.FC<TransactionProcessingStatusPr
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {isPolling ? (
             <button
@@ -202,7 +210,9 @@ export const TransactionProcessingStatus: React.FC<TransactionProcessingStatusPr
           <p className="text-sm text-red-700">Rules Matched</p>
         </div>
         <div className="text-center p-4 bg-green-50 rounded-lg">
-          <p className="text-2xl font-bold text-green-600">{status.totalRulesEvaluated - status.matchedRulesCount}</p>
+          <p className="text-2xl font-bold text-green-600">
+            {status.totalRulesEvaluated - status.matchedRulesCount}
+          </p>
           <p className="text-sm text-green-700">Rules Passed</p>
         </div>
       </div>
@@ -213,7 +223,8 @@ export const TransactionProcessingStatus: React.FC<TransactionProcessingStatusPr
           <div className="space-y-2">
             <p className="font-medium">⚠️ Rule Matches Detected</p>
             <p className="text-sm">
-              {status.matchedRulesCount} rule(s) matched this transaction. This may indicate potential compliance issues.
+              {status.matchedRulesCount} rule(s) matched this transaction. This may indicate
+              potential compliance issues.
             </p>
           </div>
         </Alert>
@@ -223,7 +234,7 @@ export const TransactionProcessingStatus: React.FC<TransactionProcessingStatusPr
       {status.ruleMatches.length > 0 && (
         <div className="space-y-4">
           <h4 className="font-semibold text-lg">Rule Execution Details</h4>
-          
+
           {/* Matched Rules */}
           {matchedRules.length > 0 && (
             <div className="space-y-2">
@@ -274,4 +285,4 @@ export const TransactionProcessingStatus: React.FC<TransactionProcessingStatusPr
       )}
     </div>
   );
-}; 
+};

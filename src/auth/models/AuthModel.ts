@@ -7,4 +7,4 @@ export interface AuthModel {
   userName: string;
   email: string;
   roles: string[] | null;
-} 
+}

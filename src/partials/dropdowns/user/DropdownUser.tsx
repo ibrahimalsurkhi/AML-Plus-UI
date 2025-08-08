@@ -34,15 +34,13 @@ export const DropdownUser = () => {
             <div className="text-base font-medium text-gray-800">
               {currentUser?.userName || 'User'}
             </div>
-            <div className="text-sm text-gray-500">
-              {currentUser?.email}
-            </div>
+            <div className="text-sm text-gray-500">{currentUser?.email}</div>
           </div>
         </div>
       </div>
 
       <MenuSeparator />
-      
+
       <div className="px-5 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center">

@@ -26,4 +26,4 @@ export const routes: RouteObject[] = [
     path: '/transaction-cases/:id',
     element: <TransactionCaseDetailsPage />
   }
-]; 
+];

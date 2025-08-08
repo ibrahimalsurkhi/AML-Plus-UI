@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { transactionService, TransactionProcessingStatus, TransactionProcessingStatusResponse } from '@/services/api';
+import {
+  transactionService,
+  TransactionProcessingStatus,
+  TransactionProcessingStatusResponse
+} from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 
 interface UseTransactionProcessingStatusOptions {
@@ -31,7 +35,7 @@ export const useTransactionProcessingStatus = ({
   const [error, setError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [pollAttempts, setPollAttempts] = useState(0);
-  
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -45,9 +49,9 @@ export const useTransactionProcessingStatus = ({
 
   const checkForRuleMatches = useCallback((result: TransactionProcessingStatusResponse) => {
     if (result.hasRuleMatches && result.matchedRulesCount > 0) {
-      const matchedRules = result.ruleMatches.filter(rule => rule.isMatched);
-      const ruleNames = matchedRules.map(rule => rule.ruleName).join(', ');
-      
+      const matchedRules = result.ruleMatches.filter((rule) => rule.isMatched);
+      const ruleNames = matchedRules.map((rule) => rule.ruleName).join(', ');
+
       toast({
         title: 'Rule Matches Detected',
         description: `${result.matchedRulesCount} rule(s) matched: ${ruleNames}`,
@@ -85,7 +89,7 @@ export const useTransactionProcessingStatus = ({
           onComplete?.(result);
           toast({
             title: 'Processing Complete',
-            description: 'Transaction processing has completed successfully',
+            description: 'Transaction processing has completed successfully'
           });
         } else if (result.processingStatus === TransactionProcessingStatus.Failed) {
           setIsPolling(false);
@@ -103,7 +107,7 @@ export const useTransactionProcessingStatus = ({
           });
         } else {
           // Continue polling
-          setPollAttempts(prev => {
+          setPollAttempts((prev) => {
             const newAttempts = prev + 1;
             if (newAttempts >= maxPollAttempts) {
               setIsPolling(false);
@@ -146,7 +150,15 @@ export const useTransactionProcessingStatus = ({
 
     // Set up polling interval
     intervalRef.current = setInterval(poll, pollInterval);
-  }, [isPolling, fetchStatus, checkForRuleMatches, maxPollAttempts, pollInterval, onComplete, onError]);
+  }, [
+    isPolling,
+    fetchStatus,
+    checkForRuleMatches,
+    maxPollAttempts,
+    pollInterval,
+    onComplete,
+    onError
+  ]);
 
   const stopPolling = useCallback(() => {
     setIsPolling(false);
@@ -174,4 +186,4 @@ export const useTransactionProcessingStatus = ({
     startPolling,
     stopPolling
   };
-}; 
+};

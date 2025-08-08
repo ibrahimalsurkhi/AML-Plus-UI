@@ -27,7 +27,6 @@ const Main = () => {
     to: addDays(new Date(2025, 0, 20), 20)
   });
 
-
   return (
     <Fragment>
       <Helmet>
@@ -52,26 +51,26 @@ const Main = () => {
                     </Link>
                     <Popover>
                       <PopoverTrigger asChild>
-                      <button
-                        id="date"
-                        className={cn(
-                          'btn btn-sm btn-light data-[state=open]:bg-light-active',
-                          !date && 'text-gray-400'
-                        )}
-                      >
-                        <KeenIcon icon="calendar" className="me-0.5" />
-                        {date?.from ? (
-                          date.to ? (
-                            <>
-                              {format(date.from, 'LLL dd, y')} - {format(date.to, 'LLL dd, y')}
-                            </>
+                        <button
+                          id="date"
+                          className={cn(
+                            'btn btn-sm btn-light data-[state=open]:bg-light-active',
+                            !date && 'text-gray-400'
+                          )}
+                        >
+                          <KeenIcon icon="calendar" className="me-0.5" />
+                          {date?.from ? (
+                            date.to ? (
+                              <>
+                                {format(date.from, 'LLL dd, y')} - {format(date.to, 'LLL dd, y')}
+                              </>
+                            ) : (
+                              format(date.from, 'LLL dd, y')
+                            )
                           ) : (
-                            format(date.from, 'LLL dd, y')
-                          )
-                        ) : (
-                          <span>Pick a date range</span>
-                        )}
-                      </button>
+                            <span>Pick a date range</span>
+                          )}
+                        </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="end">
                         <Calendar

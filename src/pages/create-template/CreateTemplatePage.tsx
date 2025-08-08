@@ -25,10 +25,7 @@ const CreateTemplatePage = () => {
               <ToolbarDescription>Create and manage your templates</ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              <button
-                className="btn btn-sm btn-light"
-                onClick={() => navigate('/templates')}
-              >
+              <button className="btn btn-sm btn-light" onClick={() => navigate('/templates')}>
                 View Templates
               </button>
             </ToolbarActions>
@@ -44,7 +41,8 @@ const CreateTemplatePage = () => {
               <h2 className="text-xl font-semibold">Template Information</h2>
             </div>
             <p className="text-gray-600">
-              Fill out the form below to create a new template. Templates help you standardize and manage your workflows efficiently.
+              Fill out the form below to create a new template. Templates help you standardize and
+              manage your workflows efficiently.
             </p>
             <ul className="list-disc pl-6 text-gray-500 text-sm">
               <li>Give your template a clear, descriptive name.</li>
@@ -59,4 +57,4 @@ const CreateTemplatePage = () => {
   );
 };
 
-export default CreateTemplatePage; 
+export default CreateTemplatePage;

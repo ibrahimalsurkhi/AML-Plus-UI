@@ -87,17 +87,17 @@ const AVAILABLE_FIELDS = [
   { value: 'nameOriginalScript', label: 'Name Original Script' },
   { value: 'unListType', label: 'List Type' },
   { value: 'referenceNumber', label: 'Reference Number' },
-  { value: 'nationalities', label: 'Nationalities' },
+  { value: 'nationalities', label: 'Nationalities' }
 ] as const;
 
 const AGGREGATION_OPTIONS = [
-  { 
-    value: 'un_list_types', 
+  {
+    value: 'un_list_types',
     label: 'List Types',
     field: 'unListType.keyword'
   },
-  { 
-    value: 'nationalityText', 
+  {
+    value: 'nationalityText',
     label: 'Nationalities',
     field: 'nationalities.nationalityText.keyword'
   }
@@ -111,14 +111,14 @@ const MATCH_MODES = [
 
 const LOGICAL_OPERATORS = [
   { value: 1, label: 'OR' },
-  { value: 2, label: 'AND' },
+  { value: 2, label: 'AND' }
 ] as const;
 
 const SORT_OPTIONS = [
   { value: 'listedOn', label: 'Listed Date' },
   { value: 'firstName', label: 'First Name' },
   { value: 'secondName', label: 'Second Name' },
-  { value: 'unListType', label: 'List Type' },
+  { value: 'unListType', label: 'List Type' }
 ] as const;
 
 interface MultiSelectProps {
@@ -128,11 +128,11 @@ interface MultiSelectProps {
   placeholder?: string;
 }
 
-const MultiSelect = ({ 
-  options, 
-  value, 
-  onChange, 
-  placeholder = 'Select options...' 
+const MultiSelect = ({
+  options,
+  value,
+  onChange,
+  placeholder = 'Select options...'
 }: MultiSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -150,15 +150,13 @@ const MultiSelect = ({
 
   const toggleOption = (optionValue: string) => {
     onChange(
-      value.includes(optionValue)
-        ? value.filter(v => v !== optionValue)
-        : [...value, optionValue]
+      value.includes(optionValue) ? value.filter((v) => v !== optionValue) : [...value, optionValue]
     );
   };
 
   const selectedLabels = options
-    .filter(option => value.includes(option.value))
-    .map(option => option.label)
+    .filter((option) => value.includes(option.value))
+    .map((option) => option.label)
     .join(', ');
 
   return (
@@ -194,8 +192,8 @@ const MultiSelect = ({
           </span>
         </div>
         <div className="flex items-center ps-2">
-          <KeenIcon 
-            icon={isOpen ? 'arrow-up' : 'arrow-down'} 
+          <KeenIcon
+            icon={isOpen ? 'arrow-up' : 'arrow-down'}
             className={clsx(
               'w-4 h-4 transition-transform duration-200',
               isOpen ? 'text-primary' : 'text-gray-400'
@@ -203,7 +201,7 @@ const MultiSelect = ({
           />
         </div>
       </div>
-      
+
       {isOpen && (
         <div className="absolute z-50 w-full mt-1">
           <div className="bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
@@ -212,7 +210,7 @@ const MultiSelect = ({
                 Select fields to include in search
               </div>
               <div className="max-h-[240px] overflow-y-auto">
-                {options.map(option => (
+                {options.map((option) => (
                   <div
                     key={option.value}
                     className={clsx(
@@ -230,21 +228,25 @@ const MultiSelect = ({
                       }
                     }}
                   >
-                    <div className={clsx(
-                      'relative flex items-center justify-center',
-                      'w-[18px] h-[18px] rounded transition-colors',
-                      value.includes(option.value)
-                        ? 'bg-primary border-primary'
-                        : 'border-2 border-gray-300 hover:border-primary'
-                    )}>
+                    <div
+                      className={clsx(
+                        'relative flex items-center justify-center',
+                        'w-[18px] h-[18px] rounded transition-colors',
+                        value.includes(option.value)
+                          ? 'bg-primary border-primary'
+                          : 'border-2 border-gray-300 hover:border-primary'
+                      )}
+                    >
                       {value.includes(option.value) && (
                         <span className="ki-duotone ki-check absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[10px] leading-none text-white before:content-['\ea1e'] before:font-ki" />
                       )}
                     </div>
-                    <span className={clsx(
-                      'flex-1 text-[13px]',
-                      value.includes(option.value) ? 'text-primary' : 'text-gray-700'
-                    )}>
+                    <span
+                      className={clsx(
+                        'flex-1 text-[13px]',
+                        value.includes(option.value) ? 'text-primary' : 'text-gray-700'
+                      )}
+                    >
                       {option.label}
                     </span>
                   </div>
@@ -268,12 +270,12 @@ const MultiSelect = ({
                 </div>
                 <div
                   className="text-[13px] text-primary hover:text-primary-dark transition-colors cursor-pointer"
-                  onClick={() => onChange(options.map(o => o.value))}
+                  onClick={() => onChange(options.map((o) => o.value))}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
-                      onChange(options.map(o => o.value));
+                      onChange(options.map((o) => o.value));
                     }
                   }}
                 >
@@ -298,13 +300,11 @@ const DetailModal: React.FC<DetailModalProps> = ({ result, highlights, onClose }
   const renderValue = (value: string | null | undefined, field?: string) => {
     if (!value) return '-';
     if (!highlights || !field) return value;
-    
+
     const fieldHighlights = highlights[field];
     if (!fieldHighlights) return value;
-    
-    return (
-      <span dangerouslySetInnerHTML={{ __html: fieldHighlights[0] }} />
-    );
+
+    return <span dangerouslySetInnerHTML={{ __html: fieldHighlights[0] }} />;
   };
 
   useEffect(() => {
@@ -339,7 +339,8 @@ const DetailModal: React.FC<DetailModalProps> = ({ result, highlights, onClose }
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <KeenIcon icon="user" className="h-5 w-5 text-primary" />
             </div>
-            {renderValue(result.firstName, 'firstName')} {renderValue(result.secondName, 'secondName')}
+            {renderValue(result.firstName, 'firstName')}{' '}
+            {renderValue(result.secondName, 'secondName')}
           </h2>
           <button
             onClick={onClose}
@@ -362,59 +363,89 @@ const DetailModal: React.FC<DetailModalProps> = ({ result, highlights, onClose }
               <table className="min-w-full divide-y divide-gray-200/75">
                 <tbody className="bg-white divide-y divide-gray-200/75">
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">ID</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{result.id || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      ID
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {result.id || '-'}
+                    </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Data ID</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{result.dataID || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      Data ID
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {result.dataID || '-'}
+                    </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Source ID</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{result.sourceID || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      Source ID
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {result.sourceID || '-'}
+                    </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Version</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{result.versionNum || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      Version
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {result.versionNum || '-'}
+                    </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">First Name</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      First Name
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {renderValue(result.firstName, 'firstName')}
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Second Name</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      Second Name
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {renderValue(result.secondName, 'secondName')}
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Third Name</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      Third Name
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {renderValue(result.thirdName, 'thirdName')}
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">UN List Type</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      UN List Type
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {renderValue(result.unListType, 'unListType')}
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Reference Number</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      Reference Number
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {renderValue(result.referenceNumber, 'referenceNumber')}
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Listed On</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      Listed On
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {renderValue(result.listedOn, 'listedOn')}
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Original Script</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      Original Script
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {renderValue(result.nameOriginalScript, 'nameOriginalScript')}
                     </td>
@@ -494,10 +525,13 @@ const DetailModal: React.FC<DetailModalProps> = ({ result, highlights, onClose }
                   </thead>
                   <tbody className="divide-y divide-gray-200/75">
                     {result.documents.map((doc, index) => (
-                      <tr key={index} className={clsx(
-                        'hover:bg-gray-50',
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      )}>
+                      <tr
+                        key={index}
+                        className={clsx(
+                          'hover:bg-gray-50',
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        )}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {doc.typeOfDocument || '-'}
                         </td>
@@ -559,10 +593,13 @@ const DetailModal: React.FC<DetailModalProps> = ({ result, highlights, onClose }
                   </thead>
                   <tbody className="divide-y divide-gray-200/75">
                     {result.aliases.map((alias, index) => (
-                      <tr key={index} className={clsx(
-                        'hover:bg-gray-50',
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      )}>
+                      <tr
+                        key={index}
+                        className={clsx(
+                          'hover:bg-gray-50',
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        )}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {alias.aliasName || '-'}
                         </td>
@@ -633,10 +670,13 @@ const DetailModal: React.FC<DetailModalProps> = ({ result, highlights, onClose }
                   </thead>
                   <tbody className="divide-y divide-gray-200/75">
                     {result.addresses.map((address, index) => (
-                      <tr key={index} className={clsx(
-                        'hover:bg-gray-50',
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      )}>
+                      <tr
+                        key={index}
+                        className={clsx(
+                          'hover:bg-gray-50',
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        )}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {address.street || '-'}
                         </td>
@@ -686,10 +726,13 @@ const DetailModal: React.FC<DetailModalProps> = ({ result, highlights, onClose }
                   </thead>
                   <tbody className="divide-y divide-gray-200/75">
                     {result.nationalities.map((nationality, index) => (
-                      <tr key={index} className={clsx(
-                        'hover:bg-gray-50',
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      )}>
+                      <tr
+                        key={index}
+                        className={clsx(
+                          'hover:bg-gray-50',
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        )}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {nationality.nationalityText || '-'}
                         </td>
@@ -724,10 +767,13 @@ const DetailModal: React.FC<DetailModalProps> = ({ result, highlights, onClose }
                   </thead>
                   <tbody className="divide-y divide-gray-200/75">
                     {result.listTypes.map((listType, index) => (
-                      <tr key={index} className={clsx(
-                        'hover:bg-gray-50',
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      )}>
+                      <tr
+                        key={index}
+                        className={clsx(
+                          'hover:bg-gray-50',
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        )}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {listType.listTypeText || '-'}
                         </td>
@@ -762,10 +808,13 @@ const DetailModal: React.FC<DetailModalProps> = ({ result, highlights, onClose }
                   </thead>
                   <tbody className="divide-y divide-gray-200/75">
                     {result.designations.map((designation, index) => (
-                      <tr key={index} className={clsx(
-                        'hover:bg-gray-50',
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      )}>
+                      <tr
+                        key={index}
+                        className={clsx(
+                          'hover:bg-gray-50',
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        )}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {designation.designationText || '-'}
                         </td>
@@ -798,8 +847,8 @@ const SanctionSearchPage = () => {
     sortBy: 'listedOn',
     aggregationRequests: [
       {
-        Name: "un_list_types",
-        Field: "unListType.keyword"
+        Name: 'un_list_types',
+        Field: 'unListType.keyword'
       }
     ],
     from: 0,
@@ -826,15 +875,12 @@ const SanctionSearchPage = () => {
     setError(null);
 
     try {
-      const response = await api.post<SearchResponse>(
-        API_CONFIG.endpoints.search.tenants,
-        {
-          query: searchQuery,
-          ...searchOptions,
-          from: (currentPage - 1) * itemsPerPage,
-          size: itemsPerPage
-        }
-      );
+      const response = await api.post<SearchResponse>(API_CONFIG.endpoints.search.tenants, {
+        query: searchQuery,
+        ...searchOptions,
+        from: (currentPage - 1) * itemsPerPage,
+        size: itemsPerPage
+      });
       setSearchResults(response.data);
     } catch (err) {
       if (err instanceof AxiosError && err.response?.status === 401) {
@@ -860,8 +906,8 @@ const SanctionSearchPage = () => {
       sortBy: 'listedOn',
       aggregationRequests: [
         {
-          Name: "un_list_types",
-          Field: "unListType.keyword"
+          Name: 'un_list_types',
+          Field: 'unListType.keyword'
         }
       ],
       from: 0,
@@ -877,8 +923,12 @@ const SanctionSearchPage = () => {
             <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <KeenIcon icon="search-list" className="h-8 w-8 text-primary" />
             </div>
-            <p className="text-lg font-medium text-gray-900 mb-2">Enter search criteria above to find sanctioned entities</p>
-            <p className="text-sm text-gray-600">You can search by name, identifier, or other details</p>
+            <p className="text-lg font-medium text-gray-900 mb-2">
+              Enter search criteria above to find sanctioned entities
+            </p>
+            <p className="text-sm text-gray-600">
+              You can search by name, identifier, or other details
+            </p>
           </div>
         </div>
       );
@@ -901,34 +951,39 @@ const SanctionSearchPage = () => {
               </div>
               Found {searchResults.total} results
               {searchQuery && (
-                <span className="text-sm font-normal text-gray-600">
-                  for "{searchQuery}"
-                </span>
+                <span className="text-sm font-normal text-gray-600">for "{searchQuery}"</span>
               )}
             </h3>
             {searchResults.total > 0 && (
               <div className="text-sm text-gray-600">
-                Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, searchResults.total)} of {searchResults.total} results
+                Showing {(currentPage - 1) * itemsPerPage + 1}-
+                {Math.min(currentPage * itemsPerPage, searchResults.total)} of {searchResults.total}{' '}
+                results
               </div>
             )}
           </div>
 
           {Object.entries(searchResults.aggregations || {}).map(([aggName, aggData]) => (
-            <div key={aggName} className="bg-gray-50/75 rounded-xl p-5 mb-6 border border-gray-200/75">
+            <div
+              key={aggName}
+              className="bg-gray-50/75 rounded-xl p-5 mb-6 border border-gray-200/75"
+            >
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
                   <KeenIcon icon="chart-pie-simple" className="h-4 w-4 text-primary" />
                 </div>
                 <h4 className="font-medium">
-                  {aggName === 'un_list_types' ? 'Results by List Type' : 
-                   aggName === 'nationalityText' ? 'Results by Nationality' : 
-                   `Results by ${aggName}`}
+                  {aggName === 'un_list_types'
+                    ? 'Results by List Type'
+                    : aggName === 'nationalityText'
+                      ? 'Results by Nationality'
+                      : `Results by ${aggName}`}
                 </h4>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {aggData.map((agg) => (
-                  <div 
-                    key={agg.key} 
+                  <div
+                    key={agg.key}
                     className="bg-white rounded-xl p-4 border border-gray-200/75 flex items-center justify-between hover:border-gray-300 hover:shadow-sm transition-all duration-200"
                   >
                     <div className="flex items-center gap-2">
@@ -947,11 +1002,11 @@ const SanctionSearchPage = () => {
 
         <div className="space-y-3">
           {searchResults.results.map((result) => (
-            <div 
-              key={result.id} 
+            <div
+              key={result.id}
               className="p-5 bg-white border border-gray-200/75 rounded-xl hover:border-gray-300 hover:shadow-sm transition-all duration-200"
             >
-              <div 
+              <div
                 className="font-semibold text-primary cursor-pointer hover:text-primary-dark flex items-center gap-2"
                 onClick={() => setSelectedResult(result)}
               >
@@ -967,7 +1022,8 @@ const SanctionSearchPage = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <KeenIcon icon="calendar" className="text-gray-400 h-4 w-4" />
-                  <span className="font-medium">Listed on:</span> {new Date(result.listedOn).toLocaleDateString()}
+                  <span className="font-medium">Listed on:</span>{' '}
+                  {new Date(result.listedOn).toLocaleDateString()}
                 </div>
                 <div className="flex items-center gap-2">
                   <KeenIcon icon="list" className="text-gray-400 h-4 w-4" />
@@ -975,7 +1031,8 @@ const SanctionSearchPage = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <KeenIcon icon="flag" className="text-gray-400 h-4 w-4" />
-                  <span className="font-medium">Nationalities:</span> {result.nationalities.map(n => n.nationalityText).join(', ')}
+                  <span className="font-medium">Nationalities:</span>{' '}
+                  {result.nationalities.map((n) => n.nationalityText).join(', ')}
                 </div>
               </div>
             </div>
@@ -989,8 +1046,10 @@ const SanctionSearchPage = () => {
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
                 className={clsx(
-                  "btn btn-sm gap-2",
-                  currentPage === 1 ? "btn-light opacity-50 cursor-not-allowed" : "btn-light-primary"
+                  'btn btn-sm gap-2',
+                  currentPage === 1
+                    ? 'btn-light opacity-50 cursor-not-allowed'
+                    : 'btn-light-primary'
                 )}
               >
                 <KeenIcon icon="arrow-left" />
@@ -1000,8 +1059,10 @@ const SanctionSearchPage = () => {
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className={clsx(
-                  "btn btn-sm gap-2",
-                  currentPage === totalPages ? "btn-light opacity-50 cursor-not-allowed" : "btn-light-primary"
+                  'btn btn-sm gap-2',
+                  currentPage === totalPages
+                    ? 'btn-light opacity-50 cursor-not-allowed'
+                    : 'btn-light-primary'
                 )}
               >
                 Next
@@ -1014,10 +1075,10 @@ const SanctionSearchPage = () => {
                   key={page}
                   onClick={() => handlePageChange(page)}
                   className={clsx(
-                    "w-8 h-8 rounded-lg text-sm font-medium transition-colors",
+                    'w-8 h-8 rounded-lg text-sm font-medium transition-colors',
                     page === currentPage
-                      ? "bg-primary text-white"
-                      : "text-gray-600 hover:bg-gray-100"
+                      ? 'bg-primary text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
                   )}
                 >
                   {page}
@@ -1051,30 +1112,32 @@ const SanctionSearchPage = () => {
             <MultiSelect
               options={AVAILABLE_FIELDS}
               value={searchOptions.fieldsToSearch}
-              onChange={(fields) => setSearchOptions(prev => ({
-                ...prev,
-                fieldsToSearch: fields
-              }))}
+              onChange={(fields) =>
+                setSearchOptions((prev) => ({
+                  ...prev,
+                  fieldsToSearch: fields
+                }))
+              }
               placeholder="Select fields to search..."
             />
           </div>
 
           <div>
-            <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">
-              Match Mode
-            </label>
+            <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">Match Mode</label>
             <select
               className={clsx(
                 'form-select w-full h-[42px] bg-white border-gray-200 rounded-lg text-[13px]',
                 'hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary'
               )}
               value={searchOptions.matchMode}
-              onChange={(e) => setSearchOptions(prev => ({
-                ...prev,
-                matchMode: Number(e.target.value)
-              }))}
+              onChange={(e) =>
+                setSearchOptions((prev) => ({
+                  ...prev,
+                  matchMode: Number(e.target.value)
+                }))
+              }
             >
-              {MATCH_MODES.map(mode => (
+              {MATCH_MODES.map((mode) => (
                 <option key={mode.value} value={mode.value}>
                   {mode.label}
                 </option>
@@ -1088,17 +1151,19 @@ const SanctionSearchPage = () => {
             </label>
             <MultiSelect
               options={AGGREGATION_OPTIONS}
-              value={searchOptions.aggregationRequests.map(agg => agg.Name)}
-              onChange={(selectedAggs) => setSearchOptions(prev => ({
-                ...prev,
-                aggregationRequests: selectedAggs.map(name => {
-                  const option = AGGREGATION_OPTIONS.find(opt => opt.value === name);
-                  return {
-                    Name: name,
-                    Field: option?.field || ''
-                  };
-                })
-              }))}
+              value={searchOptions.aggregationRequests.map((agg) => agg.Name)}
+              onChange={(selectedAggs) =>
+                setSearchOptions((prev) => ({
+                  ...prev,
+                  aggregationRequests: selectedAggs.map((name) => {
+                    const option = AGGREGATION_OPTIONS.find((opt) => opt.value === name);
+                    return {
+                      Name: name,
+                      Field: option?.field || ''
+                    };
+                  })
+                }))
+              }
               placeholder="Select aggregations..."
             />
           </div>
@@ -1115,12 +1180,14 @@ const SanctionSearchPage = () => {
                 'hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary'
               )}
               value={searchOptions.logicalOperator}
-              onChange={(e) => setSearchOptions(prev => ({
-                ...prev,
-                logicalOperator: Number(e.target.value)
-              }))}
+              onChange={(e) =>
+                setSearchOptions((prev) => ({
+                  ...prev,
+                  logicalOperator: Number(e.target.value)
+                }))
+              }
             >
-              {LOGICAL_OPERATORS.map(op => (
+              {LOGICAL_OPERATORS.map((op) => (
                 <option key={op.value} value={op.value}>
                   {op.label}
                 </option>
@@ -1133,8 +1200,8 @@ const SanctionSearchPage = () => {
           <div className="flex items-center gap-2 text-[13px] text-gray-600">
             <KeenIcon icon="information-5" className="text-gray-400" />
             <span>
-              Select multiple fields and customize how the search is performed.
-              The logical operator determines how multiple fields are combined in the search.
+              Select multiple fields and customize how the search is performed. The logical operator
+              determines how multiple fields are combined in the search.
             </span>
           </div>
         </div>
@@ -1151,12 +1218,12 @@ const SanctionSearchPage = () => {
             <ToolbarDescription>Search for sanctioned entities and individuals</ToolbarDescription>
           </ToolbarHeading>
           <ToolbarActions>
-            <button 
+            <button
               className={clsx(
-                "btn gap-2 transition-all duration-200",
-                !searchQuery && !searchResults 
-                  ? "btn-light opacity-50 cursor-not-allowed" 
-                  : "btn-light-primary hover:bg-primary hover:text-white"
+                'btn gap-2 transition-all duration-200',
+                !searchQuery && !searchResults
+                  ? 'btn-light opacity-50 cursor-not-allowed'
+                  : 'btn-light-primary hover:bg-primary hover:text-white'
               )}
               onClick={handleClearSearch}
               disabled={!searchQuery && !searchResults}
@@ -1174,7 +1241,10 @@ const SanctionSearchPage = () => {
                 <div className="flex items-center gap-4">
                   <div className="grow relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <KeenIcon icon="magnifier" className="text-gray-400 group-hover:text-primary transition-colors" />
+                      <KeenIcon
+                        icon="magnifier"
+                        className="text-gray-400 group-hover:text-primary transition-colors"
+                      />
                     </div>
                     <input
                       type="text"
@@ -1217,24 +1287,24 @@ const SanctionSearchPage = () => {
                       )}
                       value={searchOptions.sortBy}
                       onChange={(e) => {
-                        setSearchOptions(prev => ({
+                        setSearchOptions((prev) => ({
                           ...prev,
                           sortBy: e.target.value
                         }));
                         handleSearch();
                       }}
                     >
-                      {SORT_OPTIONS.map(option => (
+                      {SORT_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
                       ))}
                     </select>
-                    <button 
+                    <button
                       className={clsx(
                         'btn gap-2 px-6 min-w-[120px] transition-all duration-200',
-                        isLoading 
-                          ? 'btn-light cursor-not-allowed' 
+                        isLoading
+                          ? 'btn-light cursor-not-allowed'
                           : 'btn-primary hover:bg-primary-dark'
                       )}
                       onClick={handleSearch}
@@ -1258,16 +1328,14 @@ const SanctionSearchPage = () => {
                 <div className="flex items-center justify-between">
                   <button
                     className={clsx(
-                      "btn btn-sm gap-2 transition-all duration-200",
-                      showAdvanced 
-                        ? "btn-primary text-white" 
-                        : "btn-light-primary hover:bg-primary hover:text-white"
+                      'btn btn-sm gap-2 transition-all duration-200',
+                      showAdvanced
+                        ? 'btn-primary text-white'
+                        : 'btn-light-primary hover:bg-primary hover:text-white'
                     )}
                     onClick={() => setShowAdvanced(!showAdvanced)}
                   >
-                    <KeenIcon 
-                      icon={showAdvanced ? "minus-square" : "plus-square"} 
-                    />
+                    <KeenIcon icon={showAdvanced ? 'minus-square' : 'plus-square'} />
                     Advanced Search Options
                   </button>
                   {showAdvanced && (
@@ -1301,4 +1369,4 @@ const SanctionSearchPage = () => {
   );
 };
 
-export { SanctionSearchPage }; 
+export { SanctionSearchPage };

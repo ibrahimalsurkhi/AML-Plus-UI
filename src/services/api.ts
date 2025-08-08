@@ -5,8 +5,8 @@ import { setupAxios } from '@/auth/_helpers';
 export const api = axios.create({
   baseURL: API_CONFIG.baseURL,
   headers: {
-    'Content-Type': 'application/json',
-  },
+    'Content-Type': 'application/json'
+  }
 });
 
 // Setup auth token interceptor
@@ -32,7 +32,7 @@ export const authService = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>(API_CONFIG.endpoints.auth.login, data);
     return response.data;
-  },
+  }
 };
 
 export enum TemplateStatus {
@@ -88,7 +88,6 @@ export enum FieldType {
   Lookup = 7
 }
 
-
 export enum TemplateType {
   Record = 1,
   Account = 2,
@@ -113,6 +112,7 @@ export interface TemplateField {
   maxDate?: string | null;
   pattern?: string | null;
   lookupId?: number | null;
+  readOnly?: boolean;
 }
 
 export interface TemplateSection {
@@ -147,7 +147,10 @@ export interface ScoreCriteriaRange {
 
 export const templateService = {
   getTemplates: async (params: TemplateQueryParams): Promise<PaginatedResponse<Template>> => {
-    const response = await api.get<PaginatedResponse<Template>>(API_CONFIG.endpoints.templates.list, { params });
+    const response = await api.get<PaginatedResponse<Template>>(
+      API_CONFIG.endpoints.templates.list,
+      { params }
+    );
     return response.data;
   },
   getTemplateById: async (id: string): Promise<Template> => {
@@ -155,17 +158,26 @@ export const templateService = {
     return response.data;
   },
   getTemplateScoreCriteria: async (templateId: string): Promise<ScoreCriteria[]> => {
-    const response = await api.get<ScoreCriteria[]>(`${API_CONFIG.endpoints.templates.list}/${templateId}/score-criteria`);
+    const response = await api.get<ScoreCriteria[]>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/score-criteria`
+    );
     return response.data;
   },
-  createScoreCriteria: async (templateId: string, data: Omit<ScoreCriteria, 'id' | 'templateId'>): Promise<ScoreCriteria> => {
+  createScoreCriteria: async (
+    templateId: string,
+    data: Omit<ScoreCriteria, 'id' | 'templateId'>
+  ): Promise<ScoreCriteria> => {
     const response = await api.post<ScoreCriteria>(
       `${API_CONFIG.endpoints.templates.list}/${templateId}/score-criteria`,
       data
     );
     return response.data;
   },
-  updateScoreCriteria: async (templateId: string, criteriaId: number, data: Omit<ScoreCriteria, 'id' | 'templateId'>): Promise<ScoreCriteria> => {
+  updateScoreCriteria: async (
+    templateId: string,
+    criteriaId: number,
+    data: Omit<ScoreCriteria, 'id' | 'templateId'>
+  ): Promise<ScoreCriteria> => {
     const response = await api.put<ScoreCriteria>(
       `${API_CONFIG.endpoints.templates.list}/${templateId}/score-criteria/${criteriaId}`,
       data
@@ -173,18 +185,32 @@ export const templateService = {
     return response.data;
   },
   deleteScoreCriteria: async (templateId: string, criteriaId: number): Promise<void> => {
-    await api.delete(`${API_CONFIG.endpoints.templates.list}/${templateId}/score-criteria/${criteriaId}`);
+    await api.delete(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/score-criteria/${criteriaId}`
+    );
   },
   getTemplateFields: async (templateId: string): Promise<TemplateFieldsResponse> => {
-    const response = await api.get<TemplateFieldsResponse>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields`);
+    const response = await api.get<TemplateFieldsResponse>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields`
+    );
     return response.data;
   },
   createTemplateField: async (templateId: string, field: TemplateField): Promise<TemplateField> => {
-    const response = await api.post<TemplateField>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields`, field);
+    const response = await api.post<TemplateField>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields`,
+      field
+    );
     return response.data;
   },
-  updateTemplateField: async (templateId: string, fieldId: number, field: TemplateField): Promise<TemplateField> => {
-    const response = await api.put<TemplateField>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}`, field);
+  updateTemplateField: async (
+    templateId: string,
+    fieldId: number,
+    field: TemplateField
+  ): Promise<TemplateField> => {
+    const response = await api.put<TemplateField>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}`,
+      field
+    );
     return response.data;
   },
   deleteTemplateField: async (templateId: string, fieldId: number): Promise<void> => {
@@ -196,32 +222,58 @@ export const templateService = {
     });
   },
   getFieldOptions: async (templateId: string, fieldId: number): Promise<FieldOption[]> => {
-    const response = await api.get<FieldOption[]>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options`);
+    const response = await api.get<FieldOption[]>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options`
+    );
     return response.data;
   },
-  createFieldOption: async (templateId: string, fieldId: number, option: Omit<FieldOption, 'id' | 'fieldId'>): Promise<FieldOption> => {
-    const response = await api.post<FieldOption>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options`, option);
+  createFieldOption: async (
+    templateId: string,
+    fieldId: number,
+    option: Omit<FieldOption, 'id' | 'fieldId'>
+  ): Promise<FieldOption> => {
+    const response = await api.post<FieldOption>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options`,
+      option
+    );
     return response.data;
   },
-  updateFieldOption: async (templateId: string, fieldId: number, optionId: number, option: Omit<FieldOption, 'id' | 'fieldId'>): Promise<FieldOption> => {
-    const response = await api.put<FieldOption>(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options/${optionId}`, {
-      ...option,
-      templateId: parseInt(templateId)
-    });
+  updateFieldOption: async (
+    templateId: string,
+    fieldId: number,
+    optionId: number,
+    option: Omit<FieldOption, 'id' | 'fieldId'>
+  ): Promise<FieldOption> => {
+    const response = await api.put<FieldOption>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options/${optionId}`,
+      {
+        ...option,
+        templateId: parseInt(templateId)
+      }
+    );
     return response.data;
   },
-  deleteFieldOption: async (templateId: string, fieldId: number, optionId: number): Promise<void> => {
-    await api.delete(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options/${optionId}`);
+  deleteFieldOption: async (
+    templateId: string,
+    fieldId: number,
+    optionId: number
+  ): Promise<void> => {
+    await api.delete(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/options/${optionId}`
+    );
   },
-  getTemplateScoreCriteriaRanges: async (templateId: string, fieldId: number): Promise<ScoreCriteriaRange[]> => {
+  getTemplateScoreCriteriaRanges: async (
+    templateId: string,
+    fieldId: number
+  ): Promise<ScoreCriteriaRange[]> => {
     const response = await api.get<ScoreCriteriaRange[]>(
       `${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/score-criteria`
     );
     return response.data;
   },
   createScoreCriteriaRange: async (
-    templateId: string, 
-    fieldId: number, 
+    templateId: string,
+    fieldId: number,
     data: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>
   ): Promise<ScoreCriteriaRange> => {
     const response = await api.post<ScoreCriteriaRange>(
@@ -231,9 +283,9 @@ export const templateService = {
     return response.data;
   },
   updateScoreCriteriaRange: async (
-    templateId: string, 
-    fieldId: number, 
-    rangeId: number, 
+    templateId: string,
+    fieldId: number,
+    rangeId: number,
     data: Omit<ScoreCriteriaRange, 'id' | 'fieldId'>
   ): Promise<ScoreCriteriaRange> => {
     const response = await api.put<ScoreCriteriaRange>(
@@ -243,8 +295,8 @@ export const templateService = {
     return response.data;
   },
   deleteScoreCriteriaRange: async (
-    templateId: string, 
-    fieldId: number, 
+    templateId: string,
+    fieldId: number,
     rangeId: number
   ): Promise<void> => {
     await api.delete(
@@ -252,14 +304,21 @@ export const templateService = {
     );
   },
   // Section management methods
-  createTemplateSection: async (templateId: string, data: Omit<TemplateSection, 'id' | 'fields'>): Promise<TemplateSection> => {
+  createTemplateSection: async (
+    templateId: string,
+    data: Omit<TemplateSection, 'id' | 'fields'>
+  ): Promise<TemplateSection> => {
     const response = await api.post<TemplateSection>(
       `${API_CONFIG.endpoints.templates.list}/${templateId}/sections`,
       data
     );
     return response.data;
   },
-  updateTemplateSection: async (templateId: string, sectionId: number, data: Omit<TemplateSection, 'id' | 'fields'>): Promise<TemplateSection> => {
+  updateTemplateSection: async (
+    templateId: string,
+    sectionId: number,
+    data: Omit<TemplateSection, 'id' | 'fields'>
+  ): Promise<TemplateSection> => {
     const response = await api.put<TemplateSection>(
       `${API_CONFIG.endpoints.templates.list}/${templateId}/sections/${sectionId}`,
       data
@@ -270,11 +329,14 @@ export const templateService = {
     await api.delete(`${API_CONFIG.endpoints.templates.list}/${templateId}/sections/${sectionId}`);
   },
   updateTemplateStatus: async (templateId: string, status: TemplateStatus): Promise<Template> => {
-    const response = await api.put<Template>(`${API_CONFIG.endpoints.templates.list}/${templateId}/status`, {
-      status
-    });
+    const response = await api.put<Template>(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/status`,
+      {
+        status
+      }
+    );
     return response.data;
-  },
+  }
 };
 
 export interface FieldResponse {
@@ -314,7 +376,7 @@ export interface RecordQueryParams {
 export const recordService = {
   getRecords: async (params: RecordQueryParams): Promise<PaginatedResponse<Record>> => {
     const { templateId, ...queryParams } = params;
-    const endpoint = templateId 
+    const endpoint = templateId
       ? `${API_CONFIG.endpoints.templates.list}/records`
       : API_CONFIG.endpoints.records.list.replace('{templateId}', 'all');
     const response = await api.get<PaginatedResponse<Record>>(endpoint, { params: queryParams });
@@ -326,14 +388,21 @@ export const recordService = {
     );
     return response.data;
   },
-  createRecord: async (templateId: number, data: Omit<Record, 'id' | 'templateId' | 'templateName'>): Promise<Record> => {
+  createRecord: async (
+    templateId: number,
+    data: Omit<Record, 'id' | 'templateId' | 'templateName'>
+  ): Promise<Record> => {
     const response = await api.post<Record>(
       `${API_CONFIG.endpoints.templates.list}/${templateId}/records`,
       data
     );
     return response.data;
   },
-  updateRecord: async (templateId: number, recordId: number, data: Omit<Record, 'id' | 'templateId' | 'templateName'>): Promise<Record> => {
+  updateRecord: async (
+    templateId: number,
+    recordId: number,
+    data: Omit<Record, 'id' | 'templateId' | 'templateName'>
+  ): Promise<Record> => {
     const response = await api.put<Record>(
       `${API_CONFIG.endpoints.templates.list}/${templateId}/records/${recordId}`,
       data
@@ -341,9 +410,7 @@ export const recordService = {
     return response.data;
   },
   deleteRecord: async (templateId: number, recordId: number): Promise<void> => {
-    await api.delete(
-      `${API_CONFIG.endpoints.templates.list}/${templateId}/records/${recordId}`
-    );
+    await api.delete(`${API_CONFIG.endpoints.templates.list}/${templateId}/records/${recordId}`);
   }
 };
 
@@ -386,8 +453,16 @@ export interface ActivityLog {
 }
 
 export const caseService = {
-  async getCases({ pageNumber, pageSize }: { pageNumber: number; pageSize: number }): Promise<PaginatedResponse<Case>> {
-    const response = await api.get<PaginatedResponse<Case>>('/cases', { params: { pageNumber, pageSize } });
+  async getCases({
+    pageNumber,
+    pageSize
+  }: {
+    pageNumber: number;
+    pageSize: number;
+  }): Promise<PaginatedResponse<Case>> {
+    const response = await api.get<PaginatedResponse<Case>>('/cases', {
+      params: { pageNumber, pageSize }
+    });
     return response.data;
   },
   async getCaseById(id: number): Promise<Case> {
@@ -398,7 +473,7 @@ export const caseService = {
     const response = await api.get<Case[]>(`/cases/by-record/${recordId}`);
     return response.data;
   }
-}; 
+};
 
 // Lookup types
 export interface Lookup {
@@ -444,26 +519,37 @@ export const lookupService = {
   deleteLookup: async (id: number): Promise<void> => {
     await api.delete(`/Lookups/${id}`);
   },
-  getLookupValues: async (lookupId: number, params: LookupValueQueryParams): Promise<PaginatedResponse<LookupValue>> => {
-    const response = await api.get<PaginatedResponse<LookupValue>>(`/Lookups/${lookupId}/values`, { params });
+  getLookupValues: async (
+    lookupId: number,
+    params: LookupValueQueryParams
+  ): Promise<PaginatedResponse<LookupValue>> => {
+    const response = await api.get<PaginatedResponse<LookupValue>>(`/Lookups/${lookupId}/values`, {
+      params
+    });
     return response.data;
   },
   getLookupValueById: async (id: number): Promise<LookupValue> => {
     const response = await api.get<LookupValue>(`/Lookups/values/${id}`);
     return response.data;
   },
-  createLookupValue: async (lookupId: number, data: Omit<LookupValue, 'id' | 'lookupId'>): Promise<LookupValue> => {
+  createLookupValue: async (
+    lookupId: number,
+    data: Omit<LookupValue, 'id' | 'lookupId'>
+  ): Promise<LookupValue> => {
     const response = await api.post<LookupValue>(`/Lookups/${lookupId}/values`, data);
     return response.data;
   },
-  updateLookupValue: async (id: number, data: Omit<LookupValue, 'lookupId'>): Promise<LookupValue> => {
+  updateLookupValue: async (
+    id: number,
+    data: Omit<LookupValue, 'lookupId'>
+  ): Promise<LookupValue> => {
     const response = await api.put<LookupValue>(`/Lookups/values/${id}`, data);
     return response.data;
   },
   deleteLookupValue: async (id: number): Promise<void> => {
     await api.delete(`/Lookups/values/${id}`);
-  },
-}; 
+  }
+};
 
 export interface TransactionType {
   id: number;
@@ -495,12 +581,19 @@ export interface TransactionTypeUpdate {
 }
 
 export const transactionTypeService = {
-  getTransactionTypes: async (params: TransactionTypeQueryParams): Promise<PaginatedResponse<TransactionType>> => {
-    const response = await api.get<PaginatedResponse<TransactionType>>(API_CONFIG.endpoints.transactionTypes.list, { params });
+  getTransactionTypes: async (
+    params: TransactionTypeQueryParams
+  ): Promise<PaginatedResponse<TransactionType>> => {
+    const response = await api.get<PaginatedResponse<TransactionType>>(
+      API_CONFIG.endpoints.transactionTypes.list,
+      { params }
+    );
     return response.data;
   },
   getTransactionTypeById: async (id: number): Promise<TransactionType> => {
-    const response = await api.get<TransactionType>(`${API_CONFIG.endpoints.transactionTypes.details}/${id}`);
+    const response = await api.get<TransactionType>(
+      `${API_CONFIG.endpoints.transactionTypes.details}/${id}`
+    );
     return response.data;
   },
   createTransactionType: async (data: TransactionTypeCreate): Promise<number> => {
@@ -515,8 +608,8 @@ export const transactionTypeService = {
   },
   switchActive: async (id: number): Promise<void> => {
     await api.put(`${API_CONFIG.endpoints.transactionTypes.details}/${id}/switch-active`);
-  },
-}; 
+  }
+};
 
 export interface Rule {
   id?: number;
@@ -552,7 +645,7 @@ export const ruleService = {
   },
   getRules: async (pageNumber: number, pageSize: number): Promise<PaginatedRulesResponse> => {
     const response = await api.get<PaginatedRulesResponse>(`/Rules`, {
-      params: { PageNumber: pageNumber, PageSize: pageSize },
+      params: { PageNumber: pageNumber, PageSize: pageSize }
     });
     return response.data;
   },
@@ -562,10 +655,10 @@ export const ruleService = {
   },
   activateRule: async (id: number, isActive: boolean): Promise<void> => {
     await api.put(`/Rules/${id}/status`, isActive, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' }
     });
-  },
-}; 
+  }
+};
 
 export const accountService = {
   getAccountsByRecordId: async (recordId: number) => {
@@ -575,7 +668,7 @@ export const accountService = {
   createAccount: async (account: any) => {
     const response = await api.post('/Accounts', account);
     return response.data;
-  },
+  }
 };
 
 // Transaction interfaces
@@ -763,12 +856,15 @@ export const transactionService = {
     console.log('Transaction creation response:', response.data);
     return response.data;
   },
-  getTransactions: async (params: { pageNumber: number; pageSize: number }): Promise<PaginatedResponse<Transaction>> => {
-    const response = await api.get<PaginatedResponse<Transaction>>('/Transactions', { 
-      params: { 
-        Page: params.pageNumber, 
-        PageSize: params.pageSize 
-      } 
+  getTransactions: async (params: {
+    pageNumber: number;
+    pageSize: number;
+  }): Promise<PaginatedResponse<Transaction>> => {
+    const response = await api.get<PaginatedResponse<Transaction>>('/Transactions', {
+      params: {
+        Page: params.pageNumber,
+        PageSize: params.pageSize
+      }
     });
     return response.data;
   },
@@ -776,17 +872,25 @@ export const transactionService = {
     const response = await api.get<Transaction>(`/Transactions/${id}`);
     return response.data;
   },
-  getTransactionProcessingStatus: async (id: number): Promise<TransactionProcessingStatusResponse> => {
-    const response = await api.get<TransactionProcessingStatusResponse>(`/Transactions/${id}/processing-status`);
+  getTransactionProcessingStatus: async (
+    id: number
+  ): Promise<TransactionProcessingStatusResponse> => {
+    const response = await api.get<TransactionProcessingStatusResponse>(
+      `/Transactions/${id}/processing-status`
+    );
     return response.data;
   },
-  getTransactionCases: async (params: { pageNumber: number; pageSize: number; accountId?: number }): Promise<PaginatedResponse<TransactionCase>> => {
-    const response = await api.get<PaginatedResponse<TransactionCase>>('/Transactions/cases', { 
-      params: { 
-        pageNumber: params.pageNumber, 
+  getTransactionCases: async (params: {
+    pageNumber: number;
+    pageSize: number;
+    accountId?: number;
+  }): Promise<PaginatedResponse<TransactionCase>> => {
+    const response = await api.get<PaginatedResponse<TransactionCase>>('/Transactions/cases', {
+      params: {
+        pageNumber: params.pageNumber,
         pageSize: params.pageSize,
         accountId: params.accountId
-      } 
+      }
     });
     return response.data;
   },
@@ -797,5 +901,5 @@ export const transactionService = {
   getRuleDetails: async (ruleId: number): Promise<RuleDetails> => {
     const response = await api.get<RuleDetails>(`/Rules/${ruleId}`);
     return response.data;
-  },
-}; 
+  }
+};

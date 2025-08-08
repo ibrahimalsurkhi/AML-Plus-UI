@@ -14,7 +14,6 @@ import { addDays, format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { KeenIcon } from '@/components/keenicons';
 
-
 const Main = () => {
   const mobileMode = useResponsive('down', 'lg');
   const { pathname } = useLocation();

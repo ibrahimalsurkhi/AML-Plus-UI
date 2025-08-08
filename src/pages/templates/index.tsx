@@ -1,7 +1,20 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { templateService, type Template, type PaginatedResponse, TemplateStatus, TemplateType } from '@/services/api';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
+import {
+  templateService,
+  type Template,
+  type PaginatedResponse,
+  TemplateStatus,
+  TemplateType
+} from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -10,9 +23,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
 
 const getStatusBadge = (status: TemplateStatus) => {
   switch (status) {
@@ -30,39 +43,39 @@ const getStatusBadge = (status: TemplateStatus) => {
 const getStatusLabel = (status: TemplateStatus) => {
   switch (status) {
     case TemplateStatus.Draft:
-      return "Draft";
+      return 'Draft';
     case TemplateStatus.Active:
-      return "Active";
+      return 'Active';
     case TemplateStatus.Archived:
-      return "Archived";
+      return 'Archived';
     default:
-      return "Unknown";
+      return 'Unknown';
   }
 };
 
 const getStatusColor = (status: TemplateStatus) => {
   switch (status) {
     case TemplateStatus.Draft:
-      return "text-gray-800";
+      return 'text-gray-800';
     case TemplateStatus.Active:
-      return "text-[#1890FF]";
+      return 'text-[#1890FF]';
     case TemplateStatus.Archived:
-      return "text-destructive";
+      return 'text-destructive';
     default:
-      return "text-gray-800";
+      return 'text-gray-800';
   }
 };
 
 const getTemplateTypeName = (templateType: number) => {
   switch (templateType) {
     case TemplateType.Record:
-      return "Record";
+      return 'Record';
     case TemplateType.Account:
-      return "Account";
+      return 'Account';
     case TemplateType.Transaction:
-      return "Transaction";
+      return 'Transaction';
     default:
-      return "Unknown";
+      return 'Unknown';
   }
 };
 
@@ -98,14 +111,14 @@ export default function TemplatesPage() {
   useEffect(() => {
     if (location.state?.refreshData) {
       fetchTemplates();
-      
+
       if (location.state.message) {
         toast({
-          title: "Success",
-          description: location.state.message,
+          title: 'Success',
+          description: location.state.message
         });
       }
-      
+
       // Clear the state to prevent multiple refreshes
       navigate(location.pathname, { replace: true, state: {} });
     }
@@ -119,15 +132,15 @@ export default function TemplatesPage() {
     try {
       await templateService.updateTemplateStatus(templateId, newStatus);
       toast({
-        title: "Success",
-        description: `Template status updated to ${getStatusLabel(newStatus)}`,
+        title: 'Success',
+        description: `Template status updated to ${getStatusLabel(newStatus)}`
       });
       fetchTemplates(); // Refresh the list
     } catch (err) {
       toast({
-        title: "Error",
-        description: "Failed to update template status",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update template status',
+        variant: 'destructive'
       });
       console.error('Error updating template status:', err);
     }
@@ -166,21 +179,27 @@ export default function TemplatesPage() {
             </TableHeader>
             <TableBody>
               {templates?.items.map((template) => (
-                <TableRow 
-                  key={template.id}
-                  className="cursor-pointer hover:bg-gray-50"
-                >
-                  <TableCell onClick={() => navigate(`/templates/${template.id}`)}>{template.name}</TableCell>
+                <TableRow key={template.id} className="cursor-pointer hover:bg-gray-50">
+                  <TableCell onClick={() => navigate(`/templates/${template.id}`)}>
+                    {template.name}
+                  </TableCell>
                   <TableCell onClick={() => navigate(`/templates/${template.id}`)}>
                     {getTemplateTypeName(template.templateType)}
                   </TableCell>
-                  <TableCell onClick={() => navigate(`/templates/${template.id}`)}>{template.version}</TableCell>
+                  <TableCell onClick={() => navigate(`/templates/${template.id}`)}>
+                    {template.version}
+                  </TableCell>
                   <TableCell onClick={() => navigate(`/templates/${template.id}`)}>
                     {getStatusBadge(template.status)}
                   </TableCell>
-                  <TableCell onClick={() => navigate(`/templates/${template.id}`)}>{template.tenantName}</TableCell>
+                  <TableCell onClick={() => navigate(`/templates/${template.id}`)}>
+                    {template.tenantName}
+                  </TableCell>
                   <TableCell>
-                    <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="flex items-center justify-end"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
@@ -194,7 +213,9 @@ export default function TemplatesPage() {
                           {template.status !== TemplateStatus.Active && (
                             <DropdownMenuItem
                               className={getStatusColor(TemplateStatus.Active)}
-                              onClick={() => handleStatusChange(template.id.toString(), TemplateStatus.Active)}
+                              onClick={() =>
+                                handleStatusChange(template.id.toString(), TemplateStatus.Active)
+                              }
                             >
                               Convert to Active
                             </DropdownMenuItem>
@@ -202,7 +223,9 @@ export default function TemplatesPage() {
                           {template.status !== TemplateStatus.Draft && (
                             <DropdownMenuItem
                               className={getStatusColor(TemplateStatus.Draft)}
-                              onClick={() => handleStatusChange(template.id.toString(), TemplateStatus.Draft)}
+                              onClick={() =>
+                                handleStatusChange(template.id.toString(), TemplateStatus.Draft)
+                              }
                             >
                               Convert to Draft
                             </DropdownMenuItem>
@@ -210,7 +233,9 @@ export default function TemplatesPage() {
                           {template.status !== TemplateStatus.Archived && (
                             <DropdownMenuItem
                               className={getStatusColor(TemplateStatus.Archived)}
-                              onClick={() => handleStatusChange(template.id.toString(), TemplateStatus.Archived)}
+                              onClick={() =>
+                                handleStatusChange(template.id.toString(), TemplateStatus.Archived)
+                              }
                             >
                               Convert to Archived
                             </DropdownMenuItem>
@@ -234,4 +259,4 @@ export default function TemplatesPage() {
       </Card>
     </div>
   );
-} 
+}

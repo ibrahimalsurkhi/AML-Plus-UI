@@ -2,10 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { lookupService, type Lookup, type LookupValue, type PaginatedResponse } from '@/services/api';
+import {
+  lookupService,
+  type Lookup,
+  type LookupValue,
+  type PaginatedResponse
+} from '@/services/api';
 import { Container } from '@/components/container';
 import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { toast } from '@/components/ui/use-toast';
 import {
   AlertDialog,
@@ -16,7 +28,7 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogCancel
 } from '@/components/ui/alert-dialog';
 
 const LookupDetailsPage = () => {
@@ -62,7 +74,11 @@ const LookupDetailsPage = () => {
   const handleUpdateLookup = async () => {
     if (!lookup) return;
     try {
-      await lookupService.updateLookup(lookup.id, { id: lookup.id, name: editName, isShared: editIsShared });
+      await lookupService.updateLookup(lookup.id, {
+        id: lookup.id,
+        name: editName,
+        isShared: editIsShared
+      });
       toast({ title: 'Success', description: 'Lookup updated' });
       setLookup({ ...lookup, name: editName, isShared: editIsShared });
     } catch (err) {
@@ -105,7 +121,11 @@ const LookupDetailsPage = () => {
   };
 
   if (loading || !lookup) {
-    return <Container><div className="p-8 text-center">Loading...</div></Container>;
+    return (
+      <Container>
+        <div className="p-8 text-center">Loading...</div>
+      </Container>
+    );
   }
 
   return (
@@ -126,7 +146,9 @@ const LookupDetailsPage = () => {
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>
+                    Cancel
+                  </AlertDialogCancel>
                   <AlertDialogAction
                     onClick={async () => {
                       await handleDelete();
@@ -138,7 +160,9 @@ const LookupDetailsPage = () => {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <Button variant="outline" onClick={() => navigate('/lookup')}>Back</Button>
+            <Button variant="outline" onClick={() => navigate('/lookup')}>
+              Back
+            </Button>
           </ToolbarActions>
         </Toolbar>
         <Card>
@@ -151,7 +175,7 @@ const LookupDetailsPage = () => {
               <input
                 className="input input-bordered w-full"
                 value={editName}
-                onChange={e => setEditName(e.target.value)}
+                onChange={(e) => setEditName(e.target.value)}
               />
             </div>
             <div>
@@ -159,7 +183,7 @@ const LookupDetailsPage = () => {
               <input
                 type="checkbox"
                 checked={editIsShared}
-                onChange={e => setEditIsShared(e.target.checked)}
+                onChange={(e) => setEditIsShared(e.target.checked)}
               />
             </div>
             <Button onClick={handleUpdateLookup}>Save</Button>
@@ -169,9 +193,7 @@ const LookupDetailsPage = () => {
           <CardHeader className="bg-gray-50/50 border-b px-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Values</h2>
-              <div className="text-sm text-gray-500">
-                Total: {values?.totalCount ?? 0} Values
-              </div>
+              <div className="text-sm text-gray-500">Total: {values?.totalCount ?? 0} Values</div>
             </div>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
@@ -180,8 +202,10 @@ const LookupDetailsPage = () => {
                 className="input input-bordered flex-1"
                 placeholder="New value"
                 value={newValue}
-                onChange={e => setNewValue(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleAddValue(); }}
+                onChange={(e) => setNewValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddValue();
+                }}
               />
               <Button onClick={handleAddValue}>Add</Button>
             </div>
@@ -202,7 +226,13 @@ const LookupDetailsPage = () => {
                       <TableCell>{val.id}</TableCell>
                       <TableCell>{val.value}</TableCell>
                       <TableCell>
-                        <Button size="sm" variant="destructive" onClick={() => setDeleteValueId(val.id)}>Delete</Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setDeleteValueId(val.id)}
+                        >
+                          Delete
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -211,7 +241,10 @@ const LookupDetailsPage = () => {
             )}
           </CardContent>
         </Card>
-        <AlertDialog open={deleteValueId !== null} onOpenChange={open => !open && setDeleteValueId(null)}>
+        <AlertDialog
+          open={deleteValueId !== null}
+          onOpenChange={(open) => !open && setDeleteValueId(null)}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Value</AlertDialogTitle>
@@ -239,4 +272,4 @@ const LookupDetailsPage = () => {
   );
 };
 
-export default LookupDetailsPage; 
+export default LookupDetailsPage;

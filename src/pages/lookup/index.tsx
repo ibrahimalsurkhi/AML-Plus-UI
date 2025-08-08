@@ -1,6 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { lookupService, type Lookup, type PaginatedResponse } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -16,7 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogCancel
 } from '@/components/ui/alert-dialog';
 
 const LookupPage = () => {
@@ -28,19 +35,22 @@ const LookupPage = () => {
   const navigate = useNavigate();
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  const fetchLookups = useCallback(async (page = 1) => {
-    try {
-      setLoading(true);
-      const data = await lookupService.getLookups({ pageNumber: page, pageSize });
-      setLookups(data);
-      setError(null);
-    } catch (err) {
-      setError('Failed to fetch lookups');
-      toast({ title: 'Error', description: 'Failed to fetch lookups', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  }, [pageSize]);
+  const fetchLookups = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const data = await lookupService.getLookups({ pageNumber: page, pageSize });
+        setLookups(data);
+        setError(null);
+      } catch (err) {
+        setError('Failed to fetch lookups');
+        toast({ title: 'Error', description: 'Failed to fetch lookups', variant: 'destructive' });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [pageSize]
+  );
 
   useEffect(() => {
     fetchLookups(pageNumber);
@@ -81,9 +91,7 @@ const LookupPage = () => {
           <CardHeader className="bg-gray-50/50 border-b px-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">All Lookups</h2>
-              <div className="text-sm text-gray-500">
-                Total: {lookups?.totalCount ?? 0} Lookups
-              </div>
+              <div className="text-sm text-gray-500">Total: {lookups?.totalCount ?? 0} Lookups</div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -95,7 +103,9 @@ const LookupPage = () => {
               <div className="p-8 text-center">
                 <h3 className="text-lg font-medium text-gray-900 mb-1">No lookups found</h3>
                 <p className="text-gray-500 mb-4">Create your first lookup to get started</p>
-                <Button variant="outline" onClick={handleCreate}>Create Lookup</Button>
+                <Button variant="outline" onClick={handleCreate}>
+                  Create Lookup
+                </Button>
               </div>
             ) : (
               <Table>
@@ -114,20 +124,34 @@ const LookupPage = () => {
                       <TableCell onClick={() => handleEdit(lookup.id)}>{lookup.name}</TableCell>
                       <TableCell>{lookup.isShared ? 'Yes' : 'No'}</TableCell>
                       <TableCell>
-                        <Button size="sm" variant="ghost" onClick={() => handleEdit(lookup.id)}>Edit</Button>
-                        <AlertDialog open={deleteId === lookup.id} onOpenChange={open => !open && setDeleteId(null)}>
+                        <Button size="sm" variant="ghost" onClick={() => handleEdit(lookup.id)}>
+                          Edit
+                        </Button>
+                        <AlertDialog
+                          open={deleteId === lookup.id}
+                          onOpenChange={(open) => !open && setDeleteId(null)}
+                        >
                           <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="destructive" onClick={() => confirmDelete(lookup.id)}>Delete</Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => confirmDelete(lookup.id)}
+                            >
+                              Delete
+                            </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Lookup</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete this lookup? This action cannot be undone.
+                                Are you sure you want to delete this lookup? This action cannot be
+                                undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel onClick={() => setDeleteId(null)}>Cancel</AlertDialogCancel>
+                              <AlertDialogCancel onClick={() => setDeleteId(null)}>
+                                Cancel
+                              </AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={async () => {
                                   if (deleteId !== null) {
@@ -155,4 +179,4 @@ const LookupPage = () => {
   );
 };
 
-export default LookupPage; 
+export default LookupPage;

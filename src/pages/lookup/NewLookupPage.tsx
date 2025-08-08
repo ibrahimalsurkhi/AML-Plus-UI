@@ -38,7 +38,9 @@ const NewLookupPage = () => {
         <Toolbar>
           <ToolbarHeading>Create Lookup</ToolbarHeading>
           <ToolbarActions>
-            <Button variant="outline" onClick={() => navigate('/lookup')}>Back</Button>
+            <Button variant="outline" onClick={() => navigate('/lookup')}>
+              Back
+            </Button>
           </ToolbarActions>
         </Toolbar>
         <Card>
@@ -52,7 +54,7 @@ const NewLookupPage = () => {
                 <input
                   className="input input-bordered w-full"
                   value={name}
-                  onChange={e => setName(e.target.value)}
+                  onChange={(e) => setName(e.target.value)}
                   required
                 />
               </div>
@@ -61,10 +63,12 @@ const NewLookupPage = () => {
                 <input
                   type="checkbox"
                   checked={isShared}
-                  onChange={e => setIsShared(e.target.checked)}
+                  onChange={(e) => setIsShared(e.target.checked)}
                 />
               </div>
-              <Button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create'}</Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Creating...' : 'Create'}
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -73,4 +77,4 @@ const NewLookupPage = () => {
   );
 };
 
-export default NewLookupPage; 
+export default NewLookupPage;

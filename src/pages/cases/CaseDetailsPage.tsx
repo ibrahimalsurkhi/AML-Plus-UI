@@ -6,25 +6,21 @@ import { caseService, Case, ScreeningHistory, ActivityLog, CaseScreening } from 
 import { Container } from '@/components/container';
 import { Loader2, ArrowLeft, Hash, User, FileText, Calendar } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarActions
-} from '@/partials/toolbar';
+import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
 
 const CaseStatusMap: Record<string, string> = {
-  'New': 'New',
-  'InProgress': 'In Progress',
-  'Completed': 'Completed',
-  'Rejected': 'Rejected',
-  'Closed': 'Closed',
-  'Active': 'Active',
+  New: 'New',
+  InProgress: 'In Progress',
+  Completed: 'Completed',
+  Rejected: 'Rejected',
+  Closed: 'Closed',
+  Active: 'Active'
 };
 
 const SourceTypeMap: Record<string, string> = {
-  'Web': 'Web',
-  'Api': 'Api',
-  'Manual': 'Manual',
+  Web: 'Web',
+  Api: 'Api',
+  Manual: 'Manual'
 };
 
 const CaseDetailsPage = () => {
@@ -35,7 +31,7 @@ const CaseDetailsPage = () => {
   const [expanded, setExpanded] = useState<{ [id: number]: boolean }>({});
 
   const toggleExpand = (id: number) => {
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   useEffect(() => {
@@ -49,7 +45,7 @@ const CaseDetailsPage = () => {
         toast({
           title: 'Error',
           description: 'Failed to fetch case details. Please try again.',
-          variant: 'destructive',
+          variant: 'destructive'
         });
       } finally {
         setLoading(false);
@@ -121,9 +117,7 @@ const CaseDetailsPage = () => {
               <FileText className="w-5 h-5 text-primary" />
               Case Information
             </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Basic information about the case.
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Basic information about the case.</p>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -153,14 +147,18 @@ const CaseDetailsPage = () => {
                   <FileText className="w-4 h-4" />
                   Status
                 </div>
-                <div className="text-base font-medium">{CaseStatusMap[caseData.status] || caseData.status}</div>
+                <div className="text-base font-medium">
+                  {CaseStatusMap[caseData.status] || caseData.status}
+                </div>
               </div>
               <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
                   <FileText className="w-4 h-4" />
                   Source
                 </div>
-                <div className="text-base font-medium">{SourceTypeMap[caseData.source] || caseData.source}</div>
+                <div className="text-base font-medium">
+                  {SourceTypeMap[caseData.source] || caseData.source}
+                </div>
               </div>
               <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
@@ -188,7 +186,9 @@ const CaseDetailsPage = () => {
                   <FileText className="w-4 h-4" />
                   Exceeds Medium Threshold
                 </div>
-                <div className="text-base font-medium">{caseData.exceedsMediumThreshold ? 'Yes' : 'No'}</div>
+                <div className="text-base font-medium">
+                  {caseData.exceedsMediumThreshold ? 'Yes' : 'No'}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -214,7 +214,7 @@ const CaseDetailsPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {caseData.screeningHistories.map(history => (
+                    {caseData.screeningHistories.map((history) => (
                       <React.Fragment key={history.id}>
                         <tr className="bg-white">
                           <td className="border px-3 py-2">
@@ -229,10 +229,11 @@ const CaseDetailsPage = () => {
                           </td>
                           <td className="border px-3 py-2">{history.noOfMatches}</td>
                           <td className="border px-3 py-2">
-                            {history.caseScreenings && history.caseScreenings.length > 0
-                              ? <span>{history.caseScreenings.length} screening(s)</span>
-                              : <span className="text-muted-foreground">No screenings</span>
-                            }
+                            {history.caseScreenings && history.caseScreenings.length > 0 ? (
+                              <span>{history.caseScreenings.length} screening(s)</span>
+                            ) : (
+                              <span className="text-muted-foreground">No screenings</span>
+                            )}
                           </td>
                         </tr>
                         {expanded[history.id] && (
@@ -249,12 +250,18 @@ const CaseDetailsPage = () => {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {history.caseScreenings.map(screening => (
+                                  {history.caseScreenings.map((screening) => (
                                     <tr key={screening.id}>
                                       <td className="border px-2 py-1">{screening.id}</td>
-                                      <td className="border px-2 py-1">{screening.individualId ?? '-'}</td>
-                                      <td className="border px-2 py-1">{screening.individualName ?? '-'}</td>
-                                      <td className="border px-2 py-1">{screening.entityId ?? '-'}</td>
+                                      <td className="border px-2 py-1">
+                                        {screening.individualId ?? '-'}
+                                      </td>
+                                      <td className="border px-2 py-1">
+                                        {screening.individualName ?? '-'}
+                                      </td>
+                                      <td className="border px-2 py-1">
+                                        {screening.entityId ?? '-'}
+                                      </td>
                                       <td className="border px-2 py-1">{screening.matchScore}</td>
                                     </tr>
                                   ))}
@@ -293,7 +300,7 @@ const CaseDetailsPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {caseData.activityLogs.map(log => (
+                    {caseData.activityLogs.map((log) => (
                       <tr key={log.id}>
                         <td className="border px-3 py-2">{log.description}</td>
                         <td className="border px-3 py-2">{log.action}</td>
@@ -312,4 +319,4 @@ const CaseDetailsPage = () => {
   );
 };
 
-export default CaseDetailsPage; 
+export default CaseDetailsPage;

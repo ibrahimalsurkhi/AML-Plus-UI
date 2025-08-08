@@ -2,27 +2,34 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { recordService, type Record, type TemplateField, templateService, FieldType, type Template, caseService, Case, lookupService, type LookupValue } from '@/services/api';
+import {
+  recordService,
+  type Record,
+  type TemplateField,
+  templateService,
+  FieldType,
+  type Template,
+  caseService,
+  Case,
+  lookupService,
+  type LookupValue
+} from '@/services/api';
 import { Container } from '@/components/container';
-import { 
-  Loader2, 
-  ArrowLeft, 
-  User, 
-  Calendar, 
-  Hash, 
-  FileText, 
+import {
+  Loader2,
+  ArrowLeft,
+  User,
+  Calendar,
+  Hash,
+  FileText,
   IdCard,
   FileType,
   UserRound,
   Cake
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarActions
-} from '@/partials/toolbar';
-import { cn } from "@/lib/utils";
+import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
+import { cn } from '@/lib/utils';
 
 // Extend TemplateField type to include options and ranges
 interface ExtendedTemplateField extends TemplateField {
@@ -53,61 +60,71 @@ const RecordDetailsPage = () => {
           throw new Error('Invalid record ID');
         }
 
-        
-
         // Now get the full record details using the template ID
         const fullRecord = await recordService.getRecordById(recordId);
         setRecord(fullRecord);
 
         // Get the template name
-        const templateDetails = await templateService.getTemplateById(fullRecord.templateId.toString());
+        const templateDetails = await templateService.getTemplateById(
+          fullRecord.templateId.toString()
+        );
         setTemplateName(templateDetails.name);
 
         // Get the template fields and their options
-        const fieldsResponse = await templateService.getTemplateFields(fullRecord.templateId.toString());
+        const fieldsResponse = await templateService.getTemplateFields(
+          fullRecord.templateId.toString()
+        );
         // Get all fields from sections and fields without section
         const allFields = [
-          ...fieldsResponse.sections.flatMap(section => section.fields),
+          ...fieldsResponse.sections.flatMap((section) => section.fields),
           ...fieldsResponse.fieldsWithoutSection
         ];
-        
+
         // Fetch options for fields that need them
         const fieldsWithOptions = await Promise.all(
           allFields.map(async (field) => {
             const extendedField: ExtendedTemplateField = { ...field };
-            
+
             // Fetch options for option-based fields
             if (
               field.fieldType === FieldType.Dropdown ||
               field.fieldType === FieldType.Radio ||
               field.fieldType === FieldType.Checkbox
             ) {
-              const options = await templateService.getFieldOptions(fullRecord.templateId.toString(), field.id!);
+              const options = await templateService.getFieldOptions(
+                fullRecord.templateId.toString(),
+                field.id!
+              );
               extendedField.options = options;
             }
 
             // Fetch lookup values for Lookup fields
             if (field.fieldType === FieldType.Lookup && field.lookupId) {
               try {
-                const lookupValues = await lookupService.getLookupValues(field.lookupId, { pageNumber: 1, pageSize: 100 });
+                const lookupValues = await lookupService.getLookupValues(field.lookupId, {
+                  pageNumber: 1,
+                  pageSize: 100
+                });
                 // Convert lookup values to field options format
-                extendedField.options = lookupValues.items.map((lookupValue: LookupValue, index: number) => ({
-                  id: lookupValue.id,
-                  fieldId: field.id!,
-                  label: lookupValue.value,
-                  scoreCriteriaId: 0, // Default score criteria
-                  displayOrder: index + 1
-                }));
+                extendedField.options = lookupValues.items.map(
+                  (lookupValue: LookupValue, index: number) => ({
+                    id: lookupValue.id,
+                    fieldId: field.id!,
+                    label: lookupValue.value,
+                    scoreCriteriaId: 0, // Default score criteria
+                    displayOrder: index + 1
+                  })
+                );
               } catch (error) {
                 console.error(`Error fetching lookup values for field ${field.id}:`, error);
                 extendedField.options = [];
               }
             }
-            
+
             return extendedField;
           })
         );
-        
+
         setFields(fieldsWithOptions);
 
         // Fetch cases by recordId
@@ -117,7 +134,7 @@ const RecordDetailsPage = () => {
         toast({
           title: 'Error',
           description: 'Failed to fetch record details. Please try again.',
-          variant: 'destructive',
+          variant: 'destructive'
         });
       } finally {
         setLoading(false);
@@ -141,7 +158,9 @@ const RecordDetailsPage = () => {
       <Container>
         <div className="text-center py-16">
           <h2 className="text-2xl font-semibold mb-2">Record Not Found</h2>
-          <p className="text-muted-foreground mb-4">The record you are looking for does not exist.</p>
+          <p className="text-muted-foreground mb-4">
+            The record you are looking for does not exist.
+          </p>
           <Button onClick={() => navigate('/records')} variant="outline">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Records
           </Button>
@@ -151,8 +170,12 @@ const RecordDetailsPage = () => {
   }
 
   // Helper to get field value from record.fieldResponses
-  const getFieldValue = (fieldId: number, fieldType: FieldType, options?: ExtendedTemplateField['options']) => {
-    const response = record.fieldResponses.find(fr => fr.fieldId === fieldId);
+  const getFieldValue = (
+    fieldId: number,
+    fieldType: FieldType,
+    options?: ExtendedTemplateField['options']
+  ) => {
+    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId);
     if (!response) return null;
 
     switch (fieldType) {
@@ -169,7 +192,7 @@ const RecordDetailsPage = () => {
       case FieldType.Lookup:
         if (response.valueText) {
           // Find the option that matches the valueText (which is the option ID)
-          const option = options?.find(opt => opt.id?.toString() === response.valueText);
+          const option = options?.find((opt) => opt.id?.toString() === response.valueText);
           return option?.label || response.valueText;
         }
         return null;
@@ -290,7 +313,9 @@ const RecordDetailsPage = () => {
                   <Cake className="w-4 h-4" />
                   Date of Birth
                 </div>
-                <div className="text-base font-medium">{new Date(record.dateOfBirth).toLocaleDateString()}</div>
+                <div className="text-base font-medium">
+                  {new Date(record.dateOfBirth).toLocaleDateString()}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -310,10 +335,13 @@ const RecordDetailsPage = () => {
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {fields.map(field => {
+                {fields.map((field) => {
                   const value = getFieldValue(field.id!, field.fieldType, field.options);
                   return (
-                    <div key={field.id} className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                    <div
+                      key={field.id}
+                      className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
+                    >
                       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
                         {getFieldIcon(field.fieldType)}
                         {field.label}
@@ -359,15 +387,26 @@ const RecordDetailsPage = () => {
                         <td className="border px-3 py-2">{c.id}</td>
                         <td className="border px-3 py-2">{c.fullName}</td>
                         <td className="border px-3 py-2">
-                          <span className="px-2 w-16 text-center py-1 rounded-md inline-block" style={{ backgroundColor: c.scoreBGColor }}>{c.score}</span>
+                          <span
+                            className="px-2 w-16 text-center py-1 rounded-md inline-block"
+                            style={{ backgroundColor: c.scoreBGColor }}
+                          >
+                            {c.score}
+                          </span>
                         </td>
                         <td className="border px-3 py-2">{c.mediumThreshold}</td>
-                        <td className="border px-3 py-2">{c.exceedsMediumThreshold ? 'Yes' : 'No'}</td>
+                        <td className="border px-3 py-2">
+                          {c.exceedsMediumThreshold ? 'Yes' : 'No'}
+                        </td>
                         <td className="border px-3 py-2">{c.status}</td>
                         <td className="border px-3 py-2">{c.source}</td>
                         <td className="border px-3 py-2">{c.created}</td>
                         <td className="border px-3 py-2">
-                          <Button variant="link" size="sm" onClick={() => navigate(`/cases/${c.id}`)}>
+                          <Button
+                            variant="link"
+                            size="sm"
+                            onClick={() => navigate(`/cases/${c.id}`)}
+                          >
                             View
                           </Button>
                         </td>
@@ -384,4 +423,4 @@ const RecordDetailsPage = () => {
   );
 };
 
-export default RecordDetailsPage; 
+export default RecordDetailsPage;

@@ -4,12 +4,42 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/container';
 import { Toolbar, ToolbarHeading } from '@/partials/toolbar';
-import { transactionService, type Transaction, templateService, FieldType, type TemplateField } from '@/services/api';
+import {
+  transactionService,
+  type Transaction,
+  templateService,
+  FieldType,
+  type TemplateField
+} from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { KeenIcon } from '@/components/keenicons';
-import { ArrowLeft, Calendar, User, Building, AlertTriangle, CheckCircle, XCircle, DollarSign, Clock, FileText, Shield, Activity, ArrowUpRight, ArrowDownRight, Hash, FileType } from 'lucide-react';
+import {
+  ArrowLeft,
+  Calendar,
+  User,
+  Building,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  DollarSign,
+  Clock,
+  FileText,
+  Shield,
+  Activity,
+  ArrowUpRight,
+  ArrowDownRight,
+  Hash,
+  FileType
+} from 'lucide-react';
 import { format } from 'date-fns';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 
 // Extend TemplateField type to include options and ranges
@@ -92,7 +122,7 @@ const TransactionDetailsPage = () => {
   useEffect(() => {
     const fetchTransactionDetails = async () => {
       if (!id) return;
-      
+
       try {
         setLoading(true);
         const data = await transactionService.getTransactionById(Number(id));
@@ -102,15 +132,15 @@ const TransactionDetailsPage = () => {
         const fieldsResponse = await templateService.getTemplateFields('15');
         // Get all fields from sections and fields without section
         const allFields = [
-          ...fieldsResponse.sections.flatMap(section => section.fields),
+          ...fieldsResponse.sections.flatMap((section) => section.fields),
           ...fieldsResponse.fieldsWithoutSection
         ];
-        
+
         // Fetch options for fields that need them
         const fieldsWithOptions = await Promise.all(
           allFields.map(async (field) => {
             const extendedField: ExtendedTemplateField = { ...field };
-            
+
             // Fetch options for option-based fields
             if (
               field.fieldType === FieldType.Dropdown ||
@@ -120,11 +150,11 @@ const TransactionDetailsPage = () => {
               const options = await templateService.getFieldOptions('15', field.id!);
               extendedField.options = options;
             }
-            
+
             return extendedField;
           })
         );
-        
+
         setFields(fieldsWithOptions);
 
         // Get template name
@@ -135,7 +165,7 @@ const TransactionDetailsPage = () => {
         toast({
           title: 'Error',
           description: 'Failed to fetch transaction details. Please try again.',
-          variant: 'destructive',
+          variant: 'destructive'
         });
       } finally {
         setLoading(false);
@@ -147,38 +177,53 @@ const TransactionDetailsPage = () => {
 
   const getStatusLabel = (status: number) => {
     switch (status) {
-      case 1: return 'Active';
-      case 2: return 'Inactive';
-      case 3: return 'Blocked';
-      case 4: return 'Suspended';
-      default: return 'Unknown';
+      case 1:
+        return 'Active';
+      case 2:
+        return 'Inactive';
+      case 3:
+        return 'Blocked';
+      case 4:
+        return 'Suspended';
+      default:
+        return 'Unknown';
     }
   };
 
   const getStatusColor = (status: number) => {
     switch (status) {
-      case 1: return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 2: return 'bg-slate-50 text-slate-700 border-slate-200';
-      case 3: return 'bg-red-50 text-red-700 border-red-200';
-      case 4: return 'bg-amber-50 text-amber-700 border-amber-200';
-      default: return 'bg-slate-50 text-slate-700 border-slate-200';
+      case 1:
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 2:
+        return 'bg-slate-50 text-slate-700 border-slate-200';
+      case 3:
+        return 'bg-red-50 text-red-700 border-red-200';
+      case 4:
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      default:
+        return 'bg-slate-50 text-slate-700 border-slate-200';
     }
   };
 
   const getAccountStatusLabel = (status: number) => {
     switch (status) {
-      case 1: return 'Active';
-      case 2: return 'Inactive';
-      case 3: return 'Closed';
-      case 4: return 'Suspended';
-      default: return 'Unknown';
+      case 1:
+        return 'Active';
+      case 2:
+        return 'Inactive';
+      case 3:
+        return 'Closed';
+      case 4:
+        return 'Suspended';
+      default:
+        return 'Unknown';
     }
   };
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'USD'
     }).format(amount);
   };
 
@@ -199,10 +244,14 @@ const TransactionDetailsPage = () => {
   };
 
   // Helper to get field value from transaction.fieldResponses
-  const getFieldValue = (fieldId: number, fieldType: FieldType, options?: ExtendedTemplateField['options']) => {
+  const getFieldValue = (
+    fieldId: number,
+    fieldType: FieldType,
+    options?: ExtendedTemplateField['options']
+  ) => {
     if (!transaction?.fieldResponses) return null;
-    
-    const response = transaction.fieldResponses.find(fr => fr.fieldId === fieldId);
+
+    const response = transaction.fieldResponses.find((fr) => fr.fieldId === fieldId);
     if (!response) return null;
 
     switch (fieldType) {
@@ -221,11 +270,13 @@ const TransactionDetailsPage = () => {
           return response.optionValue;
         } else if (response.optionId !== null) {
           // Find the option that matches the optionId
-          const option = options?.find(opt => opt.id?.toString() === response.optionId!.toString());
+          const option = options?.find(
+            (opt) => opt.id?.toString() === response.optionId!.toString()
+          );
           return option?.label || response.optionId!.toString();
         } else if (response.valueText) {
           // Find the option that matches the valueText (which might be the option ID)
-          const option = options?.find(opt => opt.id?.toString() === response.valueText);
+          const option = options?.find((opt) => opt.id?.toString() === response.valueText);
           return option?.label || response.valueText;
         }
         return null;
@@ -259,7 +310,9 @@ const TransactionDetailsPage = () => {
         <div className="flex items-center justify-center min-h-[500px]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent mx-auto mb-6"></div>
-            <p className="text-muted-foreground text-xl font-medium">Loading transaction details...</p>
+            <p className="text-muted-foreground text-xl font-medium">
+              Loading transaction details...
+            </p>
           </div>
         </div>
       </Container>
@@ -272,11 +325,22 @@ const TransactionDetailsPage = () => {
         <div className="text-center py-24">
           <div className="max-w-lg mx-auto">
             <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
-              <KeenIcon icon="document" style="duotone" className="text-3xl text-muted-foreground" />
+              <KeenIcon
+                icon="document"
+                style="duotone"
+                className="text-3xl text-muted-foreground"
+              />
             </div>
             <h2 className="text-3xl font-bold mb-4">Transaction Not Found</h2>
-            <p className="text-muted-foreground text-lg mb-8">The transaction you are looking for does not exist or has been removed.</p>
-            <Button onClick={() => navigate('/transactions')} variant="outline" size="lg" className="px-8">
+            <p className="text-muted-foreground text-lg mb-8">
+              The transaction you are looking for does not exist or has been removed.
+            </p>
+            <Button
+              onClick={() => navigate('/transactions')}
+              variant="outline"
+              size="lg"
+              className="px-8"
+            >
               <ArrowLeft className="w-5 h-5 mr-3" /> Back to Transactions
             </Button>
           </div>
@@ -296,9 +360,9 @@ const TransactionDetailsPage = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <Button 
-                onClick={() => navigate('/transactions')} 
-                variant="ghost" 
+              <Button
+                onClick={() => navigate('/transactions')}
+                variant="ghost"
                 size="sm"
                 className="hover:bg-gray-100"
               >
@@ -308,11 +372,13 @@ const TransactionDetailsPage = () => {
               <div className="h-6 w-px bg-gray-300"></div>
               <h1 className="text-2xl font-bold text-gray-900">Transaction Details</h1>
             </div>
-            <Badge className={`px-4 py-2 text-sm font-medium ${getStatusColor(transaction.transactionStatus)}`}>
+            <Badge
+              className={`px-4 py-2 text-sm font-medium ${getStatusColor(transaction.transactionStatus)}`}
+            >
               {getStatusLabel(transaction.transactionStatus)}
             </Badge>
           </div>
-          
+
           {/* Transaction Info Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
@@ -324,7 +390,7 @@ const TransactionDetailsPage = () => {
                 <p className="font-semibold">{transaction.createdBy || 'N/A'}</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
               <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                 <Building className="w-4 h-4 text-purple-600" />
@@ -334,7 +400,7 @@ const TransactionDetailsPage = () => {
                 <p className="font-semibold">{transaction.tenantId || 'N/A'}</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
               <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                 <DollarSign className="w-4 h-4 text-green-600" />
@@ -352,15 +418,25 @@ const TransactionDetailsPage = () => {
           <div className="bg-white rounded-2xl border border-gray-200 p-8">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">{transaction.transactionID}</h2>
-                <p className="text-lg text-gray-600">{transaction.transactionTypeName || `Transaction Type ${transaction.transactionTypeId}`}</p>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                  {transaction.transactionID}
+                </h2>
+                <p className="text-lg text-gray-600">
+                  {transaction.transactionTypeName ||
+                    `Transaction Type ${transaction.transactionTypeId}`}
+                </p>
               </div>
               <div className="text-right">
-                <div className="text-4xl font-bold text-primary mb-1">{formatAmount(transaction.transactionAmount)}</div>
-                <div className="text-sm text-gray-500">{transaction.transactionCurrencyName || `Currency ${transaction.transactionCurrencyId}`}</div>
+                <div className="text-4xl font-bold text-primary mb-1">
+                  {formatAmount(transaction.transactionAmount)}
+                </div>
+                <div className="text-sm text-gray-500">
+                  {transaction.transactionCurrencyName ||
+                    `Currency ${transaction.transactionCurrencyId}`}
+                </div>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -371,7 +447,7 @@ const TransactionDetailsPage = () => {
                   <p className="font-semibold">{formatDate(transaction.transactionTime)}</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
                 <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                   <FileText className="w-5 h-5 text-green-600" />
@@ -383,14 +459,16 @@ const TransactionDetailsPage = () => {
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
                 <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-purple-600" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Created</p>
-                  <p className="font-semibold">{transaction.created ? formatDate(transaction.created) : 'N/A'}</p>
+                  <p className="font-semibold">
+                    {transaction.created ? formatDate(transaction.created) : 'N/A'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -416,7 +494,9 @@ const TransactionDetailsPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Account Number</span>
-                      <span className="font-mono font-medium">{transaction.senderAccount.number}</span>
+                      <span className="font-mono font-medium">
+                        {transaction.senderAccount.number}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Record</span>
@@ -426,7 +506,9 @@ const TransactionDetailsPage = () => {
                             variant="link"
                             size="sm"
                             className="p-0 h-auto font-medium text-primary hover:text-primary/80"
-                            onClick={() => navigate(`/records/${transaction.senderAccount!.recordId}`)}
+                            onClick={() =>
+                              navigate(`/records/${transaction.senderAccount!.recordId}`)
+                            }
                           >
                             {transaction.senderAccount.recordName}
                           </Button>
@@ -437,7 +519,9 @@ const TransactionDetailsPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Bank</span>
-                      <span className="font-medium">{transaction.senderAccount.bankOfCountryName}</span>
+                      <span className="font-medium">
+                        {transaction.senderAccount.bankOfCountryName}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">City</span>
@@ -445,7 +529,9 @@ const TransactionDetailsPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Status</span>
-                      <Badge className={`text-xs ${getStatusColor(transaction.senderAccount.accountStatus)}`}>
+                      <Badge
+                        className={`text-xs ${getStatusColor(transaction.senderAccount.accountStatus)}`}
+                      >
                         {getAccountStatusLabel(transaction.senderAccount.accountStatus)}
                       </Badge>
                     </div>
@@ -474,7 +560,9 @@ const TransactionDetailsPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Account Number</span>
-                      <span className="font-mono font-medium">{transaction.recipientAccount.number}</span>
+                      <span className="font-mono font-medium">
+                        {transaction.recipientAccount.number}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Record</span>
@@ -484,7 +572,9 @@ const TransactionDetailsPage = () => {
                             variant="link"
                             size="sm"
                             className="p-0 h-auto font-medium text-primary hover:text-primary/80"
-                            onClick={() => navigate(`/records/${transaction.recipientAccount!.recordId}`)}
+                            onClick={() =>
+                              navigate(`/records/${transaction.recipientAccount!.recordId}`)
+                            }
                           >
                             {transaction.recipientAccount.recordName}
                           </Button>
@@ -495,7 +585,9 @@ const TransactionDetailsPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Bank</span>
-                      <span className="font-medium">{transaction.recipientAccount.bankOfCountryName}</span>
+                      <span className="font-medium">
+                        {transaction.recipientAccount.bankOfCountryName}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">City</span>
@@ -503,7 +595,9 @@ const TransactionDetailsPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Status</span>
-                      <Badge className={`text-xs ${getStatusColor(transaction.recipientAccount.accountStatus)}`}>
+                      <Badge
+                        className={`text-xs ${getStatusColor(transaction.recipientAccount.accountStatus)}`}
+                      >
                         {getAccountStatusLabel(transaction.recipientAccount.accountStatus)}
                       </Badge>
                     </div>
@@ -526,7 +620,10 @@ const TransactionDetailsPage = () => {
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {transaction.relatedRecords.map((record) => (
-                    <div key={record.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                    <div
+                      key={record.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                    >
                       <h5 className="font-semibold text-gray-900 mb-2">{record.templateName}</h5>
                       <div className="space-y-1 text-sm text-gray-600">
                         <div className="flex justify-between">
@@ -597,11 +694,13 @@ const TransactionDetailsPage = () => {
                             ) : (
                               <XCircle className="w-4 h-4 text-gray-400" />
                             )}
-                            <Badge className={`text-xs ${
-                              rule.isMatched 
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                                : 'bg-gray-50 text-gray-700 border-gray-200'
-                            }`}>
+                            <Badge
+                              className={`text-xs ${
+                                rule.isMatched
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-gray-50 text-gray-700 border-gray-200'
+                              }`}
+                            >
                               {rule.isMatched ? 'Matched' : 'Not Matched'}
                             </Badge>
                           </div>
@@ -609,9 +708,7 @@ const TransactionDetailsPage = () => {
                         <TableCell className="text-sm text-gray-600">
                           {formatDate(rule.executedAt)}
                         </TableCell>
-                        <TableCell className="text-sm text-gray-600">
-                          {rule.createdBy}
-                        </TableCell>
+                        <TableCell className="text-sm text-gray-600">{rule.createdBy}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -620,7 +717,7 @@ const TransactionDetailsPage = () => {
             </div>
           )}
 
-                    {/* Template Fields Card */}
+          {/* Template Fields Card */}
           {fields.length > 0 && (
             <Card className="shadow-sm border-primary/10">
               <CardHeader className="bg-primary/5 border-b">
@@ -634,31 +731,47 @@ const TransactionDetailsPage = () => {
               </CardHeader>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {fields.map(field => {
+                  {fields.map((field) => {
                     const value = getFieldValue(field.id!, field.fieldType, field.options);
                     return (
-                      <div key={field.id} className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                      <div
+                        key={field.id}
+                        className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
+                      >
                         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
                           {getFieldIcon(field.fieldType)}
                           {field.label}
                         </div>
                         <div className="text-base font-medium">
-                          {value !== null ? value : <span className="text-muted-foreground">No value set</span>}
+                          {value !== null ? (
+                            value
+                          ) : (
+                            <span className="text-muted-foreground">No value set</span>
+                          )}
                         </div>
                         {/* Show available options for dropdown/radio/checkbox/lookup fields */}
-                        {(field.fieldType === FieldType.Dropdown || field.fieldType === FieldType.Radio || field.fieldType === FieldType.Checkbox || field.fieldType === FieldType.Lookup) && 
-                         field.options && field.options.length > 0 && (
-                          <div className="mt-2">
-                            <div className="text-xs text-muted-foreground mb-1">Available options:</div>
-                            <div className="flex flex-wrap gap-1">
-                              {field.options.map(option => (
-                                <span key={option.id} className="inline-block px-2 py-1 text-xs bg-gray-100 rounded border">
-                                  {option.label}
-                                </span>
-                              ))}
+                        {(field.fieldType === FieldType.Dropdown ||
+                          field.fieldType === FieldType.Radio ||
+                          field.fieldType === FieldType.Checkbox ||
+                          field.fieldType === FieldType.Lookup) &&
+                          field.options &&
+                          field.options.length > 0 && (
+                            <div className="mt-2">
+                              <div className="text-xs text-muted-foreground mb-1">
+                                Available options:
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {field.options.map((option) => (
+                                  <span
+                                    key={option.id}
+                                    className="inline-block px-2 py-1 text-xs bg-gray-100 rounded border"
+                                  >
+                                    {option.label}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
                       </div>
                     );
                   })}
@@ -672,4 +785,4 @@ const TransactionDetailsPage = () => {
   );
 };
 
-export default TransactionDetailsPage; 
+export default TransactionDetailsPage;

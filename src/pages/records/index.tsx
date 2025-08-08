@@ -1,3 +1,3 @@
 import RecordsPage from './RecordsPage';
 
-export default RecordsPage; 
+export default RecordsPage;

@@ -1,4 +1,4 @@
-import { toast as sonnerToast } from "sonner"
+import { toast as sonnerToast } from 'sonner';
 
 export interface ToastProps {
   title?: string;
@@ -14,4 +14,4 @@ const toast = (props: ToastProps) => {
   });
 };
 
-export { toast } 
+export { toast };

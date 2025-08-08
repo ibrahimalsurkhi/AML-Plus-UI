@@ -1,28 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/container';
-import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarActions
-} from '@/partials/toolbar';
+import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationItem, 
-  PaginationLink, 
-  PaginationNext, 
-  PaginationPrevious 
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious
 } from '@/components/ui/pagination';
 import { toast } from '@/components/ui/use-toast';
 import { caseService, Case, PaginatedResponse } from '@/services/api';
@@ -78,12 +74,12 @@ const CaseStatusMap: Record<number, string> = {
   2: 'In Progress',
   3: 'Completed',
   4: 'Rejected',
-  5: 'Closed',
+  5: 'Closed'
 };
 
 const SourceTypeMap: Record<number, string> = {
   0: 'Web',
-  1: 'Api',
+  1: 'Api'
 };
 
 const CasesPage = () => {
@@ -109,9 +105,9 @@ const CasesPage = () => {
       setPagination(response);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to fetch cases",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to fetch cases',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -131,7 +127,7 @@ const CasesPage = () => {
   };
 
   const toggleExpand = (id: number) => {
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
@@ -145,9 +141,7 @@ const CasesPage = () => {
           <CardHeader className="bg-gray-50/50 border-b px-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">All Cases</h2>
-              <div className="text-sm text-gray-500">
-                Total: {pagination.totalCount} Cases
-              </div>
+              <div className="text-sm text-gray-500">Total: {pagination.totalCount} Cases</div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -177,12 +171,16 @@ const CasesPage = () => {
                   </TableHeader>
                   <TableBody>
                     {cases.map((item) => (
-                      <TableRow key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewCase(item.id)}>
+                      <TableRow
+                        key={item.id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleViewCase(item.id)}
+                      >
                         <TableCell className="font-medium">{item.id}</TableCell>
                         <TableCell>{item.recordId}</TableCell>
                         <TableCell>{item.fullName}</TableCell>
                         <TableCell>
-                          <div 
+                          <div
                             className="px-2 w-16 text-center py-1 rounded-md inline-block"
                             style={{ backgroundColor: item.scoreBGColor }}
                           >
@@ -214,25 +212,27 @@ const CasesPage = () => {
                       <PaginationContent>
                         {pagination.hasPreviousPage && (
                           <PaginationItem>
-                            <PaginationPrevious 
-                              onClick={() => handlePageChange(pagination.pageNumber - 1)} 
+                            <PaginationPrevious
+                              onClick={() => handlePageChange(pagination.pageNumber - 1)}
                             />
                           </PaginationItem>
                         )}
-                        {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
-                          <PaginationItem key={page}>
-                            <PaginationLink
-                              isActive={page === pagination.pageNumber}
-                              onClick={() => handlePageChange(page)}
-                            >
-                              {page}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
+                        {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
+                          (page) => (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                isActive={page === pagination.pageNumber}
+                                onClick={() => handlePageChange(page)}
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          )
+                        )}
                         {pagination.hasNextPage && (
                           <PaginationItem>
-                            <PaginationNext 
-                              onClick={() => handlePageChange(pagination.pageNumber + 1)} 
+                            <PaginationNext
+                              onClick={() => handlePageChange(pagination.pageNumber + 1)}
                             />
                           </PaginationItem>
                         )}
@@ -249,4 +249,4 @@ const CasesPage = () => {
   );
 };
 
-export default CasesPage; 
+export default CasesPage;

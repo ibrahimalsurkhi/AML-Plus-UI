@@ -4,8 +4,22 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/container';
 import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious
+} from '@/components/ui/pagination';
 import { transactionService, type Transaction, type PaginatedResponse } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
@@ -18,19 +32,26 @@ const TransactionsPage = () => {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize] = useState(20);
 
-  const fetchTransactions = useCallback(async (page = 1) => {
-    try {
-      setLoading(true);
-      const data = await transactionService.getTransactions({ pageNumber: page, pageSize });
-      setTransactions(data);
-      setError(null);
-    } catch (err) {
-      setError('Failed to fetch transactions');
-      toast({ title: 'Error', description: 'Failed to fetch transactions', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  }, [pageSize]);
+  const fetchTransactions = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const data = await transactionService.getTransactions({ pageNumber: page, pageSize });
+        setTransactions(data);
+        setError(null);
+      } catch (err) {
+        setError('Failed to fetch transactions');
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch transactions',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [pageSize]
+  );
 
   useEffect(() => {
     fetchTransactions(pageNumber);
@@ -46,28 +67,38 @@ const TransactionsPage = () => {
 
   const getStatusLabel = (status: number) => {
     switch (status) {
-      case 1: return 'Active';
-      case 2: return 'Inactive';
-      case 3: return 'Blocked';
-      case 4: return 'Suspended';
-      default: return 'Unknown';
+      case 1:
+        return 'Active';
+      case 2:
+        return 'Inactive';
+      case 3:
+        return 'Blocked';
+      case 4:
+        return 'Suspended';
+      default:
+        return 'Unknown';
     }
   };
 
   const getStatusColor = (status: number) => {
     switch (status) {
-      case 1: return 'text-green-600 bg-green-100';
-      case 2: return 'text-gray-600 bg-gray-100';
-      case 3: return 'text-red-600 bg-red-100';
-      case 4: return 'text-yellow-600 bg-yellow-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 1:
+        return 'text-green-600 bg-green-100';
+      case 2:
+        return 'text-gray-600 bg-gray-100';
+      case 3:
+        return 'text-red-600 bg-red-100';
+      case 4:
+        return 'text-yellow-600 bg-yellow-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
     }
   };
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'USD'
     }).format(amount);
   };
 
@@ -111,9 +142,7 @@ const TransactionsPage = () => {
       <Toolbar>
         <ToolbarHeading>Transactions</ToolbarHeading>
         <ToolbarActions>
-          <Button onClick={handleCreate}>
-            Create Transaction
-          </Button>
+          <Button onClick={handleCreate}>Create Transaction</Button>
         </ToolbarActions>
       </Toolbar>
 
@@ -149,17 +178,17 @@ const TransactionsPage = () => {
                   <TableBody>
                     {transactions.items.map((transaction) => (
                       <TableRow key={transaction.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">
-                          {transaction.transactionID}
-                        </TableCell>
+                        <TableCell className="font-medium">{transaction.transactionID}</TableCell>
                         <TableCell>
-                          {transaction.transactionTypeName || `Type ${transaction.transactionTypeId}`}
+                          {transaction.transactionTypeName ||
+                            `Type ${transaction.transactionTypeId}`}
                         </TableCell>
                         <TableCell className="font-medium">
                           {formatAmount(transaction.transactionAmount)}
                         </TableCell>
                         <TableCell>
-                          {transaction.transactionCurrencyName || `Currency ${transaction.transactionCurrencyId}`}
+                          {transaction.transactionCurrencyName ||
+                            `Currency ${transaction.transactionCurrencyId}`}
                         </TableCell>
                         <TableCell>
                           <div>
@@ -178,15 +207,19 @@ const TransactionsPage = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(transaction.transactionStatus)}`}>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(transaction.transactionStatus)}`}
+                          >
                             {getStatusLabel(transaction.transactionStatus)}
                           </span>
                         </TableCell>
+                        <TableCell>{formatDate(transaction.transactionTime)}</TableCell>
                         <TableCell>
-                          {formatDate(transaction.transactionTime)}
-                        </TableCell>
-                        <TableCell>
-                          <Button size="sm" variant="ghost" onClick={() => handleView(transaction.id!)}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleView(transaction.id!)}
+                          >
                             View
                           </Button>
                         </TableCell>
@@ -201,13 +234,15 @@ const TransactionsPage = () => {
                     <PaginationContent>
                       {transactions.hasPreviousPage && (
                         <PaginationItem>
-                          <PaginationPrevious onClick={() => setPageNumber((prev) => Math.max(prev - 1, 1))} />
+                          <PaginationPrevious
+                            onClick={() => setPageNumber((prev) => Math.max(prev - 1, 1))}
+                          />
                         </PaginationItem>
                       )}
                       {[...Array(transactions.totalPages)].map((_, idx) => (
                         <PaginationItem key={idx}>
-                          <PaginationLink 
-                            isActive={pageNumber === idx + 1} 
+                          <PaginationLink
+                            isActive={pageNumber === idx + 1}
                             onClick={() => setPageNumber(idx + 1)}
                           >
                             {idx + 1}
@@ -216,7 +251,11 @@ const TransactionsPage = () => {
                       ))}
                       {transactions.hasNextPage && (
                         <PaginationItem>
-                          <PaginationNext onClick={() => setPageNumber((prev) => Math.min(prev + 1, transactions.totalPages))} />
+                          <PaginationNext
+                            onClick={() =>
+                              setPageNumber((prev) => Math.min(prev + 1, transactions.totalPages))
+                            }
+                          />
                         </PaginationItem>
                       )}
                     </PaginationContent>
@@ -233,9 +272,7 @@ const TransactionsPage = () => {
                   There are no transactions in the system yet.
                 </p>
               </div>
-              <Button onClick={handleCreate}>
-                Create Your First Transaction
-              </Button>
+              <Button onClick={handleCreate}>Create Your First Transaction</Button>
             </div>
           )}
         </CardContent>
@@ -244,4 +281,4 @@ const TransactionsPage = () => {
   );
 };
 
-export default TransactionsPage; 
+export default TransactionsPage;

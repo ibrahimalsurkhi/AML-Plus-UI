@@ -1,28 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/container';
-import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarActions
-} from '@/partials/toolbar';
+import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationItem, 
-  PaginationLink, 
-  PaginationNext, 
-  PaginationPrevious 
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious
 } from '@/components/ui/pagination';
 import { recordService, type Record, type PaginatedResponse } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
@@ -87,15 +83,21 @@ const RecordsPage = () => {
 
   return (
     <Container>
-              <div className="space-y-6">          <Toolbar>            <ToolbarHeading>Records</ToolbarHeading>            <ToolbarActions>              <Button onClick={() => navigate('/records/new')}>                Create New Record              </Button>            </ToolbarActions>          </Toolbar>
-
+      <div className="space-y-6">
+        {' '}
+        <Toolbar>
+          {' '}
+          <ToolbarHeading>Records</ToolbarHeading>{' '}
+          <ToolbarActions>
+            {' '}
+            <Button onClick={() => navigate('/records/new')}> Create New Record </Button>{' '}
+          </ToolbarActions>{' '}
+        </Toolbar>
         <Card>
           <CardHeader className="bg-gray-50/50 border-b px-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">All Records</h2>
-              <div className="text-sm text-gray-500">
-                Total: {pagination.totalCount} Records
-              </div>
+              <div className="text-sm text-gray-500">Total: {pagination.totalCount} Records</div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -107,10 +109,7 @@ const RecordsPage = () => {
               <div className="p-8 text-center">
                 <h3 className="text-lg font-medium text-gray-900 mb-1">No records found</h3>
                 <p className="text-gray-500 mb-4">Create your first record to get started</p>
-                <Button 
-                  variant="outline" 
-                  onClick={() => navigate('/records/new')}
-                >
+                <Button variant="outline" onClick={() => navigate('/records/new')}>
                   Create New Record
                 </Button>
               </div>
@@ -129,12 +128,15 @@ const RecordsPage = () => {
                   </TableHeader>
                   <TableBody>
                     {records.map((record) => (
-                      <TableRow key={record.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewRecord(record.id)}>
+                      <TableRow
+                        key={record.id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleViewRecord(record.id)}
+                      >
                         <TableCell className="font-medium">{record.id}</TableCell>
                         <TableCell>{record.templateName}</TableCell>
                         <TableCell>
-                          {record.firstName}{' '}
-                          {record.middleName && `${record.middleName} `}
+                          {record.firstName} {record.middleName && `${record.middleName} `}
                           {record.lastName}
                         </TableCell>
                         <TableCell>{formatDate(record.dateOfBirth)}</TableCell>
@@ -162,27 +164,29 @@ const RecordsPage = () => {
                       <PaginationContent>
                         {pagination.hasPreviousPage && (
                           <PaginationItem>
-                            <PaginationPrevious 
-                              onClick={() => handlePageChange(pagination.pageNumber - 1)} 
+                            <PaginationPrevious
+                              onClick={() => handlePageChange(pagination.pageNumber - 1)}
                             />
                           </PaginationItem>
                         )}
-                        
-                        {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
-                          <PaginationItem key={page}>
-                            <PaginationLink
-                              isActive={page === pagination.pageNumber}
-                              onClick={() => handlePageChange(page)}
-                            >
-                              {page}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        
+
+                        {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
+                          (page) => (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                isActive={page === pagination.pageNumber}
+                                onClick={() => handlePageChange(page)}
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          )
+                        )}
+
                         {pagination.hasNextPage && (
                           <PaginationItem>
-                            <PaginationNext 
-                              onClick={() => handlePageChange(pagination.pageNumber + 1)} 
+                            <PaginationNext
+                              onClick={() => handlePageChange(pagination.pageNumber + 1)}
                             />
                           </PaginationItem>
                         )}
@@ -199,4 +203,4 @@ const RecordsPage = () => {
   );
 };
 
-export default RecordsPage; 
+export default RecordsPage;

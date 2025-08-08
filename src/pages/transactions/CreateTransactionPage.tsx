@@ -5,19 +5,39 @@ import { Button } from '@/components/ui/button';
 import { Container } from '@/components/container';
 import { Toolbar, ToolbarHeading } from '@/partials/toolbar';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { KeenIcon } from '@/components/keenicons';
-import { transactionTypeService, lookupService, templateService, FieldType, type TemplateField, ScoreCriteriaRange } from '@/services/api';
+import {
+  transactionTypeService,
+  lookupService,
+  templateService,
+  FieldType,
+  type TemplateField,
+  ScoreCriteriaRange
+} from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogBody,
+  DialogFooter
+} from '@/components/ui/dialog';
 import { recordService, accountService, transactionService } from '@/services/api';
 import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from "@/lib/utils";
-import { HelpCircle } from "lucide-react";
-
+import { cn } from '@/lib/utils';
+import { HelpCircle } from 'lucide-react';
 
 // Define field option type
 interface FieldOption {
@@ -45,7 +65,7 @@ const initialForm = {
   transactionPurpose: '',
   transactionStatus: '',
   senderId: '',
-  recipientId: '',
+  recipientId: ''
 };
 
 const CreateTransactionPage = () => {
@@ -91,15 +111,17 @@ const CreateTransactionPage = () => {
   const [templateFieldsLoading, setTemplateFieldsLoading] = useState(false);
   const [fieldResponses, setFieldResponses] = useState<any[]>([]);
 
-
-
   useEffect(() => {
     const fetchTypes = async () => {
       try {
         const res = await transactionTypeService.getTransactionTypes({ page: 1, pageSize: 100 });
         setTransactionTypes(res.items);
       } catch (err) {
-        toast({ title: 'Error', description: 'Failed to fetch transaction types', variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch transaction types',
+          variant: 'destructive'
+        });
       }
     };
     fetchTypes();
@@ -113,10 +135,10 @@ const CreateTransactionPage = () => {
         const fieldsResponse = await templateService.getTemplateFields('15');
         // Get all fields from sections and fields without section
         const allFields = [
-          ...fieldsResponse.sections.flatMap(section => section.fields),
+          ...fieldsResponse.sections.flatMap((section) => section.fields),
           ...fieldsResponse.fieldsWithoutSection
         ];
-        
+
         // Fetch options and ranges for fields that need them
         const fieldsWithOptions = await Promise.all(
           allFields.map(async (field) => {
@@ -130,7 +152,7 @@ const CreateTransactionPage = () => {
             ) {
               const options = await templateService.getFieldOptions('15', field.id!);
               // Ensure all required fields are present and add value
-              extendedField.options = options.map(opt => ({
+              extendedField.options = options.map((opt) => ({
                 ...opt,
                 value: opt.label // Add value property while preserving all required fields
               }));
@@ -139,7 +161,10 @@ const CreateTransactionPage = () => {
             // Fetch lookup values for Lookup fields
             if (field.fieldType === FieldType.Lookup && field.lookupId) {
               try {
-                const lookupValues = await lookupService.getLookupValues(field.lookupId, { pageNumber: 1, pageSize: 100 });
+                const lookupValues = await lookupService.getLookupValues(field.lookupId, {
+                  pageNumber: 1,
+                  pageSize: 100
+                });
                 // Convert lookup values to field options format
                 extendedField.options = lookupValues.items.map((lookupValue, index) => ({
                   id: lookupValue.id,
@@ -189,7 +214,11 @@ const CreateTransactionPage = () => {
         const values = await lookupService.getLookupValues(4, { pageNumber: 1, pageSize: 100 });
         setBankCountries(values.items);
       } catch (err) {
-        toast({ title: 'Error', description: 'Failed to fetch bank countries', variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch bank countries',
+          variant: 'destructive'
+        });
       } finally {
         setBankCountriesLoading(false);
       }
@@ -206,7 +235,11 @@ const CreateTransactionPage = () => {
         const values = await lookupService.getLookupValues(2, { pageNumber: 1, pageSize: 100 });
         setCurrencies(values.items);
       } catch (err) {
-        toast({ title: 'Error', description: 'Failed to fetch currencies', variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch currencies',
+          variant: 'destructive'
+        });
       } finally {
         setCurrenciesLoading(false);
       }
@@ -231,9 +264,12 @@ const CreateTransactionPage = () => {
   useEffect(() => {
     if (selectedSenderRecord) {
       setAccountsLoading(true);
-      accountService.getAccountsByRecordId(selectedSenderRecord.id)
+      accountService
+        .getAccountsByRecordId(selectedSenderRecord.id)
         .then((accounts) => setSenderAccounts(accounts))
-        .catch(() => toast({ title: 'Error', description: 'Failed to fetch accounts', variant: 'destructive' }))
+        .catch(() =>
+          toast({ title: 'Error', description: 'Failed to fetch accounts', variant: 'destructive' })
+        )
         .finally(() => setAccountsLoading(false));
     } else {
       setSenderAccounts([]);
@@ -261,12 +297,15 @@ const CreateTransactionPage = () => {
     if (selectedRecipientRecord) {
       console.log('Selected recipient record:', selectedRecipientRecord);
       setRecipientAccountsLoading(true);
-      accountService.getAccountsByRecordId(selectedRecipientRecord.id)
+      accountService
+        .getAccountsByRecordId(selectedRecipientRecord.id)
         .then((accounts) => {
           console.log('Recipient accounts loaded:', accounts);
           setRecipientAccounts(accounts);
         })
-        .catch(() => toast({ title: 'Error', description: 'Failed to fetch accounts', variant: 'destructive' }))
+        .catch(() =>
+          toast({ title: 'Error', description: 'Failed to fetch accounts', variant: 'destructive' })
+        )
         .finally(() => setRecipientAccountsLoading(false));
     } else {
       console.log('No recipient record selected, clearing accounts');
@@ -287,8 +326,22 @@ const CreateTransactionPage = () => {
     if (!form.transactionStatus) newErrors.transactionStatus = 'Status is required';
 
     // Debug logging
-    console.log('Validation - showSender:', showSender, 'form.senderId:', form.senderId, 'selectedSenderAccount:', selectedSenderAccount);
-    console.log('Validation - showRecipient:', showRecipient, 'form.recipientId:', form.recipientId, 'selectedRecipientAccount:', selectedRecipientAccount);
+    console.log(
+      'Validation - showSender:',
+      showSender,
+      'form.senderId:',
+      form.senderId,
+      'selectedSenderAccount:',
+      selectedSenderAccount
+    );
+    console.log(
+      'Validation - showRecipient:',
+      showRecipient,
+      'form.recipientId:',
+      form.recipientId,
+      'selectedRecipientAccount:',
+      selectedRecipientAccount
+    );
     console.log('Form data for validation:', form);
 
     if (showSender && !form.senderId && !selectedSenderAccount) {
@@ -316,16 +369,16 @@ const CreateTransactionPage = () => {
   // Update form state when accounts are selected
   useEffect(() => {
     if (selectedSenderAccount) {
-      setForm(f => ({ ...f, senderId: selectedSenderAccount.id }));
+      setForm((f) => ({ ...f, senderId: selectedSenderAccount.id }));
     }
     if (selectedRecipientAccount) {
-      setForm(f => ({ ...f, recipientId: selectedRecipientAccount.id }));
+      setForm((f) => ({ ...f, recipientId: selectedRecipientAccount.id }));
     }
   }, [selectedSenderAccount, selectedRecipientAccount]);
 
   const handleTypeChange = (id: string) => {
-    setForm(f => ({ ...f, transactionTypeId: id }));
-    const type = transactionTypes.find(t => t.id.toString() === id);
+    setForm((f) => ({ ...f, transactionTypeId: id }));
+    const type = transactionTypes.find((t) => t.id.toString() === id);
     setShowSender(type?.isSenderRequired);
     setShowRecipient(type?.isRecipientRequired);
     setStep(1);
@@ -333,7 +386,7 @@ const CreateTransactionPage = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: value }));
+    setForm((f) => ({ ...f, [name]: value }));
     setErrors((err: any) => ({ ...err, [name]: undefined }));
   };
 
@@ -342,11 +395,15 @@ const CreateTransactionPage = () => {
       setCreatingSender(true);
       try {
         const res = await accountService.createAccount(senderAccount);
-        setForm(f => ({ ...f, senderId: String(res.id) }));
+        setForm((f) => ({ ...f, senderId: String(res.id) }));
         toast({ title: 'Success', description: 'Sender account created' });
         setStep(2);
       } catch {
-        toast({ title: 'Error', description: 'Failed to create sender account', variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: 'Failed to create sender account',
+          variant: 'destructive'
+        });
       } finally {
         setCreatingSender(false);
       }
@@ -354,18 +411,25 @@ const CreateTransactionPage = () => {
       setCreatingRecipient(true);
       try {
         const res = await accountService.createAccount(recipientAccount);
-        setForm(f => ({ ...f, recipientId: String(res.id) }));
+        setForm((f) => ({ ...f, recipientId: String(res.id) }));
         toast({ title: 'Success', description: 'Recipient account created' });
         setStep(3);
       } catch {
-        toast({ title: 'Error', description: 'Failed to create recipient account', variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: 'Failed to create recipient account',
+          variant: 'destructive'
+        });
       } finally {
         setCreatingRecipient(false);
       }
     }
   };
 
-  const handleAccountInput = (type: 'sender' | 'recipient', e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAccountInput = (
+    type: 'sender' | 'recipient',
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const { name, value } = e.target;
     if (type === 'sender') {
       setSenderAccount((a: Record<string, any>) => ({ ...a, [name]: value }));
@@ -384,7 +448,7 @@ const CreateTransactionPage = () => {
     console.log('Recipient account object:', recipientAccount);
     console.log('Recipient dialog open state:', recipientDialogOpen);
     console.log('Recipient accounts list:', recipientAccounts);
-    
+
     if (!validate()) {
       console.log('Validation failed, returning early');
       return;
@@ -392,12 +456,25 @@ const CreateTransactionPage = () => {
     console.log('Validation passed, proceeding with transaction creation');
     setLoading(true);
     try {
-      let senderId = form.senderId || (selectedSenderAccount?.id ? String(selectedSenderAccount.id) : undefined);
-      let recipientId = form.recipientId || (selectedRecipientAccount?.id ? String(selectedRecipientAccount.id) : undefined);
-      
-      console.log('Using senderId:', senderId, 'from selectedSenderAccount:', selectedSenderAccount?.id);
-      console.log('Using recipientId:', recipientId, 'from selectedRecipientAccount:', selectedRecipientAccount?.id);
-      
+      let senderId =
+        form.senderId || (selectedSenderAccount?.id ? String(selectedSenderAccount.id) : undefined);
+      let recipientId =
+        form.recipientId ||
+        (selectedRecipientAccount?.id ? String(selectedRecipientAccount.id) : undefined);
+
+      console.log(
+        'Using senderId:',
+        senderId,
+        'from selectedSenderAccount:',
+        selectedSenderAccount?.id
+      );
+      console.log(
+        'Using recipientId:',
+        recipientId,
+        'from selectedRecipientAccount:',
+        selectedRecipientAccount?.id
+      );
+
       // Create sender account if required and not already created
       if (showSender && !senderId) {
         console.log('Creating sender account...');
@@ -453,7 +530,7 @@ const CreateTransactionPage = () => {
 
       console.log('About to create transaction with data:', transactionData);
       console.log('Transaction service:', transactionService);
-      
+
       let createdTransaction: number;
       try {
         // DEBUGGING: Testing basic transaction creation without field responses
@@ -471,7 +548,7 @@ const CreateTransactionPage = () => {
           senderId: senderId ? Number(senderId) : undefined,
           recipientId: recipientId ? Number(recipientId) : undefined
         };
-        
+
         console.log('Testing basic transaction creation with data:', basicTransactionData);
         createdTransaction = await transactionService.createTransaction(basicTransactionData);
         console.log('Transaction creation response:', createdTransaction);
@@ -490,10 +567,8 @@ const CreateTransactionPage = () => {
       // Handle both object response and direct ID response
       let transactionId: number;
 
-
       // API returned just the ID number
       transactionId = createdTransaction;
-
 
       console.log('Extracted transaction ID:', transactionId);
 
@@ -505,19 +580,23 @@ const CreateTransactionPage = () => {
         return;
       }
 
-            setSuccess(true);
-      toast({ title: 'Success', description: `Transaction #${transactionId} created successfully!` });
-      
+      setSuccess(true);
+      toast({
+        title: 'Success',
+        description: `Transaction #${transactionId} created successfully!`
+      });
+
       // Check processing status after a short delay
       setTimeout(async () => {
         try {
           console.log('Checking processing status for transaction ID:', transactionId);
-          const statusResponse = await transactionService.getTransactionProcessingStatus(transactionId);
-          
+          const statusResponse =
+            await transactionService.getTransactionProcessingStatus(transactionId);
+
           if (statusResponse.hasRuleMatches && statusResponse.matchedRulesCount > 0) {
-            const matchedRules = statusResponse.ruleMatches.filter(rule => rule.isMatched);
-            const ruleNames = matchedRules.map(rule => rule.ruleName).join(', ');
-            
+            const matchedRules = statusResponse.ruleMatches.filter((rule) => rule.isMatched);
+            const ruleNames = matchedRules.map((rule) => rule.ruleName).join(', ');
+
             toast({
               title: '⚠️ Rule Matches Detected',
               description: `${statusResponse.matchedRulesCount} rule(s) matched: ${ruleNames}`,
@@ -526,15 +605,14 @@ const CreateTransactionPage = () => {
           } else {
             toast({
               title: '✅ Processing Complete',
-              description: `Transaction #${transactionId} processed successfully with no rule matches.`,
+              description: `Transaction #${transactionId} processed successfully with no rule matches.`
             });
           }
-          
+
           // Redirect after status check is completed (success or error)
           setTimeout(() => {
             navigate('/transactions');
           }, 2000);
-          
         } catch (error) {
           console.error('Error checking processing status:', error);
           toast({
@@ -542,7 +620,7 @@ const CreateTransactionPage = () => {
             description: 'Unable to check transaction processing status',
             variant: 'destructive'
           });
-          
+
           // Redirect even if status check fails
           setTimeout(() => {
             navigate('/transactions');
@@ -551,7 +629,11 @@ const CreateTransactionPage = () => {
       }, 2000); // Check status after 2 seconds
     } catch (error) {
       console.error('Error creating transaction:', error);
-      toast({ title: 'Error', description: 'Failed to create transaction', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to create transaction',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
@@ -562,17 +644,25 @@ const CreateTransactionPage = () => {
     const steps = [
       showSender && 'Sender Account',
       showRecipient && 'Recipient Account',
-      'Transaction Details',
+      'Transaction Details'
     ].filter(Boolean);
     return (
       <div className="flex items-center gap-2 mb-6">
         {steps.map((label, idx) => (
           <React.Fragment key={label as string}>
-            <div className={`flex items-center gap-1 ${step === idx + 1 ? 'text-primary' : 'text-muted-foreground'}`}>
-              <KeenIcon icon={step === idx + 1 ? 'check-circle' : 'circle'} style="solid" className="text-lg" />
+            <div
+              className={`flex items-center gap-1 ${step === idx + 1 ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              <KeenIcon
+                icon={step === idx + 1 ? 'check-circle' : 'circle'}
+                style="solid"
+                className="text-lg"
+              />
               <span className="text-xs font-medium">{label}</span>
             </div>
-            {idx < steps.length - 1 && <span className="w-6 h-0.5 bg-muted-foreground/30 rounded-full" />}
+            {idx < steps.length - 1 && (
+              <span className="w-6 h-0.5 bg-muted-foreground/30 rounded-full" />
+            )}
           </React.Fragment>
         ))}
       </div>
@@ -584,29 +674,41 @@ const CreateTransactionPage = () => {
     { label: 'Active', value: 1 },
     { label: 'Inactive', value: 2 },
     { label: 'Closed', value: 3 },
-    { label: 'Suspended', value: 4 },
+    { label: 'Suspended', value: 4 }
   ];
   // Add TransactionStatus enum for dropdown
   const TransactionStatusEnum = [
     { label: 'Active', value: 1 },
     { label: 'Inactive', value: 2 },
     { label: 'Blocked', value: 3 },
-    { label: 'Suspended', value: 4 },
+    { label: 'Suspended', value: 4 }
   ];
 
   // Add helper function to get min and max values from ranges
   const getRangeBounds = (ranges: ScoreCriteriaRange[] | undefined) => {
     if (!ranges || ranges.length === 0) return { min: undefined, max: undefined };
 
-    return ranges.reduce((acc, range) => ({
-      min: acc.min === undefined ? range.minValue : Math.min(acc.min, range.minValue),
-      max: acc.max === undefined ? range.maxValue : Math.max(acc.max, range.maxValue)
-    }), { min: undefined as number | undefined, max: undefined as number | undefined });
+    return ranges.reduce(
+      (acc, range) => ({
+        min: acc.min === undefined ? range.minValue : Math.min(acc.min, range.minValue),
+        max: acc.max === undefined ? range.maxValue : Math.max(acc.max, range.maxValue)
+      }),
+      { min: undefined as number | undefined, max: undefined as number | undefined }
+    );
   };
 
   // Helper function to render field help text
   const renderFieldHelp = (field: ExtendedTemplateField) => {
-    if (!field.placeholder && !field.minLength && !field.maxLength && !field.minValue && !field.maxValue && !field.minDate && !field.maxDate && !field.ranges) {
+    if (
+      !field.placeholder &&
+      !field.minLength &&
+      !field.maxLength &&
+      !field.minValue &&
+      !field.maxValue &&
+      !field.minDate &&
+      !field.maxDate &&
+      !field.ranges
+    ) {
       return null;
     }
 
@@ -674,8 +776,8 @@ const CreateTransactionPage = () => {
 
   // Handle field value changes
   const handleFieldChange = (fieldId: number, value: any, fieldType: FieldType) => {
-    setFieldResponses(prev => {
-      const existingIndex = prev.findIndex(fr => fr.fieldId === fieldId);
+    setFieldResponses((prev) => {
+      const existingIndex = prev.findIndex((fr) => fr.fieldId === fieldId);
       let response: any = {
         id: 0,
         fieldId: fieldId
@@ -693,15 +795,18 @@ const CreateTransactionPage = () => {
           response.valueNumber = numericValue;
 
           // Find the matching range based on the value
-          const field = templateFields.find(f => f.id === fieldId);
-          const matchingRange = field?.ranges?.find(range =>
-            numericValue !== null &&
-            numericValue >= range.minValue &&
-            numericValue <= range.maxValue
+          const field = templateFields.find((f) => f.id === fieldId);
+          const matchingRange = field?.ranges?.find(
+            (range) =>
+              numericValue !== null &&
+              numericValue >= range.minValue &&
+              numericValue <= range.maxValue
           );
 
           // Set the range ID in valueText if a matching range is found
-          response.templateFieldScoreCriteriaId = matchingRange ? matchingRange.id.toString() : null;
+          response.templateFieldScoreCriteriaId = matchingRange
+            ? matchingRange.id.toString()
+            : null;
           response.valueDate = null;
           response.valueText = null;
           break;
@@ -715,13 +820,13 @@ const CreateTransactionPage = () => {
         case FieldType.Checkbox:
         case FieldType.Lookup:
           // For all option-based fields, find the selected option
-          const fieldWithOptions = templateFields.find(f => f.id === fieldId);
+          const fieldWithOptions = templateFields.find((f) => f.id === fieldId);
           let selectedOption;
 
           if (fieldType === FieldType.Checkbox) {
             // For checkbox fields, find the appropriate "Checked" or "Unchecked" option
-            selectedOption = fieldWithOptions?.options?.find(opt =>
-              opt.label.toLowerCase() === (value === true ? "checked" : "unchecked")
+            selectedOption = fieldWithOptions?.options?.find(
+              (opt) => opt.label.toLowerCase() === (value === true ? 'checked' : 'unchecked')
             );
             // Fallback to first option if "Checked"/"Unchecked" not found
             if (!selectedOption && fieldWithOptions?.options?.[0]) {
@@ -729,7 +834,9 @@ const CreateTransactionPage = () => {
             }
           } else {
             // For dropdown, radio, and lookup, find by option ID
-            selectedOption = fieldWithOptions?.options?.find(opt => opt.id && opt.id.toString() === value);
+            selectedOption = fieldWithOptions?.options?.find(
+              (opt) => opt.id && opt.id.toString() === value
+            );
           }
 
           // Set the option ID in valueText if an option is found and has an ID
@@ -752,24 +859,28 @@ const CreateTransactionPage = () => {
   // Render dynamic form field based on field type
   const renderDynamicField = (field: ExtendedTemplateField) => {
     const fieldName = `field_${field.id}`;
-    const currentResponse = fieldResponses.find(fr => fr.fieldId === field.id);
-    const fieldValue = currentResponse ?
-      (field.fieldType === FieldType.Number ? currentResponse.valueNumber :
-        field.fieldType === FieldType.Date ? currentResponse.valueDate :
-          field.fieldType === FieldType.Checkbox ? (currentResponse.optionId === currentResponse.optionId) :
-            field.fieldType === FieldType.Dropdown || field.fieldType === FieldType.Radio || field.fieldType === FieldType.Lookup ? currentResponse.optionId :
-              currentResponse.valueText) : '';
+    const currentResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
+    const fieldValue = currentResponse
+      ? field.fieldType === FieldType.Number
+        ? currentResponse.valueNumber
+        : field.fieldType === FieldType.Date
+          ? currentResponse.valueDate
+          : field.fieldType === FieldType.Checkbox
+            ? currentResponse.optionId === currentResponse.optionId
+            : field.fieldType === FieldType.Dropdown ||
+                field.fieldType === FieldType.Radio ||
+                field.fieldType === FieldType.Lookup
+              ? currentResponse.optionId
+              : currentResponse.valueText
+      : '';
 
     const fieldWrapperClasses = cn(
-      "space-y-2",
-      field.fieldType === FieldType.Checkbox ? "flex items-start space-x-2" : "",
-      field.fieldType === FieldType.Radio ? "space-y-3" : ""
+      'space-y-2',
+      field.fieldType === FieldType.Checkbox ? 'flex items-start space-x-2' : '',
+      field.fieldType === FieldType.Radio ? 'space-y-3' : ''
     );
 
-    const inputClasses = cn(
-      "w-full",
-      field.fieldType === FieldType.Checkbox ? "mt-1" : ""
-    );
+    const inputClasses = cn('w-full', field.fieldType === FieldType.Checkbox ? 'mt-1' : '');
 
     switch (field.fieldType) {
       case FieldType.Text:
@@ -780,7 +891,7 @@ const CreateTransactionPage = () => {
             {field.fieldType === FieldType.Text ? (
               <Input
                 id={fieldName}
-                value={fieldValue as string || ''}
+                value={(fieldValue as string) || ''}
                 onChange={(e) => handleFieldChange(field.id!, e.target.value, field.fieldType)}
                 className={inputClasses}
                 placeholder={field.placeholder}
@@ -790,7 +901,7 @@ const CreateTransactionPage = () => {
             ) : (
               <Textarea
                 id={fieldName}
-                value={fieldValue as string || ''}
+                value={(fieldValue as string) || ''}
                 onChange={(e) => handleFieldChange(field.id!, e.target.value, field.fieldType)}
                 className={inputClasses}
                 placeholder={field.placeholder}
@@ -810,7 +921,7 @@ const CreateTransactionPage = () => {
             <Input
               id={fieldName}
               type="number"
-              value={fieldValue as number || ''}
+              value={(fieldValue as number) || ''}
               onChange={(e) => handleFieldChange(field.id!, e.target.value, field.fieldType)}
               className={inputClasses}
               placeholder={field.placeholder}
@@ -828,7 +939,11 @@ const CreateTransactionPage = () => {
             <Input
               id={fieldName}
               type="date"
-              value={typeof fieldValue === 'string' || typeof fieldValue === 'number' ? String(fieldValue) : ''}
+              value={
+                typeof fieldValue === 'string' || typeof fieldValue === 'number'
+                  ? String(fieldValue)
+                  : ''
+              }
               onChange={(e) => handleFieldChange(field.id!, e.target.value, field.fieldType)}
               className={inputClasses}
               min={field.minDate || undefined}
@@ -847,11 +962,9 @@ const CreateTransactionPage = () => {
                 onCheckedChange={(checked) => {
                   handleFieldChange(field.id!, checked, field.fieldType);
                 }}
-                className={cn("mt-1", inputClasses)}
+                className={cn('mt-1', inputClasses)}
               />
-              <div className="space-y-1">
-                {renderFieldLabel(field, fieldName)}
-              </div>
+              <div className="space-y-1">{renderFieldLabel(field, fieldName)}</div>
             </div>
           </div>
         );
@@ -861,22 +974,23 @@ const CreateTransactionPage = () => {
           <div key={field.id} className={fieldWrapperClasses}>
             {renderFieldLabel(field, fieldName)}
             <Select
-              value={fieldValue as string || ''}
+              value={(fieldValue as string) || ''}
               onValueChange={(value: string) => {
                 handleFieldChange(field.id!, value, field.fieldType);
               }}
             >
-              <SelectTrigger className={cn(inputClasses, "w-full")}>
-                <SelectValue placeholder={field.placeholder || "Select an option"} />
+              <SelectTrigger className={cn(inputClasses, 'w-full')}>
+                <SelectValue placeholder={field.placeholder || 'Select an option'} />
               </SelectTrigger>
               <SelectContent>
-                {field.options?.map((option: FieldOption) => (
-                  option.id && (
-                    <SelectItem key={option.id} value={option.id.toString()}>
-                      {option.label}
-                    </SelectItem>
-                  )
-                ))}
+                {field.options?.map(
+                  (option: FieldOption) =>
+                    option.id && (
+                      <SelectItem key={option.id} value={option.id.toString()}>
+                        {option.label}
+                      </SelectItem>
+                    )
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -887,22 +1001,23 @@ const CreateTransactionPage = () => {
           <div key={field.id} className={fieldWrapperClasses}>
             {renderFieldLabel(field, fieldName)}
             <Select
-              value={fieldValue as string || ''}
+              value={(fieldValue as string) || ''}
               onValueChange={(value: string) => {
                 handleFieldChange(field.id!, value, field.fieldType);
               }}
             >
-              <SelectTrigger className={cn(inputClasses, "w-full")}>
-                <SelectValue placeholder={field.placeholder || "Select a lookup value"} />
+              <SelectTrigger className={cn(inputClasses, 'w-full')}>
+                <SelectValue placeholder={field.placeholder || 'Select a lookup value'} />
               </SelectTrigger>
               <SelectContent>
-                {field.options?.map((option: FieldOption) => (
-                  option.id && (
-                    <SelectItem key={option.id} value={option.id.toString()}>
-                      {option.label}
-                    </SelectItem>
-                  )
-                ))}
+                {field.options?.map(
+                  (option: FieldOption) =>
+                    option.id && (
+                      <SelectItem key={option.id} value={option.id.toString()}>
+                        {option.label}
+                      </SelectItem>
+                    )
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -913,28 +1028,26 @@ const CreateTransactionPage = () => {
           <div key={field.id} className={fieldWrapperClasses}>
             {renderFieldLabel(field, fieldName)}
             <div className="space-y-2">
-              {field.options?.map((option: FieldOption) => (
-                option.id && (
-                  <div key={option.id} className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id={`${fieldName}_${option.id}`}
-                      value={option.id.toString()}
-                      checked={fieldValue === option.id.toString()}
-                      onChange={(e) => {
-                        handleFieldChange(field.id!, e.target.value, field.fieldType);
-                      }}
-                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
-                    />
-                    <Label
-                      htmlFor={`${fieldName}_${option.id}`}
-                      className="text-sm font-normal"
-                    >
-                      {option.label}
-                    </Label>
-                  </div>
-                )
-              ))}
+              {field.options?.map(
+                (option: FieldOption) =>
+                  option.id && (
+                    <div key={option.id} className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id={`${fieldName}_${option.id}`}
+                        value={option.id.toString()}
+                        checked={fieldValue === option.id.toString()}
+                        onChange={(e) => {
+                          handleFieldChange(field.id!, e.target.value, field.fieldType);
+                        }}
+                        className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <Label htmlFor={`${fieldName}_${option.id}`} className="text-sm font-normal">
+                        {option.label}
+                      </Label>
+                    </div>
+                  )
+              )}
             </div>
           </div>
         );
@@ -972,7 +1085,8 @@ const CreateTransactionPage = () => {
             <h2 className="text-xl font-semibold">Transaction Information</h2>
           </div>
           <p className="text-gray-600">
-            Fill out the form below to create a new transaction. Transactions help you track and manage your financial activities efficiently.
+            Fill out the form below to create a new transaction. Transactions help you track and
+            manage your financial activities efficiently.
           </p>
           <ul className="list-disc pl-6 text-gray-500 text-sm">
             <li>Choose the correct transaction type and fill all required fields.</li>
@@ -987,7 +1101,10 @@ const CreateTransactionPage = () => {
             <KeenIcon icon="sort" style="duotone" className="text-primary" />
             Create Transaction
           </CardTitle>
-          <CardDescription>Fill in the details to create a new transaction. Required fields are marked with <span className="text-primary">*</span>.</CardDescription>
+          <CardDescription>
+            Fill in the details to create a new transaction. Required fields are marked with{' '}
+            <span className="text-primary">*</span>.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {renderStepIndicator()}
@@ -1001,22 +1118,33 @@ const CreateTransactionPage = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="transactionTypeId">Transaction Type <span className="text-primary">*</span></Label>
+                  <Label htmlFor="transactionTypeId">
+                    Transaction Type <span className="text-primary">*</span>
+                  </Label>
                   <Select value={form.transactionTypeId} onValueChange={handleTypeChange}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select Transaction Type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {transactionTypes.map(type => (
-                        <SelectItem key={type.id} value={type.id.toString()}>{type.name}</SelectItem>
+                      {transactionTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.id.toString()}>
+                          {type.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {errors.transactionTypeId && <div className="text-xs text-destructive mt-1">{errors.transactionTypeId}</div>}
+                  {errors.transactionTypeId && (
+                    <div className="text-xs text-destructive mt-1">{errors.transactionTypeId}</div>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="transactionCurrencyId">Currency ID <span className="text-primary">*</span></Label>
-                  <Select value={form.transactionCurrencyId} onValueChange={v => setForm(f => ({ ...f, transactionCurrencyId: v }))}>
+                  <Label htmlFor="transactionCurrencyId">
+                    Currency ID <span className="text-primary">*</span>
+                  </Label>
+                  <Select
+                    value={form.transactionCurrencyId}
+                    onValueChange={(v) => setForm((f) => ({ ...f, transactionCurrencyId: v }))}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select Currency" />
                     </SelectTrigger>
@@ -1024,52 +1152,122 @@ const CreateTransactionPage = () => {
                       {currenciesLoading ? (
                         <div className="p-4 text-center">Loading currencies...</div>
                       ) : (
-                        currencies.map(currency => (
-                          <SelectItem key={currency.id} value={String(currency.id)}>{currency.value}</SelectItem>
+                        currencies.map((currency) => (
+                          <SelectItem key={currency.id} value={String(currency.id)}>
+                            {currency.value}
+                          </SelectItem>
                         ))
                       )}
                     </SelectContent>
                   </Select>
-                  {errors.transactionCurrencyId && <div className="text-xs text-destructive mt-1">{errors.transactionCurrencyId}</div>}
+                  {errors.transactionCurrencyId && (
+                    <div className="text-xs text-destructive mt-1">
+                      {errors.transactionCurrencyId}
+                    </div>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="transactionAmount">Transaction Amount <span className="text-primary">*</span></Label>
-                  <Input name="transactionAmount" value={form.transactionAmount} onChange={handleInputChange} required={true} type="number" min="0" autoComplete="off" />
-                  {errors.transactionAmount && <div className="text-xs text-destructive mt-1">{errors.transactionAmount}</div>}
+                  <Label htmlFor="transactionAmount">
+                    Transaction Amount <span className="text-primary">*</span>
+                  </Label>
+                  <Input
+                    name="transactionAmount"
+                    value={form.transactionAmount}
+                    onChange={handleInputChange}
+                    required={true}
+                    type="number"
+                    min="0"
+                    autoComplete="off"
+                  />
+                  {errors.transactionAmount && (
+                    <div className="text-xs text-destructive mt-1">{errors.transactionAmount}</div>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="currencyAmount">Currency Amount <span className="text-primary">*</span></Label>
-                  <Input name="currencyAmount" value={form.currencyAmount} onChange={handleInputChange} required={true} type="number" min="0" autoComplete="off" />
-                  {errors.currencyAmount && <div className="text-xs text-destructive mt-1">{errors.currencyAmount}</div>}
+                  <Label htmlFor="currencyAmount">
+                    Currency Amount <span className="text-primary">*</span>
+                  </Label>
+                  <Input
+                    name="currencyAmount"
+                    value={form.currencyAmount}
+                    onChange={handleInputChange}
+                    required={true}
+                    type="number"
+                    min="0"
+                    autoComplete="off"
+                  />
+                  {errors.currencyAmount && (
+                    <div className="text-xs text-destructive mt-1">{errors.currencyAmount}</div>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="transactionID">Transaction ID <span className="text-primary">*</span></Label>
-                  <Input name="transactionID" value={form.transactionID} onChange={handleInputChange} required={true} autoComplete="off" />
-                  {errors.transactionID && <div className="text-xs text-destructive mt-1">{errors.transactionID}</div>}
+                  <Label htmlFor="transactionID">
+                    Transaction ID <span className="text-primary">*</span>
+                  </Label>
+                  <Input
+                    name="transactionID"
+                    value={form.transactionID}
+                    onChange={handleInputChange}
+                    required={true}
+                    autoComplete="off"
+                  />
+                  {errors.transactionID && (
+                    <div className="text-xs text-destructive mt-1">{errors.transactionID}</div>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="transactionTime">Transaction Time <span className="text-primary">*</span></Label>
-                  <Input name="transactionTime" value={form.transactionTime} onChange={handleInputChange} required={true} type="datetime-local" />
-                  {errors.transactionTime && <div className="text-xs text-destructive mt-1">{errors.transactionTime}</div>}
+                  <Label htmlFor="transactionTime">
+                    Transaction Time <span className="text-primary">*</span>
+                  </Label>
+                  <Input
+                    name="transactionTime"
+                    value={form.transactionTime}
+                    onChange={handleInputChange}
+                    required={true}
+                    type="datetime-local"
+                  />
+                  {errors.transactionTime && (
+                    <div className="text-xs text-destructive mt-1">{errors.transactionTime}</div>
+                  )}
                 </div>
                 <div className="md:col-span-2">
-                  <Label htmlFor="transactionPurpose">Purpose <span className="text-primary">*</span></Label>
-                  <Textarea name="transactionPurpose" value={form.transactionPurpose} onChange={handleInputChange} required={true} rows={2} placeholder="Describe the purpose of this transaction..." />
-                  {errors.transactionPurpose && <div className="text-xs text-destructive mt-1">{errors.transactionPurpose}</div>}
+                  <Label htmlFor="transactionPurpose">
+                    Purpose <span className="text-primary">*</span>
+                  </Label>
+                  <Textarea
+                    name="transactionPurpose"
+                    value={form.transactionPurpose}
+                    onChange={handleInputChange}
+                    required={true}
+                    rows={2}
+                    placeholder="Describe the purpose of this transaction..."
+                  />
+                  {errors.transactionPurpose && (
+                    <div className="text-xs text-destructive mt-1">{errors.transactionPurpose}</div>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="transactionStatus">Status <span className="text-primary">*</span></Label>
-                  <Select value={form.transactionStatus} onValueChange={v => setForm(f => ({ ...f, transactionStatus: v }))}>
+                  <Label htmlFor="transactionStatus">
+                    Status <span className="text-primary">*</span>
+                  </Label>
+                  <Select
+                    value={form.transactionStatus}
+                    onValueChange={(v) => setForm((f) => ({ ...f, transactionStatus: v }))}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select Status" />
                     </SelectTrigger>
                     <SelectContent>
-                      {TransactionStatusEnum.map(opt => (
-                        <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                      {TransactionStatusEnum.map((opt) => (
+                        <SelectItem key={opt.value} value={String(opt.value)}>
+                          {opt.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {errors.transactionStatus && <div className="text-xs text-destructive mt-1">{errors.transactionStatus}</div>}
+                  {errors.transactionStatus && (
+                    <div className="text-xs text-destructive mt-1">{errors.transactionStatus}</div>
+                  )}
                 </div>
               </div>
               {(showSender || showRecipient) && <hr className="my-6 border-muted-foreground/20" />}
@@ -1081,16 +1279,28 @@ const CreateTransactionPage = () => {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <KeenIcon icon="information-2" style="outline" className="text-muted-foreground cursor-pointer" />
+                          <KeenIcon
+                            icon="information-2"
+                            style="outline"
+                            className="text-muted-foreground cursor-pointer"
+                          />
                         </TooltipTrigger>
-                        <TooltipContent>Fill in sender account details. The account will be created automatically.</TooltipContent>
+                        <TooltipContent>
+                          Fill in sender account details. The account will be created automatically.
+                        </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </div>
                   {/* Sender selection button and dialog */}
                   {!selectedSenderAccount ? (
                     <>
-                      <Button type="button" onClick={() => { setSenderDialogOpen(true); fetchRecords(); }}>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          setSenderDialogOpen(true);
+                          fetchRecords();
+                        }}
+                      >
                         Select or Create Customer
                       </Button>
                       <Dialog open={senderDialogOpen} onOpenChange={setSenderDialogOpen}>
@@ -1100,8 +1310,8 @@ const CreateTransactionPage = () => {
                           </DialogHeader>
                           <DialogBody>
                             {/* Step 1: Select Record */}
-                            {!selectedSenderRecord && (
-                              recordsLoading ? (
+                            {!selectedSenderRecord &&
+                              (recordsLoading ? (
                                 <div className="p-4 text-center">Loading...</div>
                               ) : (
                                 <div className="overflow-x-auto mb-6">
@@ -1112,7 +1322,9 @@ const CreateTransactionPage = () => {
                                         <th className="border px-3 py-2 text-left">ID</th>
                                         <th className="border px-3 py-2 text-left">Name</th>
                                         <th className="border px-3 py-2 text-left">DOB</th>
-                                        <th className="border px-3 py-2 text-left">Identification</th>
+                                        <th className="border px-3 py-2 text-left">
+                                          Identification
+                                        </th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -1127,7 +1339,9 @@ const CreateTransactionPage = () => {
                                             />
                                           </td>
                                           <td className="border px-3 py-2">{rec.id}</td>
-                                          <td className="border px-3 py-2">{rec.firstName} {rec.lastName}</td>
+                                          <td className="border px-3 py-2">
+                                            {rec.firstName} {rec.lastName}
+                                          </td>
                                           <td className="border px-3 py-2">{rec.dateOfBirth}</td>
                                           <td className="border px-3 py-2">{rec.identification}</td>
                                         </tr>
@@ -1135,18 +1349,30 @@ const CreateTransactionPage = () => {
                                     </tbody>
                                   </table>
                                 </div>
-                              )
-                            )}
+                              ))}
                             {/* Step 2: Show selected record info and accounts */}
                             {selectedSenderRecord && (
                               <>
                                 <div className="mb-4 p-3 rounded border bg-white flex flex-col md:flex-row md:items-center md:gap-8">
                                   <div>
-                                    <div className="font-semibold">{selectedSenderRecord.firstName} {selectedSenderRecord.lastName}</div>
-                                    <div className="text-xs text-muted-foreground">ID: {selectedSenderRecord.id} | Identification: {selectedSenderRecord.identification}</div>
-                                    <div className="text-xs text-muted-foreground">DOB: {selectedSenderRecord.dateOfBirth}</div>
+                                    <div className="font-semibold">
+                                      {selectedSenderRecord.firstName}{' '}
+                                      {selectedSenderRecord.lastName}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      ID: {selectedSenderRecord.id} | Identification:{' '}
+                                      {selectedSenderRecord.identification}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      DOB: {selectedSenderRecord.dateOfBirth}
+                                    </div>
                                   </div>
-                                  <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedSenderRecord(null)}>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setSelectedSenderRecord(null)}
+                                  >
                                     Change Customer
                                   </Button>
                                 </div>
@@ -1182,73 +1408,166 @@ const CreateTransactionPage = () => {
                                             </td>
                                             <td className="border px-3 py-2">{acc.name}</td>
                                             <td className="border px-3 py-2">{acc.number}</td>
-                                            <td className="border px-3 py-2">{acc.bankOfCountryName}</td>
+                                            <td className="border px-3 py-2">
+                                              {acc.bankOfCountryName}
+                                            </td>
                                             <td className="border px-3 py-2">{acc.bankOfCity}</td>
-                                            <td className="border px-3 py-2">{acc.accountStatus}</td>
+                                            <td className="border px-3 py-2">
+                                              {acc.accountStatus}
+                                            </td>
                                           </tr>
                                         ))}
                                       </tbody>
                                     </table>
                                   </div>
                                 )}
-                                <Button type="button" variant="outline" size="sm" onClick={() => setShowCreateAccount((v) => !v)}>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowCreateAccount((v) => !v)}
+                                >
                                   {showCreateAccount ? 'Hide' : 'Create New Account'}
                                 </Button>
                                 {showCreateAccount && (
                                   <div className="mt-4 p-4 border rounded bg-muted/10">
                                     {/* Inline account creation form (reuse your previous form fields) */}
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                      <Input name="name" placeholder="Name" onChange={e => setSenderAccount((a: any) => ({ ...a, name: e.target.value }))} autoComplete="off" />
-                                      <Input name="number" placeholder="Account Number" onChange={e => setSenderAccount((a: any) => ({ ...a, number: e.target.value }))} autoComplete="off" />
-                                      <Select value={String(senderAccount.bankOfCountryId || '')} onValueChange={v => setSenderAccount((a: any) => ({ ...a, bankOfCountryId: v }))}>
-                                        <SelectTrigger className="w-full" >
+                                      <Input
+                                        name="name"
+                                        placeholder="Name"
+                                        onChange={(e) =>
+                                          setSenderAccount((a: any) => ({
+                                            ...a,
+                                            name: e.target.value
+                                          }))
+                                        }
+                                        autoComplete="off"
+                                      />
+                                      <Input
+                                        name="number"
+                                        placeholder="Account Number"
+                                        onChange={(e) =>
+                                          setSenderAccount((a: any) => ({
+                                            ...a,
+                                            number: e.target.value
+                                          }))
+                                        }
+                                        autoComplete="off"
+                                      />
+                                      <Select
+                                        value={String(senderAccount.bankOfCountryId || '')}
+                                        onValueChange={(v) =>
+                                          setSenderAccount((a: any) => ({
+                                            ...a,
+                                            bankOfCountryId: v
+                                          }))
+                                        }
+                                      >
+                                        <SelectTrigger className="w-full">
                                           <SelectValue placeholder="Bank Of Country" />
                                         </SelectTrigger>
                                         <SelectContent>
                                           {bankCountriesLoading ? (
-                                            <div className="p-4 text-center">Loading countries...</div>
+                                            <div className="p-4 text-center">
+                                              Loading countries...
+                                            </div>
                                           ) : (
-                                            bankCountries.map(country => (
-                                              <SelectItem key={country.id} value={String(country.id)}>{country.value}</SelectItem>
+                                            bankCountries.map((country) => (
+                                              <SelectItem
+                                                key={country.id}
+                                                value={String(country.id)}
+                                              >
+                                                {country.value}
+                                              </SelectItem>
                                             ))
                                           )}
                                         </SelectContent>
                                       </Select>
-                                      <Input name="bankOfCity" placeholder="Bank Of City" onChange={e => setSenderAccount((a: any) => ({ ...a, bankOfCity: e.target.value }))} autoComplete="off" />
-                                      <Input name="creationDate" placeholder="Creation Date" type="datetime-local" onChange={e => setSenderAccount((a: any) => ({ ...a, creationDate: e.target.value }))} />
-                                      <Select value={String(senderAccount.accountStatus || '')} onValueChange={v => setSenderAccount((a: any) => ({ ...a, accountStatus: Number(v) }))}>
-                                        <SelectTrigger className="w-full" >
+                                      <Input
+                                        name="bankOfCity"
+                                        placeholder="Bank Of City"
+                                        onChange={(e) =>
+                                          setSenderAccount((a: any) => ({
+                                            ...a,
+                                            bankOfCity: e.target.value
+                                          }))
+                                        }
+                                        autoComplete="off"
+                                      />
+                                      <Input
+                                        name="creationDate"
+                                        placeholder="Creation Date"
+                                        type="datetime-local"
+                                        onChange={(e) =>
+                                          setSenderAccount((a: any) => ({
+                                            ...a,
+                                            creationDate: e.target.value
+                                          }))
+                                        }
+                                      />
+                                      <Select
+                                        value={String(senderAccount.accountStatus || '')}
+                                        onValueChange={(v) =>
+                                          setSenderAccount((a: any) => ({
+                                            ...a,
+                                            accountStatus: Number(v)
+                                          }))
+                                        }
+                                      >
+                                        <SelectTrigger className="w-full">
                                           <SelectValue placeholder="Account Status" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {AccountStatusEnum.map(opt => (
-                                            <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                                          {AccountStatusEnum.map((opt) => (
+                                            <SelectItem key={opt.value} value={String(opt.value)}>
+                                              {opt.label}
+                                            </SelectItem>
                                           ))}
                                         </SelectContent>
                                       </Select>
                                     </div>
-                                    <Button type="button" size="sm" className="mt-2" onClick={async () => {
-                                      setAccountsLoading(true);
-                                      try {
-                                        const accountData = {
-                                          ...senderAccount,
-                                          recordId: selectedSenderRecord.id
-                                        };
-                                        const res = await accountService.createAccount(accountData);
-                                        setSenderAccounts((prev: any[]) => [...prev, { ...senderAccount, id: res.id }]);
-                                        setShowCreateAccount(false);
-                                        setSenderAccount({});
-                                        toast({ title: 'Success', description: 'Account created' });
-                                        // After account creation, select it and close the dialog
-                                        setSelectedSenderAccount({ ...senderAccount, id: res.id });
-                                        setForm(f => ({ ...f, senderId: res.id }));
-                                        setSenderDialogOpen(false);
-                                      } catch {
-                                        toast({ title: 'Error', description: 'Failed to create account', variant: 'destructive' });
-                                      } finally {
-                                        setAccountsLoading(false);
-                                      }
-                                    }}>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      className="mt-2"
+                                      onClick={async () => {
+                                        setAccountsLoading(true);
+                                        try {
+                                          const accountData = {
+                                            ...senderAccount,
+                                            recordId: selectedSenderRecord.id
+                                          };
+                                          const res =
+                                            await accountService.createAccount(accountData);
+                                          setSenderAccounts((prev: any[]) => [
+                                            ...prev,
+                                            { ...senderAccount, id: res.id }
+                                          ]);
+                                          setShowCreateAccount(false);
+                                          setSenderAccount({});
+                                          toast({
+                                            title: 'Success',
+                                            description: 'Account created'
+                                          });
+                                          // After account creation, select it and close the dialog
+                                          setSelectedSenderAccount({
+                                            ...senderAccount,
+                                            id: res.id
+                                          });
+                                          setForm((f) => ({ ...f, senderId: res.id }));
+                                          setSenderDialogOpen(false);
+                                        } catch {
+                                          toast({
+                                            title: 'Error',
+                                            description: 'Failed to create account',
+                                            variant: 'destructive'
+                                          });
+                                        } finally {
+                                          setAccountsLoading(false);
+                                        }
+                                      }}
+                                    >
                                       Create Account
                                     </Button>
                                   </div>
@@ -1257,20 +1576,37 @@ const CreateTransactionPage = () => {
                             )}
                           </DialogBody>
                           <DialogFooter>
-                            <Button type="button" onClick={() => {
-                              console.log('Done button clicked. selectedSenderAccount:', selectedSenderAccount);
-                              if (selectedSenderAccount) {
-                                console.log('Setting form senderId to:', selectedSenderAccount.id);
-                                setForm(f => ({ ...f, senderId: selectedSenderAccount.id }));
-                                setSenderDialogOpen(false);
-                              } else {
-                                console.log('No sender account selected');
-                                toast({ title: 'Select an account', description: 'Please select an account before continuing.', variant: 'destructive' });
-                              }
-                            }}>
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                console.log(
+                                  'Done button clicked. selectedSenderAccount:',
+                                  selectedSenderAccount
+                                );
+                                if (selectedSenderAccount) {
+                                  console.log(
+                                    'Setting form senderId to:',
+                                    selectedSenderAccount.id
+                                  );
+                                  setForm((f) => ({ ...f, senderId: selectedSenderAccount.id }));
+                                  setSenderDialogOpen(false);
+                                } else {
+                                  console.log('No sender account selected');
+                                  toast({
+                                    title: 'Select an account',
+                                    description: 'Please select an account before continuing.',
+                                    variant: 'destructive'
+                                  });
+                                }
+                              }}
+                            >
                               Done
                             </Button>
-                            <Button type="button" variant="outline" onClick={() => navigate('/records/new')}>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => navigate('/records/new')}
+                            >
                               Create New Customer
                             </Button>
                           </DialogFooter>
@@ -1279,13 +1615,26 @@ const CreateTransactionPage = () => {
                     </>
                   ) : (
                     <div className="p-2 bg-white rounded border mb-2">
-                      <div className="font-medium">Selected Account: {selectedSenderAccount?.name} ({selectedSenderAccount?.number})</div>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedSenderAccount(null); setForm(f => ({ ...f, senderId: '' })); }}>
+                      <div className="font-medium">
+                        Selected Account: {selectedSenderAccount?.name} (
+                        {selectedSenderAccount?.number})
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedSenderAccount(null);
+                          setForm((f) => ({ ...f, senderId: '' }));
+                        }}
+                      >
                         Change
                       </Button>
                     </div>
                   )}
-                  {errors.senderId && <div className="text-xs text-destructive mt-1">{errors.senderId}</div>}
+                  {errors.senderId && (
+                    <div className="text-xs text-destructive mt-1">{errors.senderId}</div>
+                  )}
                 </div>
               )}
               {showRecipient && (
@@ -1296,20 +1645,30 @@ const CreateTransactionPage = () => {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <KeenIcon icon="information-2" style="outline" className="text-muted-foreground cursor-pointer" />
+                          <KeenIcon
+                            icon="information-2"
+                            style="outline"
+                            className="text-muted-foreground cursor-pointer"
+                          />
                         </TooltipTrigger>
-                        <TooltipContent>Fill in recipient account details. The account will be created automatically.</TooltipContent>
+                        <TooltipContent>
+                          Fill in recipient account details. The account will be created
+                          automatically.
+                        </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </div>
                   {/* Recipient selection button and dialog */}
                   {!selectedRecipientAccount ? (
                     <>
-                      <Button type="button" onClick={() => { 
-                        console.log('Opening recipient dialog...');
-                        setRecipientDialogOpen(true); 
-                        fetchRecipientRecords(); 
-                      }}>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          console.log('Opening recipient dialog...');
+                          setRecipientDialogOpen(true);
+                          fetchRecipientRecords();
+                        }}
+                      >
                         Select or Create Customer
                       </Button>
                       <Dialog open={recipientDialogOpen} onOpenChange={setRecipientDialogOpen}>
@@ -1319,8 +1678,8 @@ const CreateTransactionPage = () => {
                           </DialogHeader>
                           <DialogBody>
                             {/* Step 1: Select Record */}
-                            {!selectedRecipientRecord && (
-                              recipientRecordsLoading ? (
+                            {!selectedRecipientRecord &&
+                              (recipientRecordsLoading ? (
                                 <div className="p-4 text-center">Loading...</div>
                               ) : (
                                 <div className="overflow-x-auto mb-6">
@@ -1331,7 +1690,9 @@ const CreateTransactionPage = () => {
                                         <th className="border px-3 py-2 text-left">ID</th>
                                         <th className="border px-3 py-2 text-left">Name</th>
                                         <th className="border px-3 py-2 text-left">DOB</th>
-                                        <th className="border px-3 py-2 text-left">Identification</th>
+                                        <th className="border px-3 py-2 text-left">
+                                          Identification
+                                        </th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -1346,7 +1707,9 @@ const CreateTransactionPage = () => {
                                             />
                                           </td>
                                           <td className="border px-3 py-2">{rec.id}</td>
-                                          <td className="border px-3 py-2">{rec.firstName} {rec.lastName}</td>
+                                          <td className="border px-3 py-2">
+                                            {rec.firstName} {rec.lastName}
+                                          </td>
                                           <td className="border px-3 py-2">{rec.dateOfBirth}</td>
                                           <td className="border px-3 py-2">{rec.identification}</td>
                                         </tr>
@@ -1354,18 +1717,30 @@ const CreateTransactionPage = () => {
                                     </tbody>
                                   </table>
                                 </div>
-                              )
-                            )}
+                              ))}
                             {/* Step 2: Show selected record info and accounts */}
                             {selectedRecipientRecord && (
                               <>
                                 <div className="mb-4 p-3 rounded border bg-white flex flex-col md:flex-row md:items-center md:gap-8">
                                   <div>
-                                    <div className="font-semibold">{selectedRecipientRecord.firstName} {selectedRecipientRecord.lastName}</div>
-                                    <div className="text-xs text-muted-foreground">ID: {selectedRecipientRecord.id} | Identification: {selectedRecipientRecord.identification}</div>
-                                    <div className="text-xs text-muted-foreground">DOB: {selectedRecipientRecord.dateOfBirth}</div>
+                                    <div className="font-semibold">
+                                      {selectedRecipientRecord.firstName}{' '}
+                                      {selectedRecipientRecord.lastName}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      ID: {selectedRecipientRecord.id} | Identification:{' '}
+                                      {selectedRecipientRecord.identification}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      DOB: {selectedRecipientRecord.dateOfBirth}
+                                    </div>
                                   </div>
-                                  <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedRecipientRecord(null)}>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setSelectedRecipientRecord(null)}
+                                  >
                                     Change Customer
                                   </Button>
                                 </div>
@@ -1401,71 +1776,164 @@ const CreateTransactionPage = () => {
                                             </td>
                                             <td className="border px-3 py-2">{acc.name}</td>
                                             <td className="border px-3 py-2">{acc.number}</td>
-                                            <td className="border px-3 py-2">{acc.bankOfCountryName}</td>
+                                            <td className="border px-3 py-2">
+                                              {acc.bankOfCountryName}
+                                            </td>
                                             <td className="border px-3 py-2">{acc.bankOfCity}</td>
-                                            <td className="border px-3 py-2">{acc.accountStatus}</td>
+                                            <td className="border px-3 py-2">
+                                              {acc.accountStatus}
+                                            </td>
                                           </tr>
                                         ))}
                                       </tbody>
                                     </table>
                                   </div>
                                 )}
-                                <Button type="button" variant="outline" size="sm" onClick={() => setShowCreateRecipientAccount((v) => !v)}>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowCreateRecipientAccount((v) => !v)}
+                                >
                                   {showCreateRecipientAccount ? 'Hide' : 'Create New Account'}
                                 </Button>
                                 {showCreateRecipientAccount && (
                                   <div className="mt-4 p-4 border rounded bg-muted/10">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                      <Input name="name" placeholder="Name" onChange={e => setRecipientAccount((a: any) => ({ ...a, name: e.target.value }))} autoComplete="off" />
-                                      <Input name="number" placeholder="Account Number" onChange={e => setRecipientAccount((a: any) => ({ ...a, number: e.target.value }))} autoComplete="off" />
-                                      <Select value={String(recipientAccount.bankOfCountryId || '')} onValueChange={v => setRecipientAccount((a: any) => ({ ...a, bankOfCountryId: v }))}>
-                                        <SelectTrigger className="w-full" >
+                                      <Input
+                                        name="name"
+                                        placeholder="Name"
+                                        onChange={(e) =>
+                                          setRecipientAccount((a: any) => ({
+                                            ...a,
+                                            name: e.target.value
+                                          }))
+                                        }
+                                        autoComplete="off"
+                                      />
+                                      <Input
+                                        name="number"
+                                        placeholder="Account Number"
+                                        onChange={(e) =>
+                                          setRecipientAccount((a: any) => ({
+                                            ...a,
+                                            number: e.target.value
+                                          }))
+                                        }
+                                        autoComplete="off"
+                                      />
+                                      <Select
+                                        value={String(recipientAccount.bankOfCountryId || '')}
+                                        onValueChange={(v) =>
+                                          setRecipientAccount((a: any) => ({
+                                            ...a,
+                                            bankOfCountryId: v
+                                          }))
+                                        }
+                                      >
+                                        <SelectTrigger className="w-full">
                                           <SelectValue placeholder="Bank Of Country" />
                                         </SelectTrigger>
                                         <SelectContent>
                                           {bankCountriesLoading ? (
-                                            <div className="p-4 text-center">Loading countries...</div>
+                                            <div className="p-4 text-center">
+                                              Loading countries...
+                                            </div>
                                           ) : (
-                                            bankCountries.map(country => (
-                                              <SelectItem key={country.id} value={String(country.id)}>{country.value}</SelectItem>
+                                            bankCountries.map((country) => (
+                                              <SelectItem
+                                                key={country.id}
+                                                value={String(country.id)}
+                                              >
+                                                {country.value}
+                                              </SelectItem>
                                             ))
                                           )}
                                         </SelectContent>
                                       </Select>
-                                      <Input name="bankOfCity" placeholder="Bank Of City" onChange={e => setRecipientAccount((a: any) => ({ ...a, bankOfCity: e.target.value }))} autoComplete="off" />
-                                      <Input name="creationDate" placeholder="Creation Date" type="datetime-local" onChange={e => setRecipientAccount((a: any) => ({ ...a, creationDate: e.target.value }))} />
-                                      <Select value={String(recipientAccount.accountStatus || '')} onValueChange={v => setRecipientAccount((a: any) => ({ ...a, accountStatus: Number(v) }))}>
-                                        <SelectTrigger className="w-full" >
+                                      <Input
+                                        name="bankOfCity"
+                                        placeholder="Bank Of City"
+                                        onChange={(e) =>
+                                          setRecipientAccount((a: any) => ({
+                                            ...a,
+                                            bankOfCity: e.target.value
+                                          }))
+                                        }
+                                        autoComplete="off"
+                                      />
+                                      <Input
+                                        name="creationDate"
+                                        placeholder="Creation Date"
+                                        type="datetime-local"
+                                        onChange={(e) =>
+                                          setRecipientAccount((a: any) => ({
+                                            ...a,
+                                            creationDate: e.target.value
+                                          }))
+                                        }
+                                      />
+                                      <Select
+                                        value={String(recipientAccount.accountStatus || '')}
+                                        onValueChange={(v) =>
+                                          setRecipientAccount((a: any) => ({
+                                            ...a,
+                                            accountStatus: Number(v)
+                                          }))
+                                        }
+                                      >
+                                        <SelectTrigger className="w-full">
                                           <SelectValue placeholder="Account Status" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {AccountStatusEnum.map(opt => (
-                                            <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                                          {AccountStatusEnum.map((opt) => (
+                                            <SelectItem key={opt.value} value={String(opt.value)}>
+                                              {opt.label}
+                                            </SelectItem>
                                           ))}
                                         </SelectContent>
                                       </Select>
                                     </div>
-                                    <Button type="button" size="sm" className="mt-2" onClick={async () => {
-                                      setRecipientAccountsLoading(true);
-                                      try {
-                                        const accountData = {
-                                          ...recipientAccount,
-                                          recordId: selectedRecipientRecord.id
-                                        };
-                                        const res = await accountService.createAccount(accountData);
-                                        setRecipientAccounts((prev: any[]) => [...prev, { ...recipientAccount, id: res.id }]);
-                                        setShowCreateRecipientAccount(false);
-                                        setRecipientAccount({});
-                                        toast({ title: 'Success', description: 'Account created' });
-                                        setSelectedRecipientAccount({ ...recipientAccount, id: res.id });
-                                        setForm(f => ({ ...f, recipientId: res.id }));
-                                        setRecipientDialogOpen(false);
-                                      } catch {
-                                        toast({ title: 'Error', description: 'Failed to create account', variant: 'destructive' });
-                                      } finally {
-                                        setRecipientAccountsLoading(false);
-                                      }
-                                    }}>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      className="mt-2"
+                                      onClick={async () => {
+                                        setRecipientAccountsLoading(true);
+                                        try {
+                                          const accountData = {
+                                            ...recipientAccount,
+                                            recordId: selectedRecipientRecord.id
+                                          };
+                                          const res =
+                                            await accountService.createAccount(accountData);
+                                          setRecipientAccounts((prev: any[]) => [
+                                            ...prev,
+                                            { ...recipientAccount, id: res.id }
+                                          ]);
+                                          setShowCreateRecipientAccount(false);
+                                          setRecipientAccount({});
+                                          toast({
+                                            title: 'Success',
+                                            description: 'Account created'
+                                          });
+                                          setSelectedRecipientAccount({
+                                            ...recipientAccount,
+                                            id: res.id
+                                          });
+                                          setForm((f) => ({ ...f, recipientId: res.id }));
+                                          setRecipientDialogOpen(false);
+                                        } catch {
+                                          toast({
+                                            title: 'Error',
+                                            description: 'Failed to create account',
+                                            variant: 'destructive'
+                                          });
+                                        } finally {
+                                          setRecipientAccountsLoading(false);
+                                        }
+                                      }}
+                                    >
                                       Create Account
                                     </Button>
                                   </div>
@@ -1474,20 +1942,40 @@ const CreateTransactionPage = () => {
                             )}
                           </DialogBody>
                           <DialogFooter>
-                            <Button type="button" onClick={() => {
-                              console.log('Recipient Done button clicked. selectedRecipientAccount:', selectedRecipientAccount);
-                              if (selectedRecipientAccount) {
-                                console.log('Setting form recipientId to:', selectedRecipientAccount.id);
-                                setForm(f => ({ ...f, recipientId: selectedRecipientAccount.id }));
-                                setRecipientDialogOpen(false);
-                              } else {
-                                console.log('No recipient account selected');
-                                toast({ title: 'Select an account', description: 'Please select an account before continuing.', variant: 'destructive' });
-                              }
-                            }}>
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                console.log(
+                                  'Recipient Done button clicked. selectedRecipientAccount:',
+                                  selectedRecipientAccount
+                                );
+                                if (selectedRecipientAccount) {
+                                  console.log(
+                                    'Setting form recipientId to:',
+                                    selectedRecipientAccount.id
+                                  );
+                                  setForm((f) => ({
+                                    ...f,
+                                    recipientId: selectedRecipientAccount.id
+                                  }));
+                                  setRecipientDialogOpen(false);
+                                } else {
+                                  console.log('No recipient account selected');
+                                  toast({
+                                    title: 'Select an account',
+                                    description: 'Please select an account before continuing.',
+                                    variant: 'destructive'
+                                  });
+                                }
+                              }}
+                            >
                               Done
                             </Button>
-                            <Button type="button" variant="outline" onClick={() => navigate('/records/new')}>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => navigate('/records/new')}
+                            >
                               Create New Customer
                             </Button>
                           </DialogFooter>
@@ -1496,13 +1984,26 @@ const CreateTransactionPage = () => {
                     </>
                   ) : (
                     <div className="p-2 bg-white rounded border mb-2">
-                      <div className="font-medium">Selected Account: {selectedRecipientAccount?.name} ({selectedRecipientAccount?.number})</div>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedRecipientAccount(null); setForm(f => ({ ...f, recipientId: '' })); }}>
+                      <div className="font-medium">
+                        Selected Account: {selectedRecipientAccount?.name} (
+                        {selectedRecipientAccount?.number})
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedRecipientAccount(null);
+                          setForm((f) => ({ ...f, recipientId: '' }));
+                        }}
+                      >
                         Change
                       </Button>
                     </div>
                   )}
-                  {errors.recipientId && <div className="text-xs text-destructive mt-1">{errors.recipientId}</div>}
+                  {errors.recipientId && (
+                    <div className="text-xs text-destructive mt-1">{errors.recipientId}</div>
+                  )}
                 </div>
               )}
 
@@ -1515,7 +2016,8 @@ const CreateTransactionPage = () => {
                       Template Fields
                     </h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Additional information based on template requirements. Required fields are marked with <span className="text-primary">*</span>.
+                      Additional information based on template requirements. Required fields are
+                      marked with <span className="text-primary">*</span>.
                     </p>
                   </div>
 
@@ -1529,26 +2031,32 @@ const CreateTransactionPage = () => {
                       {/* Regular Fields */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {sortFields(templateFields)
-                          .filter(field => field.fieldType !== FieldType.Checkbox)
+                          .filter((field) => field.fieldType !== FieldType.Checkbox)
                           .map((field) => (
-                            <div key={field.id} className={cn(
-                              "p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors",
-                              field.fieldType === FieldType.TextArea ? "md:col-span-2" : ""
-                            )}>
+                            <div
+                              key={field.id}
+                              className={cn(
+                                'p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors',
+                                field.fieldType === FieldType.TextArea ? 'md:col-span-2' : ''
+                              )}
+                            >
                               {renderDynamicField(field)}
                             </div>
                           ))}
                       </div>
 
                       {/* Checkbox Fields Section */}
-                      {templateFields.some(field => field.fieldType === FieldType.Checkbox) && (
+                      {templateFields.some((field) => field.fieldType === FieldType.Checkbox) && (
                         <div className="mt-8 pt-6 border-t">
                           <h4 className="text-lg font-medium mb-4">Additional Options</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {sortFields(templateFields)
-                              .filter(field => field.fieldType === FieldType.Checkbox)
+                              .filter((field) => field.fieldType === FieldType.Checkbox)
                               .map((field) => (
-                                <div key={field.id} className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                                <div
+                                  key={field.id}
+                                  className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
+                                >
                                   {renderDynamicField(field)}
                                 </div>
                               ))}
@@ -1562,16 +2070,18 @@ const CreateTransactionPage = () => {
 
               <div className="flex justify-end">
                 <Button type="submit" disabled={loading} className="w-full md:w-auto">
-                  {loading && <KeenIcon icon="loading" style="duotone" className="animate-spin mr-2" />}Create Transaction
+                  {loading && (
+                    <KeenIcon icon="loading" style="duotone" className="animate-spin mr-2" />
+                  )}
+                  Create Transaction
                 </Button>
               </div>
             </form>
           )}
-
         </CardContent>
       </Card>
     </Container>
   );
 };
 
-export default CreateTransactionPage; 
+export default CreateTransactionPage;

@@ -4,11 +4,31 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/container';
 import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious
+} from '@/components/ui/pagination';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { transactionService, transactionTypeService, type TransactionCase, type PaginatedResponse, type TransactionType } from '@/services/api';
+import {
+  transactionService,
+  transactionTypeService,
+  type TransactionCase,
+  type PaginatedResponse,
+  type TransactionType
+} from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { KeenIcon } from '@/components/keenicons';
@@ -24,32 +44,39 @@ const TransactionCasesPage = () => {
   const [pageSize] = useState(20);
   const [accountIdFilter, setAccountIdFilter] = useState<string>('');
 
-  const fetchCases = useCallback(async (page = 1) => {
-    try {
-      setLoading(true);
-      const params: { pageNumber: number; pageSize: number; accountId?: number } = { 
-        pageNumber: page, 
-        pageSize 
-      };
-      
-      // Add account ID filter if provided
-      if (accountIdFilter.trim()) {
-        const accountId = parseInt(accountIdFilter.trim());
-        if (!isNaN(accountId)) {
-          params.accountId = accountId;
+  const fetchCases = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const params: { pageNumber: number; pageSize: number; accountId?: number } = {
+          pageNumber: page,
+          pageSize
+        };
+
+        // Add account ID filter if provided
+        if (accountIdFilter.trim()) {
+          const accountId = parseInt(accountIdFilter.trim());
+          if (!isNaN(accountId)) {
+            params.accountId = accountId;
+          }
         }
+
+        const data = await transactionService.getTransactionCases(params);
+        setCases(data);
+        setError(null);
+      } catch (err) {
+        setError('Failed to fetch transaction cases');
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch transaction cases',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoading(false);
       }
-      
-      const data = await transactionService.getTransactionCases(params);
-      setCases(data);
-      setError(null);
-    } catch (err) {
-      setError('Failed to fetch transaction cases');
-      toast({ title: 'Error', description: 'Failed to fetch transaction cases', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  }, [pageSize, accountIdFilter]);
+    },
+    [pageSize, accountIdFilter]
+  );
 
   // Fetch transaction types for display
   const fetchTransactionTypes = useCallback(async () => {
@@ -81,7 +108,7 @@ const TransactionCasesPage = () => {
   const handleFilterChange = (value: string) => {
     setAccountIdFilter(value);
     setPageNumber(1);
-    
+
     // Update URL params
     if (value.trim()) {
       setSearchParams({ accountId: value });
@@ -92,33 +119,43 @@ const TransactionCasesPage = () => {
 
   const getStatusLabel = (status: number) => {
     switch (status) {
-      case 1: return 'Active';
-      case 2: return 'Inactive';
-      case 3: return 'Blocked';
-      case 4: return 'Suspended';
-      default: return 'Unknown';
+      case 1:
+        return 'Active';
+      case 2:
+        return 'Inactive';
+      case 3:
+        return 'Blocked';
+      case 4:
+        return 'Suspended';
+      default:
+        return 'Unknown';
     }
   };
 
   const getStatusColor = (status: number) => {
     switch (status) {
-      case 1: return 'text-green-600 bg-green-100';
-      case 2: return 'text-gray-600 bg-gray-100';
-      case 3: return 'text-red-600 bg-red-100';
-      case 4: return 'text-yellow-600 bg-yellow-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 1:
+        return 'text-green-600 bg-green-100';
+      case 2:
+        return 'text-gray-600 bg-gray-100';
+      case 3:
+        return 'text-red-600 bg-red-100';
+      case 4:
+        return 'text-yellow-600 bg-yellow-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
     }
   };
 
   const getTypeLabel = (type: number) => {
-    const transactionType = transactionTypes.find(t => t.id === type);
+    const transactionType = transactionTypes.find((t) => t.id === type);
     return transactionType?.name || `Type ${type}`;
   };
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'USD'
     }).format(amount);
   };
 
@@ -171,7 +208,9 @@ const TransactionCasesPage = () => {
         <ToolbarActions>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Label htmlFor="accountIdFilter" className="text-sm whitespace-nowrap">Account ID:</Label>
+              <Label htmlFor="accountIdFilter" className="text-sm whitespace-nowrap">
+                Account ID:
+              </Label>
               <Input
                 id="accountIdFilter"
                 type="number"
@@ -180,11 +219,7 @@ const TransactionCasesPage = () => {
                 onChange={(e) => handleFilterChange(e.target.value)}
                 className="w-32"
               />
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => handleFilterChange('')}
-              >
+              <Button variant="outline" size="sm" onClick={() => handleFilterChange('')}>
                 Clear
               </Button>
             </div>
@@ -208,7 +243,8 @@ const TransactionCasesPage = () => {
             <div className="text-sm text-muted-foreground">
               {cases && (
                 <span>
-                  Showing {((pageNumber - 1) * pageSize) + 1} to {Math.min(pageNumber * pageSize, cases.totalCount)} of {cases.totalCount} cases
+                  Showing {(pageNumber - 1) * pageSize + 1} to{' '}
+                  {Math.min(pageNumber * pageSize, cases.totalCount)} of {cases.totalCount} cases
                 </span>
               )}
             </div>
@@ -242,7 +278,11 @@ const TransactionCasesPage = () => {
                         <TableCell>
                           {caseItem.recordName ? (
                             <div className="flex items-center gap-2">
-                              <KeenIcon icon="user" style="outline" className="text-muted-foreground" />
+                              <KeenIcon
+                                icon="user"
+                                style="outline"
+                                className="text-muted-foreground"
+                              />
                               {caseItem.recordName}
                             </div>
                           ) : (
@@ -251,7 +291,11 @@ const TransactionCasesPage = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <KeenIcon icon="sort" style="outline" className="text-muted-foreground" />
+                            <KeenIcon
+                              icon="sort"
+                              style="outline"
+                              className="text-muted-foreground"
+                            />
                             {getTypeLabel(caseItem.type)}
                           </div>
                         </TableCell>
@@ -259,7 +303,9 @@ const TransactionCasesPage = () => {
                           {formatAmount(caseItem.amount)}
                         </TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(caseItem.status)}`}>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(caseItem.status)}`}
+                          >
                             {getStatusLabel(caseItem.status)}
                           </span>
                         </TableCell>
@@ -288,12 +334,14 @@ const TransactionCasesPage = () => {
                   <Pagination>
                     <PaginationContent>
                       <PaginationItem>
-                        <PaginationPrevious 
+                        <PaginationPrevious
                           onClick={() => setPageNumber(Math.max(1, pageNumber - 1))}
-                          className={pageNumber === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                          className={
+                            pageNumber === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+                          }
                         />
                       </PaginationItem>
-                      
+
                       {Array.from({ length: Math.min(5, cases.totalPages) }, (_, i) => {
                         const page = i + 1;
                         return (
@@ -308,11 +356,15 @@ const TransactionCasesPage = () => {
                           </PaginationItem>
                         );
                       })}
-                      
+
                       <PaginationItem>
-                        <PaginationNext 
+                        <PaginationNext
                           onClick={() => setPageNumber(Math.min(cases.totalPages, pageNumber + 1))}
-                          className={pageNumber === cases.totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                          className={
+                            pageNumber === cases.totalPages
+                              ? 'pointer-events-none opacity-50'
+                              : 'cursor-pointer'
+                          }
                         />
                       </PaginationItem>
                     </PaginationContent>
@@ -322,7 +374,11 @@ const TransactionCasesPage = () => {
             </>
           ) : (
             <div className="text-center py-12">
-              <KeenIcon icon="shield-tick" style="duotone" className="text-muted-foreground text-4xl mx-auto mb-4" />
+              <KeenIcon
+                icon="shield-tick"
+                style="duotone"
+                className="text-muted-foreground text-4xl mx-auto mb-4"
+              />
               <h3 className="text-lg font-semibold mb-2">No Transaction Cases</h3>
               <p className="text-muted-foreground mb-4">
                 No transaction cases found. Cases will appear here when rules are triggered.
@@ -339,4 +395,4 @@ const TransactionCasesPage = () => {
   );
 };
 
-export default TransactionCasesPage; 
+export default TransactionCasesPage;

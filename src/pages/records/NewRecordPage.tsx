@@ -5,27 +5,32 @@ import * as Yup from 'yup';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/container';
-import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarActions
-} from '@/partials/toolbar';
+import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
 import { Input } from '@/components/ui/input';
-import { recordService, templateService, type TemplateField, FieldType, ScoreCriteriaRange, TemplateType, type TemplateSection } from '@/services/api';
+import {
+  recordService,
+  templateService,
+  type TemplateField,
+  FieldType,
+  ScoreCriteriaRange,
+  TemplateType,
+  type TemplateSection
+} from '@/services/api';
 import type { Record as ApiRecord } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from "@/lib/utils";
-import { HelpCircle } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { cn } from '@/lib/utils';
+import { HelpCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { lookupService } from '@/services/api';
 import { uniqueID } from '@/lib/helpers';
 
@@ -80,25 +85,35 @@ const baseValidationSchema = Yup.object().shape({
 // Add helper function to get min and max values from ranges
 const getRangeBounds = (ranges: ScoreCriteriaRange[] | undefined) => {
   if (!ranges || ranges.length === 0) return { min: undefined, max: undefined };
-  
-  return ranges.reduce((acc, range) => ({
-    min: acc.min === undefined ? range.minValue : Math.min(acc.min, range.minValue),
-    max: acc.max === undefined ? range.maxValue : Math.max(acc.max, range.maxValue)
-  }), { min: undefined as number | undefined, max: undefined as number | undefined });
+
+  return ranges.reduce(
+    (acc, range) => ({
+      min: acc.min === undefined ? range.minValue : Math.min(acc.min, range.minValue),
+      max: acc.max === undefined ? range.maxValue : Math.max(acc.max, range.maxValue)
+    }),
+    { min: undefined as number | undefined, max: undefined as number | undefined }
+  );
 };
 
 const NewRecordPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const templateIdParam = searchParams.get('templateId');
-  
+
   const [isLoading, setIsLoading] = useState(false);
-  const [templates, setTemplates] = useState<Array<{ id: number; name: string; tenantId: number }>>([]);
+  const [templates, setTemplates] = useState<Array<{ id: number; name: string; tenantId: number }>>(
+    []
+  );
   const [templateSections, setTemplateSections] = useState<ExtendedTemplateSection[]>([]);
   const [fieldsWithoutSection, setFieldsWithoutSection] = useState<ExtendedTemplateField[]>([]);
-  const [validationSchema, setValidationSchema] = useState<Yup.ObjectSchema<BaseFormValues>>(baseValidationSchema);
-  const [countryOfBirthOptions, setCountryOfBirthOptions] = useState<Array<{ id: number; value: string }>>([]);
-  const [nationalityOptions, setNationalityOptions] = useState<Array<{ id: number; value: string }>>([]);
+  const [validationSchema, setValidationSchema] =
+    useState<Yup.ObjectSchema<BaseFormValues>>(baseValidationSchema);
+  const [countryOfBirthOptions, setCountryOfBirthOptions] = useState<
+    Array<{ id: number; value: string }>
+  >([]);
+  const [nationalityOptions, setNationalityOptions] = useState<
+    Array<{ id: number; value: string }>
+  >([]);
 
   // Fetch templates
   useEffect(() => {
@@ -109,13 +124,15 @@ const NewRecordPage = () => {
           pageSize: 100,
           templateType: TemplateType.Record
         });
-        setTemplates(data.items
-          .filter(template => template.status === 1) // Only Active templates
-          .map(template => ({ 
-            id: template.id, 
-            name: template.name,
-            tenantId: template.tenantId
-          })));
+        setTemplates(
+          data.items
+            .filter((template) => template.status === 1) // Only Active templates
+            .map((template) => ({
+              id: template.id,
+              name: template.name,
+              tenantId: template.tenantId
+            }))
+        );
       } catch (error) {
         console.error('Error fetching templates:', error);
         toast({
@@ -134,12 +151,22 @@ const NewRecordPage = () => {
     const fetchLookupValues = async () => {
       try {
         // Fetch country of birth lookup values (lookupId = 4)
-        const countryOfBirthData = await lookupService.getLookupValues(4, { pageNumber: 1, pageSize: 100 });
-        setCountryOfBirthOptions(countryOfBirthData.items.map(item => ({ id: item.id, value: item.value })));
+        const countryOfBirthData = await lookupService.getLookupValues(4, {
+          pageNumber: 1,
+          pageSize: 100
+        });
+        setCountryOfBirthOptions(
+          countryOfBirthData.items.map((item) => ({ id: item.id, value: item.value }))
+        );
 
         // Fetch nationality lookup values (lookupId = 7)
-        const nationalityData = await lookupService.getLookupValues(7, { pageNumber: 1, pageSize: 100 });
-        setNationalityOptions(nationalityData.items.map(item => ({ id: item.id, value: item.value })));
+        const nationalityData = await lookupService.getLookupValues(7, {
+          pageNumber: 1,
+          pageSize: 100
+        });
+        setNationalityOptions(
+          nationalityData.items.map((item) => ({ id: item.id, value: item.value }))
+        );
       } catch (error) {
         console.error('Error fetching lookup values:', error);
         toast({
@@ -157,31 +184,37 @@ const NewRecordPage = () => {
   const fetchTemplateFields = async (templateId: number) => {
     try {
       const fieldsResponse = await templateService.getTemplateFields(templateId.toString());
-      
+
       // Process sections with their fields
       const sectionsWithExtendedFields = await Promise.all(
         fieldsResponse.sections.map(async (section) => {
           const extendedFields = await Promise.all(
             section.fields.map(async (field) => {
               const extendedField: ExtendedTemplateField = { ...field };
-              
+
               // Fetch options for option-based fields
               if (
                 field.fieldType === FieldType.Dropdown ||
                 field.fieldType === FieldType.Radio ||
                 field.fieldType === FieldType.Checkbox
               ) {
-                const options = await templateService.getFieldOptions(templateId.toString(), field.id!);
-                extendedField.options = options.map(opt => ({
+                const options = await templateService.getFieldOptions(
+                  templateId.toString(),
+                  field.id!
+                );
+                extendedField.options = options.map((opt) => ({
                   ...opt,
                   value: opt.label
                 }));
               }
-              
+
               // Fetch lookup values for Lookup fields
               if (field.fieldType === FieldType.Lookup && field.lookupId) {
                 try {
-                  const lookupValues = await lookupService.getLookupValues(field.lookupId, { pageNumber: 1, pageSize: 100 });
+                  const lookupValues = await lookupService.getLookupValues(field.lookupId, {
+                    pageNumber: 1,
+                    pageSize: 100
+                  });
                   extendedField.options = lookupValues.items.map((lookupValue, index) => ({
                     id: lookupValue.id,
                     fieldId: field.id!,
@@ -195,29 +228,32 @@ const NewRecordPage = () => {
                   extendedField.options = [];
                 }
               }
-              
+
               // Fetch ranges for number fields
               if (field.fieldType === FieldType.Number) {
-                const ranges = await templateService.getTemplateScoreCriteriaRanges(templateId.toString(), field.id!);
+                const ranges = await templateService.getTemplateScoreCriteriaRanges(
+                  templateId.toString(),
+                  field.id!
+                );
                 extendedField.ranges = ranges;
               }
-              
+
               return extendedField;
             })
           );
-          
+
           return {
             ...section,
             fields: extendedFields
           } as ExtendedTemplateSection;
         })
       );
-      
+
       // Process fields without section
       const fieldsWithoutSectionExtended = await Promise.all(
         fieldsResponse.fieldsWithoutSection.map(async (field) => {
           const extendedField: ExtendedTemplateField = { ...field };
-          
+
           // Fetch options for option-based fields
           if (
             field.fieldType === FieldType.Dropdown ||
@@ -225,16 +261,19 @@ const NewRecordPage = () => {
             field.fieldType === FieldType.Checkbox
           ) {
             const options = await templateService.getFieldOptions(templateId.toString(), field.id!);
-            extendedField.options = options.map(opt => ({
+            extendedField.options = options.map((opt) => ({
               ...opt,
               value: opt.label
             }));
           }
-          
+
           // Fetch lookup values for Lookup fields
           if (field.fieldType === FieldType.Lookup && field.lookupId) {
             try {
-              const lookupValues = await lookupService.getLookupValues(field.lookupId, { pageNumber: 1, pageSize: 100 });
+              const lookupValues = await lookupService.getLookupValues(field.lookupId, {
+                pageNumber: 1,
+                pageSize: 100
+              });
               extendedField.options = lookupValues.items.map((lookupValue, index) => ({
                 id: lookupValue.id,
                 fieldId: field.id!,
@@ -248,77 +287,83 @@ const NewRecordPage = () => {
               extendedField.options = [];
             }
           }
-          
+
           // Fetch ranges for number fields
           if (field.fieldType === FieldType.Number) {
-            const ranges = await templateService.getTemplateScoreCriteriaRanges(templateId.toString(), field.id!);
+            const ranges = await templateService.getTemplateScoreCriteriaRanges(
+              templateId.toString(),
+              field.id!
+            );
             extendedField.ranges = ranges;
           }
-          
+
           return extendedField;
         })
       );
-      
+
       setTemplateSections(sectionsWithExtendedFields);
       setFieldsWithoutSection(fieldsWithoutSectionExtended);
 
       // Get all fields for validation schema
       const allFields = [
-        ...sectionsWithExtendedFields.flatMap(section => section.fields),
+        ...sectionsWithExtendedFields.flatMap((section) => section.fields),
         ...fieldsWithoutSectionExtended
       ];
 
       // Update the validation schema when template fields change
       if (allFields.length > 0) {
-        const dynamicSchema = allFields.reduce<Yup.ObjectSchema<BaseFormValues>>((schema, field) => {
-          const fieldName = `field_${field.id}`;
-          let fieldSchema: Yup.Schema<any>;
+        const dynamicSchema = allFields.reduce<Yup.ObjectSchema<BaseFormValues>>(
+          (schema, field) => {
+            const fieldName = `field_${field.id}`;
+            let fieldSchema: Yup.Schema<any>;
 
-          switch (field.fieldType) {
-            case FieldType.Text:
-            case FieldType.TextArea:
-            case FieldType.Dropdown:
-            case FieldType.Radio:
-            case FieldType.Lookup:
-              fieldSchema = Yup.string();
-              break;
-            case FieldType.Number:
-              // Get the overall min and max from ranges
-              const { min, max } = getRangeBounds(field.ranges);
-              fieldSchema = Yup.number()
-                .nullable()
-                .transform((value) => (isNaN(value) ? null : value))
-                .test('range', 'Value must be within the valid range', function(value) {
-                  if (value === null || value === undefined) return true; // Skip validation if no value
-                  if (min !== undefined && value < min) {
-                    return this.createError({
-                      message: `Value must be at least ${min}`
-                    });
-                  }
-                  if (max !== undefined && value > max) {
-                    return this.createError({
-                      message: `Value must be at most ${max}`
-                    });
-                  }
-                  return true;
-                });
-              break;
-            case FieldType.Date:
-              fieldSchema = Yup.string().nullable();
-              break;
-            case FieldType.Checkbox:
-              fieldSchema = Yup.boolean();
-              break;
-            default:
-              fieldSchema = Yup.string();
-          }
+            switch (field.fieldType) {
+              case FieldType.Text:
+              case FieldType.TextArea:
+              case FieldType.Dropdown:
+              case FieldType.Radio:
+              case FieldType.Lookup:
+                fieldSchema = Yup.string();
+                break;
+              case FieldType.Number:
+                // Get the overall min and max from ranges
+                const { min, max } = getRangeBounds(field.ranges);
+                fieldSchema = Yup.number()
+                  .nullable()
+                  .transform((value) => (isNaN(value) ? null : value))
+                  .test('range', 'Value must be within the valid range', function (value) {
+                    if (value === null || value === undefined) return true; // Skip validation if no value
+                    if (min !== undefined && value < min) {
+                      return this.createError({
+                        message: `Value must be at least ${min}`
+                      });
+                    }
+                    if (max !== undefined && value > max) {
+                      return this.createError({
+                        message: `Value must be at most ${max}`
+                      });
+                    }
+                    return true;
+                  });
+                break;
+              case FieldType.Date:
+                fieldSchema = Yup.string().nullable();
+                break;
+              case FieldType.Checkbox:
+                fieldSchema = Yup.boolean();
+                break;
+              default:
+                fieldSchema = Yup.string();
+            }
 
-          if (field.isRequired) {
-            fieldSchema = fieldSchema.required(`${field.label} is required`);
-          }
+            if (field.isRequired) {
+              fieldSchema = fieldSchema.required(`${field.label} is required`);
+            }
 
-          return schema.shape({ [fieldName]: fieldSchema });
-        }, baseValidationSchema);
+            return schema.shape({ [fieldName]: fieldSchema });
+          },
+          baseValidationSchema
+        );
 
         setValidationSchema(dynamicSchema);
       } else {
@@ -341,27 +386,105 @@ const NewRecordPage = () => {
       lastName: '',
       dateOfBirth: '',
       identification: '',
-      templateId: templateIdParam ? parseInt(templateIdParam) : (templates.length > 0 ? templates[0].id : 0),
+      templateId: templateIdParam
+        ? parseInt(templateIdParam)
+        : templates.length > 0
+          ? templates[0].id
+          : 0,
       countryOfBirthLookupValueId: null,
       nationalityLookupValueId: null,
-      customerReferenceId: '',
+      customerReferenceId: ''
     },
     validationSchema,
     enableReinitialize: true,
     onSubmit: async (values) => {
       setIsLoading(true);
-      
+
       try {
         // Find the selected template to get its name and tenantId
-        const selectedTemplate = templates.find(t => t.id === values.templateId);
-        
+        const selectedTemplate = templates.find((t) => t.id === values.templateId);
+
         if (!selectedTemplate) {
           throw new Error('Template not found');
         }
 
         // Format field responses based on field types
         const fieldResponses = [
-          ...templateSections.flatMap(section => section.fields.map(field => {
+          ...templateSections.flatMap((section) =>
+            section.fields.map((field) => {
+              const value = values[`field_${field.id}`];
+              let response: any = {
+                id: 0,
+                fieldId: field.id
+              };
+
+              switch (field.fieldType) {
+                case FieldType.Text:
+                case FieldType.TextArea:
+                  response.valueText = String(value);
+                  response.valueNumber = null;
+                  response.valueDate = null;
+                  break;
+                case FieldType.Number:
+                  // For number fields, we need to find the matching range option
+                  const numericValue = value !== undefined && value !== '' ? Number(value) : null;
+                  response.valueNumber = numericValue;
+
+                  // Find the matching range based on the value
+                  const matchingRange = field.ranges?.find(
+                    (range) =>
+                      numericValue !== null &&
+                      numericValue >= range.minValue &&
+                      numericValue <= range.maxValue
+                  );
+
+                  // Set the range ID in valueText if a matching range is found
+                  response.templateFieldScoreCriteriaId = matchingRange
+                    ? matchingRange.id.toString()
+                    : null;
+                  response.valueDate = null;
+                  response.valueText = null;
+                  break;
+                case FieldType.Date:
+                  response.valueText = null;
+                  response.valueNumber = null;
+                  response.valueDate = value ? new Date(String(value)).toISOString() : null;
+                  break;
+                case FieldType.Dropdown:
+                case FieldType.Radio:
+                case FieldType.Checkbox:
+                case FieldType.Lookup:
+                  // For all option-based fields, find the selected option
+                  let selectedOption;
+
+                  if (field.fieldType === FieldType.Checkbox) {
+                    // For checkbox fields, find the appropriate "Checked" or "Unchecked" option
+                    selectedOption = field.options?.find(
+                      (opt) =>
+                        opt.label.toLowerCase() === (value === true ? 'checked' : 'unchecked')
+                    );
+                    // Fallback to first option if "Checked"/"Unchecked" not found
+                    if (!selectedOption && field.options?.[0]) {
+                      selectedOption = field.options[0];
+                    }
+                  } else {
+                    // For dropdown, radio, and lookup, find by option ID
+                    selectedOption = field.options?.find(
+                      (opt) => opt.id && opt.id.toString() === value
+                    );
+                  }
+
+                  // Set the option ID in valueText if an option is found and has an ID
+                  response.optionId = selectedOption?.id ? selectedOption.id.toString() : null;
+                  response.valueNumber = null;
+                  response.valueDate = null;
+                  break;
+              }
+
+              return response;
+            })
+          ),
+          ...fieldsWithoutSection.map((field) => {
             const value = values[`field_${field.id}`];
             let response: any = {
               id: 0,
@@ -379,16 +502,19 @@ const NewRecordPage = () => {
                 // For number fields, we need to find the matching range option
                 const numericValue = value !== undefined && value !== '' ? Number(value) : null;
                 response.valueNumber = numericValue;
-                
+
                 // Find the matching range based on the value
-                const matchingRange = field.ranges?.find(range => 
-                  numericValue !== null && 
-                  numericValue >= range.minValue && 
-                  numericValue <= range.maxValue
+                const matchingRange = field.ranges?.find(
+                  (range) =>
+                    numericValue !== null &&
+                    numericValue >= range.minValue &&
+                    numericValue <= range.maxValue
                 );
 
                 // Set the range ID in valueText if a matching range is found
-                response.templateFieldScoreCriteriaId = matchingRange ? matchingRange.id.toString() : null;
+                response.templateFieldScoreCriteriaId = matchingRange
+                  ? matchingRange.id.toString()
+                  : null;
                 response.valueDate = null;
                 response.valueText = null;
                 break;
@@ -403,11 +529,11 @@ const NewRecordPage = () => {
               case FieldType.Lookup:
                 // For all option-based fields, find the selected option
                 let selectedOption;
-                
+
                 if (field.fieldType === FieldType.Checkbox) {
                   // For checkbox fields, find the appropriate "Checked" or "Unchecked" option
-                  selectedOption = field.options?.find(opt => 
-                    opt.label.toLowerCase() === (value === true ? "checked" : "unchecked")
+                  selectedOption = field.options?.find(
+                    (opt) => opt.label.toLowerCase() === (value === true ? 'checked' : 'unchecked')
                   );
                   // Fallback to first option if "Checked"/"Unchecked" not found
                   if (!selectedOption && field.options?.[0]) {
@@ -415,73 +541,9 @@ const NewRecordPage = () => {
                   }
                 } else {
                   // For dropdown, radio, and lookup, find by option ID
-                  selectedOption = field.options?.find(opt => opt.id && opt.id.toString() === value);
-                }
-
-                // Set the option ID in valueText if an option is found and has an ID
-                response.optionId = selectedOption?.id ? selectedOption.id.toString() : null;
-                response.valueNumber = null;
-                response.valueDate = null;
-                break;
-            }
-
-            return response;
-          })),
-          ...fieldsWithoutSection.map(field => {
-            const value = values[`field_${field.id}`];
-            let response: any = {
-              id: 0,
-              fieldId: field.id
-            };
-
-            switch (field.fieldType) {
-              case FieldType.Text:
-              case FieldType.TextArea:
-                response.valueText = String(value);
-                response.valueNumber = null;
-                response.valueDate = null;
-                break;
-              case FieldType.Number:
-                // For number fields, we need to find the matching range option
-                const numericValue = value !== undefined && value !== '' ? Number(value) : null;
-                response.valueNumber = numericValue;
-                
-                // Find the matching range based on the value
-                const matchingRange = field.ranges?.find(range => 
-                  numericValue !== null && 
-                  numericValue >= range.minValue && 
-                  numericValue <= range.maxValue
-                );
-
-                // Set the range ID in valueText if a matching range is found
-                response.templateFieldScoreCriteriaId = matchingRange ? matchingRange.id.toString() : null;
-                response.valueDate = null;
-                response.valueText = null;
-                break;
-              case FieldType.Date:
-                response.valueText = null;
-                response.valueNumber = null;
-                response.valueDate = value ? new Date(String(value)).toISOString() : null;
-                break;
-              case FieldType.Dropdown:
-              case FieldType.Radio:
-              case FieldType.Checkbox:
-              case FieldType.Lookup:
-                // For all option-based fields, find the selected option
-                let selectedOption;
-                
-                if (field.fieldType === FieldType.Checkbox) {
-                  // For checkbox fields, find the appropriate "Checked" or "Unchecked" option
-                  selectedOption = field.options?.find(opt => 
-                    opt.label.toLowerCase() === (value === true ? "checked" : "unchecked")
+                  selectedOption = field.options?.find(
+                    (opt) => opt.id && opt.id.toString() === value
                   );
-                  // Fallback to first option if "Checked"/"Unchecked" not found
-                  if (!selectedOption && field.options?.[0]) {
-                    selectedOption = field.options[0];
-                  }
-                } else {
-                  // For dropdown, radio, and lookup, find by option ID
-                  selectedOption = field.options?.find(opt => opt.id && opt.id.toString() === value);
                 }
 
                 // Set the option ID in valueText if an option is found and has an ID
@@ -496,7 +558,9 @@ const NewRecordPage = () => {
         ];
 
         // Format date string to ISO format
-        const dateOfBirth = values.dateOfBirth ? new Date(String(values.dateOfBirth)).toISOString() : '';
+        const dateOfBirth = values.dateOfBirth
+          ? new Date(String(values.dateOfBirth)).toISOString()
+          : '';
 
         // Create the record with all required fields
         const recordData = {
@@ -516,21 +580,21 @@ const NewRecordPage = () => {
           customerReferenceId: values.customerReferenceId || ''
         };
 
-        const response = await recordService.createRecord(values.templateId, recordData) as any;
-        
+        const response = (await recordService.createRecord(values.templateId, recordData)) as any;
+
         if (response?.exceedsMediumThreshold) {
           toast({
             title: 'Case Created',
             description: 'This record exceeds the medium threshold. A case has been created.',
-            variant: 'destructive',
+            variant: 'destructive'
           });
         }
-        
+
         toast({
           title: 'Success',
-          description: 'Record created successfully',
+          description: 'Record created successfully'
         });
-        
+
         navigate('/records');
       } catch (error) {
         console.error('Error creating record:', error);
@@ -549,11 +613,14 @@ const NewRecordPage = () => {
   useEffect(() => {
     if (formik.values.templateId) {
       fetchTemplateFields(formik.values.templateId);
-      
+
       // Reset dynamic field values
       const newValues: BaseFormValues = {
         ...formik.values,
-        ...[...templateSections.flatMap(section => section.fields), ...fieldsWithoutSection].reduce((acc, field) => {
+        ...[
+          ...templateSections.flatMap((section) => section.fields),
+          ...fieldsWithoutSection
+        ].reduce((acc, field) => {
           const key = `field_${field.id}`;
           // Do not overwrite static fields like dateOfBirth
           if (key === 'dateOfBirth') return acc;
@@ -569,7 +636,16 @@ const NewRecordPage = () => {
 
   // Helper function to render field help text
   const renderFieldHelp = (field: ExtendedTemplateField) => {
-    if (!field.placeholder && !field.minLength && !field.maxLength && !field.minValue && !field.maxValue && !field.minDate && !field.maxDate && !field.ranges) {
+    if (
+      !field.placeholder &&
+      !field.minLength &&
+      !field.maxLength &&
+      !field.minValue &&
+      !field.maxValue &&
+      !field.minDate &&
+      !field.maxDate &&
+      !field.ranges
+    ) {
       return null;
     }
 
@@ -582,7 +658,7 @@ const NewRecordPage = () => {
     } else if (field.maxLength) {
       helpTexts.push(`Maximum length: ${field.maxLength} characters`);
     }
-    
+
     // For number fields with ranges, show the overall range
     if (field.fieldType === FieldType.Number && field.ranges) {
       const { min, max } = getRangeBounds(field.ranges);
@@ -603,7 +679,7 @@ const NewRecordPage = () => {
         helpTexts.push(`Maximum value: ${field.maxValue}`);
       }
     }
-    
+
     if (field.minDate && field.maxDate) {
       helpTexts.push(`Date range: ${field.minDate} to ${field.maxDate}`);
     } else if (field.minDate) {
@@ -643,15 +719,15 @@ const NewRecordPage = () => {
     const isInvalid = fieldError ? true : false;
 
     const fieldWrapperClasses = cn(
-      "space-y-2",
-      field.fieldType === FieldType.Checkbox ? "flex items-start space-x-2" : "",
-      field.fieldType === FieldType.Radio ? "space-y-3" : ""
+      'space-y-2',
+      field.fieldType === FieldType.Checkbox ? 'flex items-start space-x-2' : '',
+      field.fieldType === FieldType.Radio ? 'space-y-3' : ''
     );
 
     const inputClasses = cn(
-      "w-full",
-      isInvalid ? "border-red-500 focus-visible:ring-red-500" : "",
-      field.fieldType === FieldType.Checkbox ? "mt-1" : ""
+      'w-full',
+      isInvalid ? 'border-red-500 focus-visible:ring-red-500' : '',
+      field.fieldType === FieldType.Checkbox ? 'mt-1' : ''
     );
 
     switch (field.fieldType) {
@@ -664,7 +740,7 @@ const NewRecordPage = () => {
               <Input
                 id={fieldName}
                 name={fieldName}
-                value={fieldValue as string || ''}
+                value={(fieldValue as string) || ''}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 className={inputClasses}
@@ -676,7 +752,7 @@ const NewRecordPage = () => {
               <Textarea
                 id={fieldName}
                 name={fieldName}
-                value={fieldValue as string || ''}
+                value={(fieldValue as string) || ''}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 className={inputClasses}
@@ -686,9 +762,7 @@ const NewRecordPage = () => {
                 rows={4}
               />
             )}
-            {fieldError && (
-              <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
-            )}
+            {fieldError && <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>}
           </div>
         );
 
@@ -701,7 +775,7 @@ const NewRecordPage = () => {
               id={fieldName}
               name={fieldName}
               type="number"
-              value={fieldValue as number || ''}
+              value={(fieldValue as number) || ''}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               className={inputClasses}
@@ -710,9 +784,7 @@ const NewRecordPage = () => {
               max={max !== undefined ? max : field.maxValue || undefined}
               step="any"
             />
-            {fieldError && (
-              <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
-            )}
+            {fieldError && <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>}
           </div>
         );
 
@@ -724,16 +796,18 @@ const NewRecordPage = () => {
               id={fieldName}
               name={fieldName}
               type="date"
-              value={typeof fieldValue === 'string' || typeof fieldValue === 'number' ? String(fieldValue) : ''}
+              value={
+                typeof fieldValue === 'string' || typeof fieldValue === 'number'
+                  ? String(fieldValue)
+                  : ''
+              }
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               className={inputClasses}
               min={field.minDate || undefined}
               max={field.maxDate || undefined}
             />
-            {fieldError && (
-              <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
-            )}
+            {fieldError && <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>}
           </div>
         );
 
@@ -748,13 +822,11 @@ const NewRecordPage = () => {
                 onCheckedChange={(checked) => {
                   formik.setFieldValue(fieldName, checked); // Store as boolean in form
                 }}
-                className={cn("mt-1", isInvalid ? "border-red-500" : "")}
+                className={cn('mt-1', isInvalid ? 'border-red-500' : '')}
               />
               <div className="space-y-1">
                 {renderFieldLabel(field, fieldName)}
-                {fieldError && (
-                  <p className="text-sm text-red-500">{fieldError as string}</p>
-                )}
+                {fieldError && <p className="text-sm text-red-500">{fieldError as string}</p>}
               </div>
             </div>
           </div>
@@ -766,27 +838,26 @@ const NewRecordPage = () => {
             {renderFieldLabel(field, fieldName)}
             <Select
               name={fieldName}
-              value={fieldValue as string || ''}
+              value={(fieldValue as string) || ''}
               onValueChange={(value: string) => {
                 formik.setFieldValue(fieldName, value);
               }}
             >
-              <SelectTrigger className={cn(inputClasses, "w-full")}>
-                <SelectValue placeholder={field.placeholder || "Select an option"} />
+              <SelectTrigger className={cn(inputClasses, 'w-full')}>
+                <SelectValue placeholder={field.placeholder || 'Select an option'} />
               </SelectTrigger>
               <SelectContent>
-                {field.options?.map((option: FieldOption) => (
-                  option.id && (
-                    <SelectItem key={option.id} value={option.id.toString()}>
-                      {option.label}
-                    </SelectItem>
-                  )
-                ))}
+                {field.options?.map(
+                  (option: FieldOption) =>
+                    option.id && (
+                      <SelectItem key={option.id} value={option.id.toString()}>
+                        {option.label}
+                      </SelectItem>
+                    )
+                )}
               </SelectContent>
             </Select>
-            {fieldError && (
-              <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
-            )}
+            {fieldError && <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>}
           </div>
         );
 
@@ -795,36 +866,32 @@ const NewRecordPage = () => {
           <div key={field.id} className={fieldWrapperClasses}>
             {renderFieldLabel(field, fieldName)}
             <div className="space-y-2">
-              {field.options?.map((option: FieldOption) => (
-                option.id && (
-                  <div key={option.id} className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id={`${fieldName}_${option.id}`}
-                      name={fieldName}
-                      value={option.id.toString()}
-                      checked={fieldValue === option.id.toString()}
-                      onChange={(e) => {
-                        formik.setFieldValue(fieldName, e.target.value);
-                      }}
-                      className={cn(
-                        "h-4 w-4 border-gray-300 text-primary focus:ring-primary",
-                        isInvalid ? "border-red-500" : ""
-                      )}
-                    />
-                    <Label 
-                      htmlFor={`${fieldName}_${option.id}`}
-                      className="text-sm font-normal"
-                    >
-                      {option.label}
-                    </Label>
-                  </div>
-                )
-              ))}
+              {field.options?.map(
+                (option: FieldOption) =>
+                  option.id && (
+                    <div key={option.id} className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id={`${fieldName}_${option.id}`}
+                        name={fieldName}
+                        value={option.id.toString()}
+                        checked={fieldValue === option.id.toString()}
+                        onChange={(e) => {
+                          formik.setFieldValue(fieldName, e.target.value);
+                        }}
+                        className={cn(
+                          'h-4 w-4 border-gray-300 text-primary focus:ring-primary',
+                          isInvalid ? 'border-red-500' : ''
+                        )}
+                      />
+                      <Label htmlFor={`${fieldName}_${option.id}`} className="text-sm font-normal">
+                        {option.label}
+                      </Label>
+                    </div>
+                  )
+              )}
             </div>
-            {fieldError && (
-              <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
-            )}
+            {fieldError && <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>}
           </div>
         );
 
@@ -834,27 +901,26 @@ const NewRecordPage = () => {
             {renderFieldLabel(field, fieldName)}
             <Select
               name={fieldName}
-              value={fieldValue as string || ''}
+              value={(fieldValue as string) || ''}
               onValueChange={(value: string) => {
                 formik.setFieldValue(fieldName, value);
               }}
             >
-              <SelectTrigger className={cn(inputClasses, "w-full")}>
-                <SelectValue placeholder={field.placeholder || "Select an option"} />
+              <SelectTrigger className={cn(inputClasses, 'w-full')}>
+                <SelectValue placeholder={field.placeholder || 'Select an option'} />
               </SelectTrigger>
               <SelectContent>
-                {field.options?.map((option: FieldOption) => (
-                  option.id && (
-                    <SelectItem key={option.id} value={option.id.toString()}>
-                      {option.label}
-                    </SelectItem>
-                  )
-                ))}
+                {field.options?.map(
+                  (option: FieldOption) =>
+                    option.id && (
+                      <SelectItem key={option.id} value={option.id.toString()}>
+                        {option.label}
+                      </SelectItem>
+                    )
+                )}
               </SelectContent>
             </Select>
-            {fieldError && (
-              <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>
-            )}
+            {fieldError && <p className="text-sm text-red-500 mt-1">{fieldError as string}</p>}
           </div>
         );
 
@@ -885,10 +951,7 @@ const NewRecordPage = () => {
         <Toolbar>
           <ToolbarHeading>Create New Record</ToolbarHeading>
           <ToolbarActions>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/records')}
-            >
+            <Button variant="outline" onClick={() => navigate('/records')}>
               Cancel
             </Button>
           </ToolbarActions>
@@ -898,10 +961,14 @@ const NewRecordPage = () => {
         <Card className="shadow-md border-2 border-primary/20">
           <CardHeader className="bg-primary/5 border-b rounded-t-lg">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <span role="img" aria-label="template">📄</span> Select a Template
+              <span role="img" aria-label="template">
+                📄
+              </span>{' '}
+              Select a Template
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Choose an <span className="font-semibold text-primary">Active</span> template to start creating a record.
+              Choose an <span className="font-semibold text-primary">Active</span> template to start
+              creating a record.
             </p>
           </CardHeader>
           <CardContent className="p-8 flex flex-col gap-4">
@@ -959,16 +1026,18 @@ const NewRecordPage = () => {
                       value={formik.values.firstName}
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
-                      className={formik.touched.firstName && formik.errors.firstName ? 'border-red-500' : ''}
+                      className={
+                        formik.touched.firstName && formik.errors.firstName ? 'border-red-500' : ''
+                      }
                     />
                     {formik.touched.firstName && formik.errors.firstName ? (
-                      <div className="text-red-500 text-sm mt-1">{formik.errors.firstName as string}</div>
+                      <div className="text-red-500 text-sm mt-1">
+                        {formik.errors.firstName as string}
+                      </div>
                     ) : null}
                   </div>
                   <div>
-                    <Label htmlFor="middleName">
-                      Middle Name
-                    </Label>
+                    <Label htmlFor="middleName">Middle Name</Label>
                     <Input
                       id="middleName"
                       name="middleName"
@@ -987,10 +1056,14 @@ const NewRecordPage = () => {
                       value={formik.values.lastName}
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
-                      className={formik.touched.lastName && formik.errors.lastName ? 'border-red-500' : ''}
+                      className={
+                        formik.touched.lastName && formik.errors.lastName ? 'border-red-500' : ''
+                      }
                     />
                     {formik.touched.lastName && formik.errors.lastName ? (
-                      <div className="text-red-500 text-sm mt-1">{formik.errors.lastName as string}</div>
+                      <div className="text-red-500 text-sm mt-1">
+                        {formik.errors.lastName as string}
+                      </div>
                     ) : null}
                   </div>
                   <div>
@@ -1003,10 +1076,16 @@ const NewRecordPage = () => {
                       value={formik.values.identification}
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
-                      className={formik.touched.identification && formik.errors.identification ? 'border-red-500' : ''}
+                      className={
+                        formik.touched.identification && formik.errors.identification
+                          ? 'border-red-500'
+                          : ''
+                      }
                     />
                     {formik.touched.identification && formik.errors.identification ? (
-                      <div className="text-red-500 text-sm mt-1">{formik.errors.identification as string}</div>
+                      <div className="text-red-500 text-sm mt-1">
+                        {formik.errors.identification as string}
+                      </div>
                     ) : null}
                   </div>
                   <div>
@@ -1020,21 +1099,28 @@ const NewRecordPage = () => {
                       value={formik.values.dateOfBirth}
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
-                      className={formik.touched.dateOfBirth && formik.errors.dateOfBirth ? 'border-red-500' : ''}
+                      className={
+                        formik.touched.dateOfBirth && formik.errors.dateOfBirth
+                          ? 'border-red-500'
+                          : ''
+                      }
                     />
                     {formik.touched.dateOfBirth && formik.errors.dateOfBirth ? (
-                      <div className="text-red-500 text-sm mt-1">{formik.errors.dateOfBirth as string}</div>
+                      <div className="text-red-500 text-sm mt-1">
+                        {formik.errors.dateOfBirth as string}
+                      </div>
                     ) : null}
                   </div>
                   <div>
-                    <Label htmlFor="countryOfBirthLookupValueId">
-                      Country of Birth
-                    </Label>
+                    <Label htmlFor="countryOfBirthLookupValueId">Country of Birth</Label>
                     <Select
                       name="countryOfBirthLookupValueId"
                       value={formik.values.countryOfBirthLookupValueId?.toString() || ''}
                       onValueChange={(value: string) => {
-                        formik.setFieldValue('countryOfBirthLookupValueId', value ? parseInt(value) : null);
+                        formik.setFieldValue(
+                          'countryOfBirthLookupValueId',
+                          value ? parseInt(value) : null
+                        );
                       }}
                     >
                       <SelectTrigger className="w-full">
@@ -1050,14 +1136,15 @@ const NewRecordPage = () => {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="nationalityLookupValueId">
-                      Nationality
-                    </Label>
+                    <Label htmlFor="nationalityLookupValueId">Nationality</Label>
                     <Select
                       name="nationalityLookupValueId"
                       value={formik.values.nationalityLookupValueId?.toString() || ''}
                       onValueChange={(value: string) => {
-                        formik.setFieldValue('nationalityLookupValueId', value ? parseInt(value) : null);
+                        formik.setFieldValue(
+                          'nationalityLookupValueId',
+                          value ? parseInt(value) : null
+                        );
                       }}
                     >
                       <SelectTrigger className="w-full">
@@ -1073,9 +1160,7 @@ const NewRecordPage = () => {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="customerReferenceId">
-                      Customer Reference ID
-                    </Label>
+                    <Label htmlFor="customerReferenceId">Customer Reference ID</Label>
                     <Input
                       id="customerReferenceId"
                       name="customerReferenceId"
@@ -1101,27 +1186,34 @@ const NewRecordPage = () => {
                   {/* Sections */}
                   {templateSections.map((section) => (
                     <div key={section.id} className="mb-8">
-                      <h3 className="text-lg font-medium mb-4 text-primary border-b pb-2">{section.title}</h3>
+                      <h3 className="text-lg font-medium mb-4 text-primary border-b pb-2">
+                        {section.title}
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {sortFields(section.fields)
-                          .filter(field => field.fieldType !== FieldType.Checkbox)
+                          .filter((field) => field.fieldType !== FieldType.Checkbox)
                           .map((field) => (
-                            <div key={field.id} className={cn(
-                              "p-4 rounded-lg border",
-                              field.fieldType === FieldType.TextArea ? "md:col-span-2" : ""
-                            )}>
+                            <div
+                              key={field.id}
+                              className={cn(
+                                'p-4 rounded-lg border',
+                                field.fieldType === FieldType.TextArea ? 'md:col-span-2' : ''
+                              )}
+                            >
                               {renderDynamicField(field)}
                             </div>
                           ))}
                       </div>
-                      
+
                       {/* Checkbox fields for this section */}
-                      {section.fields.some(field => field.fieldType === FieldType.Checkbox) && (
+                      {section.fields.some((field) => field.fieldType === FieldType.Checkbox) && (
                         <div className="mt-6 pt-4 border-t">
-                          <h4 className="text-md font-medium mb-3 text-muted-foreground">Additional Options</h4>
+                          <h4 className="text-md font-medium mb-3 text-muted-foreground">
+                            Additional Options
+                          </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {sortFields(section.fields)
-                              .filter(field => field.fieldType === FieldType.Checkbox)
+                              .filter((field) => field.fieldType === FieldType.Checkbox)
                               .map((field) => (
                                 <div key={field.id} className="p-3 rounded-lg border bg-gray-50/50">
                                   {renderDynamicField(field)}
@@ -1136,27 +1228,36 @@ const NewRecordPage = () => {
                   {/* Fields without section */}
                   {fieldsWithoutSection.length > 0 && (
                     <div className="mt-8 pt-6 border-t">
-                      <h3 className="text-lg font-medium mb-4 text-muted-foreground">Additional Fields</h3>
+                      <h3 className="text-lg font-medium mb-4 text-muted-foreground">
+                        Additional Fields
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {sortFields(fieldsWithoutSection)
-                          .filter(field => field.fieldType !== FieldType.Checkbox)
+                          .filter((field) => field.fieldType !== FieldType.Checkbox)
                           .map((field) => (
-                            <div key={field.id} className={cn(
-                              "p-4 rounded-lg border",
-                              field.fieldType === FieldType.TextArea ? "md:col-span-2" : ""
-                            )}>
+                            <div
+                              key={field.id}
+                              className={cn(
+                                'p-4 rounded-lg border',
+                                field.fieldType === FieldType.TextArea ? 'md:col-span-2' : ''
+                              )}
+                            >
                               {renderDynamicField(field)}
                             </div>
                           ))}
                       </div>
-                      
+
                       {/* Checkbox fields without section */}
-                      {fieldsWithoutSection.some(field => field.fieldType === FieldType.Checkbox) && (
+                      {fieldsWithoutSection.some(
+                        (field) => field.fieldType === FieldType.Checkbox
+                      ) && (
                         <div className="mt-6 pt-4 border-t">
-                          <h4 className="text-md font-medium mb-3 text-muted-foreground">Additional Options</h4>
+                          <h4 className="text-md font-medium mb-3 text-muted-foreground">
+                            Additional Options
+                          </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {sortFields(fieldsWithoutSection)
-                              .filter(field => field.fieldType === FieldType.Checkbox)
+                              .filter((field) => field.fieldType === FieldType.Checkbox)
                               .map((field) => (
                                 <div key={field.id} className="p-3 rounded-lg border bg-gray-50/50">
                                   {renderDynamicField(field)}
@@ -1172,17 +1273,10 @@ const NewRecordPage = () => {
             )}
 
             <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate('/records')}
-              >
+              <Button type="button" variant="outline" onClick={() => navigate('/records')}>
                 Cancel
               </Button>
-              <Button 
-                type="submit"
-                disabled={isLoading || templates.length === 0}
-              >
+              <Button type="submit" disabled={isLoading || templates.length === 0}>
                 {isLoading ? 'Creating...' : 'Create Record'}
               </Button>
             </div>
@@ -1193,4 +1287,4 @@ const NewRecordPage = () => {
   );
 };
 
-export default NewRecordPage; 
+export default NewRecordPage;

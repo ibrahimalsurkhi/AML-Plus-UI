@@ -9,12 +9,12 @@ import {
   StatusOperatorOptions,
   TransactionStatusOptions,
   AggregateFieldId,
-  FilterByOptions,
+  FilterByOptions
 } from '../pages/rules/enums';
 
 // Helper to get label from options
 function getLabel(options: { label: string; value: any }[], value: any) {
-  const found = options.find(opt => opt.value === value);
+  const found = options.find((opt) => opt.value === value);
   return found ? found.label : value;
 }
 
@@ -33,7 +33,7 @@ function getOperatorLabel(value: any, fieldId: any, operatorProp?: any) {
       return getLabel(ComparisonOperatorOptions, operatorProp) || '[Operator]';
     }
   }
-  
+
   // Fallback to aggregateFunction for legacy data
   if (fieldId === AggregateFieldId.TransactionStatus) {
     return getLabel(StatusOperatorOptions, value) || '[Operator]';
@@ -60,8 +60,7 @@ function getAccountTypeLabel(value: any) {
 export interface RuleGroupType {
   operator: OperatorId;
   children: Array<
-    | { condition: any }
-    | { operator: OperatorId; children: RuleGroupType['children'] }
+    { condition: any } | { operator: OperatorId; children: RuleGroupType['children'] }
   >;
 }
 
@@ -73,7 +72,7 @@ export function getRulePreview(group: RuleGroupType | any): string {
     .map((child: any) => {
       if ('condition' in child && child.condition) {
         const cond = child.condition;
-        
+
         // Debug logging to see what data we're working with
         console.log('Condition data:', {
           aggregateFieldId: cond.aggregateFieldId,
@@ -84,30 +83,32 @@ export function getRulePreview(group: RuleGroupType | any): string {
           isAggregated: cond.isAggregated,
           jsonValue: cond.jsonValue
         });
-        
+
         const metric = getLabel(AggregateFieldIdOptions, cond.aggregateFieldId) || '[Metric]';
-        
+
         // Check multiple possible field names for the operator
         const operatorValue =
           cond.ComparisonOperator ??
           cond.comparisonOperator ?? // <-- add this
           cond.operator ??
           cond.logicalOperator;
-        
+
         // Use the operator value if available, otherwise fallback to aggregateFunction
-        const operator = operatorValue !== undefined && operatorValue !== null
-          ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId, operatorValue)
-          : cond.aggregateFunction && !cond.isAggregated
-          ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId)
-          : '[Operator]';
-        
+        const operator =
+          operatorValue !== undefined && operatorValue !== null
+            ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId, operatorValue)
+            : cond.aggregateFunction && !cond.isAggregated
+              ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId)
+              : '[Operator]';
+
         console.log('Operator result:', operator);
-        
+
         let aggregateFn = '';
         if (cond.isAggregated && cond.aggregateFunction) {
-          aggregateFn = getLabel(AggregateFunctionOptions, cond.aggregateFunction) || '[Aggregate Function]';
+          aggregateFn =
+            getLabel(AggregateFunctionOptions, cond.aggregateFunction) || '[Aggregate Function]';
         }
-        
+
         let value = '[Value]';
         if (cond.jsonValue) {
           try {
@@ -133,36 +134,47 @@ export function getRulePreview(group: RuleGroupType | any): string {
             value = cond.jsonValue;
           }
         }
-        
+
         const duration = cond.duration ? cond.duration : '[Duration]';
-        const durationType = cond.durationType ? getDurationTypeLabel(cond.durationType) : '[Duration Type]';
-        const transferType = cond.accountType ? getAccountTypeLabel(cond.accountType) : '[Account Type]';
-        
+        const durationType = cond.durationType
+          ? getDurationTypeLabel(cond.durationType)
+          : '[Duration Type]';
+        const transferType = cond.accountType
+          ? getAccountTypeLabel(cond.accountType)
+          : '[Account Type]';
+
         let preview = '';
         preview += metric !== '[Metric]' ? metric : '[Metric]';
-        preview += operator !== '[Operator]' ? ` ${operator}` : (cond.isAggregated ? '' : ' [Operator]');
-        preview += aggregateFn ? ` ${aggregateFn}` : (cond.isAggregated ? ' [Aggregate Function]' : '');
+        preview +=
+          operator !== '[Operator]' ? ` ${operator}` : cond.isAggregated ? '' : ' [Operator]';
+        preview += aggregateFn
+          ? ` ${aggregateFn}`
+          : cond.isAggregated
+            ? ' [Aggregate Function]'
+            : '';
         preview += value !== '[Value]' ? ` ${value}` : ' [Value]';
-        
+
         if (cond.filterBy) {
           const filterByLabel = getLabel(FilterByOptions, cond.filterBy);
           preview += filterByLabel ? ` by ${filterByLabel}` : '';
         }
-        
+
         if (cond.duration) {
           preview += ' in last';
           preview += cond.duration ? ` ${cond.duration}` : ' [Duration]';
-          preview += cond.durationType ? ` ${getDurationTypeLabel(cond.durationType)}` : ' [Duration Type]';
+          preview += cond.durationType
+            ? ` ${getDurationTypeLabel(cond.durationType)}`
+            : ' [Duration Type]';
         } else if (cond.lastTransactionCount) {
           preview += ` in last [${cond.lastTransactionCount}] transactions`;
         }
-        
+
         if (transferType !== '[Account Type]') {
           preview += ` for ${transferType}`;
         } else {
           preview += ' for [Account Type]';
         }
-        
+
         return preview.trim();
       } else if ('operator' in child && 'children' in child) {
         return `(${getRulePreview(child as RuleGroupType)})`;
@@ -171,4 +183,4 @@ export function getRulePreview(group: RuleGroupType | any): string {
     })
     .filter(Boolean)
     .join(` ${op} `);
-} 
+}

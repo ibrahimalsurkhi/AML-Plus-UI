@@ -38,9 +38,7 @@ export const CreateTemplateContent = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -108,7 +106,9 @@ export const CreateTemplateContent = () => {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="description" className="form-label text-gray-900 font-normal mb-1">Description</label>
+                <label htmlFor="description" className="form-label text-gray-900 font-normal mb-1">
+                  Description
+                </label>
                 <textarea
                   id="description"
                   name="description"
@@ -121,7 +121,9 @@ export const CreateTemplateContent = () => {
                   }`}
                 />
                 {errors.description && (
-                  <span className="text-red-500 text-xs mt-1 font-medium">{errors.description}</span>
+                  <span className="text-red-500 text-xs mt-1 font-medium">
+                    {errors.description}
+                  </span>
                 )}
               </div>
 
@@ -148,4 +150,4 @@ export const CreateTemplateContent = () => {
       </div>
     </div>
   );
-}; 
+};

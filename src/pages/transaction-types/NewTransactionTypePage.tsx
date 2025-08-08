@@ -30,12 +30,16 @@ const NewTransactionTypePage = () => {
         name,
         isSenderRequired,
         isRecipientRequired,
-        tenantId,
+        tenantId
       });
       toast({ title: 'Success', description: 'Transaction type created' });
       navigate(`/transaction-types/${newId}`);
     } catch (err) {
-      toast({ title: 'Error', description: 'Failed to create transaction type', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to create transaction type',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
@@ -54,19 +58,34 @@ const NewTransactionTypePage = () => {
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
               <label className="block mb-1 font-medium">Name</label>
-              <Input value={name} onChange={e => setName(e.target.value)} required disabled={loading} />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                disabled={loading}
+              />
             </div>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2">
-                <Checkbox checked={isSenderRequired} onCheckedChange={checked => setIsSenderRequired(checked === true)} disabled={loading} />
+                <Checkbox
+                  checked={isSenderRequired}
+                  onCheckedChange={(checked) => setIsSenderRequired(checked === true)}
+                  disabled={loading}
+                />
                 Sender Required
               </label>
               <label className="flex items-center gap-2">
-                <Checkbox checked={isRecipientRequired} onCheckedChange={checked => setIsRecipientRequired(checked === true)} disabled={loading} />
+                <Checkbox
+                  checked={isRecipientRequired}
+                  onCheckedChange={(checked) => setIsRecipientRequired(checked === true)}
+                  disabled={loading}
+                />
                 Recipient Required
               </label>
             </div>
-            <Button type="submit" disabled={loading}>Create</Button>
+            <Button type="submit" disabled={loading}>
+              Create
+            </Button>
           </form>
         </CardContent>
       </Card>
@@ -74,4 +93,4 @@ const NewTransactionTypePage = () => {
   );
 };
 
-export default NewTransactionTypePage; 
+export default NewTransactionTypePage;

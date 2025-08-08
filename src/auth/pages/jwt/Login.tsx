@@ -79,7 +79,9 @@ const Login = () => {
         noValidate
       >
         <div className="text-center mb-2.5">
-          <h3 className="text-lg font-semibold text-gray-900 leading-none mb-2.5">Sign in to AML Plus</h3>
+          <h3 className="text-lg font-semibold text-gray-900 leading-none mb-2.5">
+            Sign in to AML Plus
+          </h3>
           <div className="flex items-center justify-center font-medium">
             <span className="text-2sm text-gray-600 me-1.5">Need access to the platform?</span>
             <Link

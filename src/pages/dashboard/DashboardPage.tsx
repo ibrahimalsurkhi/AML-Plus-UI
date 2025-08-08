@@ -66,7 +66,9 @@ const DashboardPage = () => {
                     <KeenIcon icon="notification-bing" className="text-danger size-4" />
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-gray-900">Suspicious Transaction Pattern</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      Suspicious Transaction Pattern
+                    </div>
                     <div className="text-xs text-gray-600">Customer ID: #12345{i}</div>
                   </div>
                 </div>
@@ -110,11 +112,21 @@ const DashboardPage = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Risk Score</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Transaction ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Customer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Risk Score
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Status
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -122,20 +134,28 @@ const DashboardPage = () => {
                   <tr key={i}>
                     <td className="px-6 py-4 text-sm text-gray-900">TRX-{2024000 + i}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">Customer #{10000 + i}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">${(Math.random() * 10000).toFixed(2)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      ${(Math.random() * 10000).toFixed(2)}
+                    </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        i % 3 === 0 ? 'bg-danger/10 text-danger' :
-                        i % 3 === 1 ? 'bg-warning/10 text-warning' :
-                        'bg-success/10 text-success'
-                      }`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          i % 3 === 0
+                            ? 'bg-danger/10 text-danger'
+                            : i % 3 === 1
+                              ? 'bg-warning/10 text-warning'
+                              : 'bg-success/10 text-success'
+                        }`}
+                      >
                         {i % 3 === 0 ? 'High' : i % 3 === 1 ? 'Medium' : 'Low'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        i % 2 === 0 ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
-                      }`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          i % 2 === 0 ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
+                        }`}
+                      >
                         {i % 2 === 0 ? 'Cleared' : 'Under Review'}
                       </span>
                     </td>
@@ -150,4 +170,4 @@ const DashboardPage = () => {
   );
 };
 
-export { DashboardPage }; 
+export { DashboardPage };

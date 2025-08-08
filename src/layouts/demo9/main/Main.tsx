@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Outlet, useLocation } from 'react-router';
-import {useMenuCurrentItem,} from '@/components';
+import { useMenuCurrentItem } from '@/components';
 import { useMenus } from '@/providers';
 import { useLanguage } from '@/i18n';
 import { Header, Navbar, Footer, Toolbar, ToolbarHeading, ToolbarActions } from '../';
@@ -49,26 +49,26 @@ const Main = () => {
 
                   <Popover>
                     <PopoverTrigger asChild>
-                    <button
-                      id="date"
-                      className={cn(
-                        'btn btn-sm btn-light data-[state=open]:bg-light-active',
-                        !date && 'text-gray-400'
-                      )}
-                    >
-                      <KeenIcon icon="calendar" className="me-0.5" />
-                      {date?.from ? (
-                        date.to ? (
-                          <>
-                            {format(date.from, 'LLL dd, y')} - {format(date.to, 'LLL dd, y')}
-                          </>
+                      <button
+                        id="date"
+                        className={cn(
+                          'btn btn-sm btn-light data-[state=open]:bg-light-active',
+                          !date && 'text-gray-400'
+                        )}
+                      >
+                        <KeenIcon icon="calendar" className="me-0.5" />
+                        {date?.from ? (
+                          date.to ? (
+                            <>
+                              {format(date.from, 'LLL dd, y')} - {format(date.to, 'LLL dd, y')}
+                            </>
+                          ) : (
+                            format(date.from, 'LLL dd, y')
+                          )
                         ) : (
-                          format(date.from, 'LLL dd, y')
-                        )
-                      ) : (
-                        <span>Pick a date range</span>
-                      )}
-                    </button>
+                          <span>Pick a date range</span>
+                        )}
+                      </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="end">
                       <Calendar
