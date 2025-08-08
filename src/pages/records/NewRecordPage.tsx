@@ -150,8 +150,8 @@ const NewRecordPage = () => {
   useEffect(() => {
     const fetchLookupValues = async () => {
       try {
-        // Fetch country of birth lookup values (lookupId = 4)
-        const countryOfBirthData = await lookupService.getLookupValues(4, {
+        // Fetch country of birth lookup values by key
+        const countryOfBirthData = await lookupService.getLookupValuesByKey('CountryOfBirth', {
           pageNumber: 1,
           pageSize: 100
         });
@@ -159,8 +159,8 @@ const NewRecordPage = () => {
           countryOfBirthData.items.map((item) => ({ id: item.id, value: item.value }))
         );
 
-        // Fetch nationality lookup values (lookupId = 7)
-        const nationalityData = await lookupService.getLookupValues(7, {
+        // Fetch nationality lookup values by key
+        const nationalityData = await lookupService.getLookupValuesByKey('Nationality', {
           pageNumber: 1,
           pageSize: 100
         });

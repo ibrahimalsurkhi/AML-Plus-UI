@@ -2702,38 +2702,44 @@ export const TemplateDetailsPage = () => {
         lookupId: null
       };
 
-      // Create sample options for read-only fields to demonstrate the functionality
+      // Fetch real options from API for Nationality and Country of Birth fields
       let sampleOptions: FieldOption[] = [];
       if (fieldName === 'Nationality') {
-        sampleOptions = [
-          { id: 1, fieldId: 0, label: 'American', displayOrder: 1, scoreCriteriaId: 0 },
-          { id: 2, fieldId: 0, label: 'British', displayOrder: 2, scoreCriteriaId: 0 },
-          { id: 3, fieldId: 0, label: 'Canadian', displayOrder: 3, scoreCriteriaId: 0 },
-          { id: 4, fieldId: 0, label: 'Australian', displayOrder: 4, scoreCriteriaId: 0 },
-          { id: 5, fieldId: 0, label: 'German', displayOrder: 5, scoreCriteriaId: 0 },
-          { id: 6, fieldId: 0, label: 'French', displayOrder: 6, scoreCriteriaId: 0 },
-          { id: 7, fieldId: 0, label: 'Italian', displayOrder: 7, scoreCriteriaId: 0 },
-          { id: 8, fieldId: 0, label: 'Spanish', displayOrder: 8, scoreCriteriaId: 0 },
-          { id: 9, fieldId: 0, label: 'Dutch', displayOrder: 9, scoreCriteriaId: 0 },
-          { id: 10, fieldId: 0, label: 'Swedish', displayOrder: 10, scoreCriteriaId: 0 },
-          { id: 11, fieldId: 0, label: 'Norwegian', displayOrder: 11, scoreCriteriaId: 0 },
-          { id: 12, fieldId: 0, label: 'Danish', displayOrder: 12, scoreCriteriaId: 0 }
-        ];
+        try {
+          const nationalityData = await lookupService.getLookupValuesByKey('Nationality', {
+            pageNumber: 1,
+            pageSize: 100
+          });
+          sampleOptions = nationalityData.items.map((item, index) => ({
+            id: item.id,
+            fieldId: 0,
+            label: item.value,
+            displayOrder: index + 1,
+            scoreCriteriaId: 0
+          }));
+        } catch (error) {
+          console.error('Error fetching nationality options:', error);
+          // Fallback to empty options if API fails
+          sampleOptions = [];
+        }
       } else if (fieldName === 'Country of Birth') {
-        sampleOptions = [
-          { id: 13, fieldId: 0, label: 'United States', displayOrder: 1, scoreCriteriaId: 0 },
-          { id: 14, fieldId: 0, label: 'United Kingdom', displayOrder: 2, scoreCriteriaId: 0 },
-          { id: 15, fieldId: 0, label: 'Canada', displayOrder: 3, scoreCriteriaId: 0 },
-          { id: 16, fieldId: 0, label: 'Australia', displayOrder: 4, scoreCriteriaId: 0 },
-          { id: 17, fieldId: 0, label: 'Germany', displayOrder: 5, scoreCriteriaId: 0 },
-          { id: 18, fieldId: 0, label: 'France', displayOrder: 6, scoreCriteriaId: 0 },
-          { id: 19, fieldId: 0, label: 'Italy', displayOrder: 7, scoreCriteriaId: 0 },
-          { id: 20, fieldId: 0, label: 'Spain', displayOrder: 8, scoreCriteriaId: 0 },
-          { id: 21, fieldId: 0, label: 'Netherlands', displayOrder: 9, scoreCriteriaId: 0 },
-          { id: 22, fieldId: 0, label: 'Sweden', displayOrder: 10, scoreCriteriaId: 0 },
-          { id: 23, fieldId: 0, label: 'Norway', displayOrder: 11, scoreCriteriaId: 0 },
-          { id: 24, fieldId: 0, label: 'Denmark', displayOrder: 12, scoreCriteriaId: 0 }
-        ];
+        try {
+          const countryOfBirthData = await lookupService.getLookupValuesByKey('CountryOfBirth', {
+            pageNumber: 1,
+            pageSize: 100
+          });
+          sampleOptions = countryOfBirthData.items.map((item, index) => ({
+            id: item.id,
+            fieldId: 0,
+            label: item.value,
+            displayOrder: index + 1,
+            scoreCriteriaId: 0
+          }));
+        } catch (error) {
+          console.error('Error fetching country of birth options:', error);
+          // Fallback to empty options if API fails
+          sampleOptions = [];
+        }
       }
 
       // Set the selected field and options for the dialog

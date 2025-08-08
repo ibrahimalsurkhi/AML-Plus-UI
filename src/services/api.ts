@@ -528,6 +528,15 @@ export const lookupService = {
     });
     return response.data;
   },
+  getLookupValuesByKey: async (
+    key: string,
+    params: LookupValueQueryParams
+  ): Promise<PaginatedResponse<LookupValue>> => {
+    const response = await api.get<PaginatedResponse<LookupValue>>(`/Lookups/values/by-key/${key}`, {
+      params
+    });
+    return response.data;
+  },
   getLookupValueById: async (id: number): Promise<LookupValue> => {
     const response = await api.get<LookupValue>(`/Lookups/values/${id}`);
     return response.data;
