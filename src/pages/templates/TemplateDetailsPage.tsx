@@ -13,6 +13,7 @@ import {
   type FieldOption,
   TemplateType,
   type Lookup,
+  type LookupValue,
   lookupService,
   type TemplateSection,
   type TemplateFieldsResponse
@@ -480,6 +481,58 @@ const StatusIcon = ({ status }: { status: TemplateStatus }) => {
   };
 
   return <Icon name={icons[status]} className={colors[status]} />;
+};
+
+// Component to render score criteria badge with fallback to template score criteria
+const ScoreCriteriaBadge = ({ 
+  option, 
+  scoreCriteria, 
+  lookupValue 
+}: { 
+  option: FieldOption; 
+  scoreCriteria: ScoreCriteria[]; 
+  lookupValue?: LookupValue;
+}) => {
+  // First try to use lookup value score criteria data
+  if (lookupValue?.scoreCriteriaKey && lookupValue?.scoreCriteriaBGColor && lookupValue?.scoreCriteriaColor) {
+    return (
+      <div className="flex items-center gap-2">
+        <Badge
+          style={{
+            backgroundColor: lookupValue.scoreCriteriaBGColor,
+            color: lookupValue.scoreCriteriaColor
+          }}
+        >
+          {lookupValue.scoreCriteriaKey}
+        </Badge>
+        <span className="text-sm text-gray-500">
+          ({lookupValue.scoreCriteriaScore?.toFixed(2) || '0.00'})
+        </span>
+      </div>
+    );
+  }
+
+  // Fallback to template score criteria
+  const criteria = scoreCriteria.find((c) => c.id === option.scoreCriteriaId);
+  if (criteria) {
+    return (
+      <div className="flex items-center gap-2">
+        <Badge
+          style={{
+            backgroundColor: criteria.bgColor,
+            color: criteria.color
+          }}
+        >
+          {criteria.key}
+        </Badge>
+        <span className="text-sm text-gray-500">
+          ({criteria.score.toFixed(2)})
+        </span>
+      </div>
+    );
+  }
+
+  return <span className="text-gray-500">Not assigned</span>;
 };
 
 const InfoCard = ({
@@ -1320,7 +1373,8 @@ const FieldOptionsDialog = ({
   onCreateOption,
   onUpdateOption,
   onDeleteOption,
-  templateType
+  templateType,
+  lookupValues = []
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1331,6 +1385,7 @@ const FieldOptionsDialog = ({
   onUpdateOption: (optionId: number, option: Omit<FieldOption, 'id' | 'fieldId'>) => void;
   onDeleteOption: (option: FieldOption) => void;
   templateType: TemplateType;
+  lookupValues?: LookupValue[];
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedOption, setSelectedOption] = useState<FieldOption | null>(null);
@@ -1471,7 +1526,7 @@ const FieldOptionsDialog = ({
               )}
             </div>
 
-            {options.length === 0 ? (
+            {options.length === 0 && lookupValues.length === 0 ? (
               <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
                 <Icon name="list" className="mx-auto text-gray-400 text-3xl mb-2" />
                 <p className="text-gray-600">
@@ -1511,31 +1566,19 @@ const FieldOptionsDialog = ({
                       {options
                         .sort((a, b) => a.displayOrder - b.displayOrder)
                         .map((option) => {
-                          const criteria = scoreCriteria.find(
-                            (c) => c.id === option.scoreCriteriaId
-                          );
+                          // Find corresponding lookup value for this option
+                          const lookupValue = lookupValues.find(lv => lv.id === option.id);
+                          
                           return (
                             <TableRow key={option.id}>
                               <TableCell className="font-medium">{option.label}</TableCell>
                               {templateType === TemplateType.Record && (
                                 <TableCell>
-                                  {criteria ? (
-                                    <div className="flex items-center gap-2">
-                                      <Badge
-                                        style={{
-                                          backgroundColor: criteria.bgColor,
-                                          color: criteria.color
-                                        }}
-                                      >
-                                        {criteria.key}
-                                      </Badge>
-                                      <span className="text-sm text-gray-500">
-                                        ({criteria.score.toFixed(2)})
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-gray-500">Not assigned</span>
-                                  )}
+                                  <ScoreCriteriaBadge 
+                                    option={option}
+                                    scoreCriteria={scoreCriteria}
+                                    lookupValue={lookupValue}
+                                  />
                                 </TableCell>
                               )}
                               <TableCell>{option.displayOrder}</TableCell>
@@ -2172,6 +2215,8 @@ export const TemplateDetailsPage = () => {
 
   // Field Options states
   const [fieldOptions, setFieldOptions] = useState<FieldOption[]>([]);
+  const [lookupValues, setLookupValues] = useState<LookupValue[]>([]);
+  const [currentReadOnlyFieldName, setCurrentReadOnlyFieldName] = useState<string | null>(null);
   const [optionsDialogOpen, setOptionsDialogOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState<FieldOption | null>(null);
   const [optionFieldId, setOptionFieldId] = useState<number | null>(null);
@@ -2482,7 +2527,6 @@ export const TemplateDetailsPage = () => {
     optionId: number,
     option: Omit<FieldOption, 'id' | 'fieldId'>
   ) => {
-    debugger;
     if (!id || !optionFieldId) return;
     // For read-only fields (negative IDs), allow score updates but block other changes
     if (optionFieldId < 0) {
@@ -2491,9 +2535,16 @@ export const TemplateDetailsPage = () => {
       try {
         await templateService.updateFieldOption(id, optionFieldId, originalOption?.id || 0, option);
 
-        // Refresh options from server
-        const updatedOptions = await templateService.getFieldOptions(id, optionFieldId);
-        setFieldOptions(updatedOptions);
+        // For read-only fields, refresh lookup data to get updated score criteria
+        if (currentReadOnlyFieldName) {
+          const { lookupData, sampleOptions } = await refreshLookupValues(currentReadOnlyFieldName);
+          setFieldOptions(sampleOptions);
+          setLookupValues(lookupData);
+        } else {
+          // Fallback: Refresh options from server
+          const updatedOptions = await templateService.getFieldOptions(id, optionFieldId);
+          setFieldOptions(updatedOptions);
+        }
         setSelectedOption(null);
 
         toast({
@@ -2743,6 +2794,56 @@ export const TemplateDetailsPage = () => {
     }
   };
 
+  const refreshLookupValues = async (fieldName: string) => {
+    let lookupData: LookupValue[] = [];
+    let sampleOptions: FieldOption[] = [];
+    const mockFieldId = -Math.floor(Math.random() * 1000); // Use negative ID for mock fields
+
+    if (fieldName === 'Nationality') {
+      try {
+        const nationalityData = await lookupService.getLookupValuesByKey('Nationality', {
+          templateId: template?.id,
+          pageNumber: 1,
+          pageSize: 100
+        });
+        lookupData = nationalityData.items;
+        sampleOptions = nationalityData.items.map((item, index) => ({
+          id: item.id,
+          fieldId: mockFieldId,
+          label: item.value,
+          displayOrder: index + 1,
+          scoreCriteriaId: item.scoreCriteriaId || 0
+        }));
+      } catch (error) {
+        console.error('Error fetching nationality options:', error);
+        lookupData = [];
+        sampleOptions = [];
+      }
+    } else if (fieldName === 'Country of Birth') {
+      try {
+        const countryOfBirthData = await lookupService.getLookupValuesByKey('CountryOfBirth', {
+          templateId: template?.id,
+          pageNumber: 1,
+          pageSize: 100
+        });
+        lookupData = countryOfBirthData.items;
+        sampleOptions = countryOfBirthData.items.map((item, index) => ({
+          id: item.id,
+          fieldId: mockFieldId,
+          label: item.value,
+          displayOrder: index + 1,
+          scoreCriteriaId: item.scoreCriteriaId || 0
+        }));
+      } catch (error) {
+        console.error('Error fetching country of birth options:', error);
+        lookupData = [];
+        sampleOptions = [];
+      }
+    }
+
+    return { lookupData, sampleOptions, mockFieldId };
+  };
+
   const handleOpenReadOnlyOptionsDialog = async (fieldName: string) => {
     try {
       // For read-only fields, we'll create a mock field object to display in the dialog
@@ -2763,51 +2864,14 @@ export const TemplateDetailsPage = () => {
       };
 
       // Fetch real options from API for Nationality and Country of Birth fields
-      let sampleOptions: FieldOption[] = [];
-      if (fieldName === 'Nationality') {
-        try {
-          const nationalityData = await lookupService.getLookupValuesByKey('Nationality', {
-            templateId: template?.id,
-            pageNumber: 1,
-            pageSize: 100
-          });
-          sampleOptions = nationalityData.items.map((item, index) => ({
-            id: item.id,
-            fieldId: mockFieldId,
-            label: item.value,
-            displayOrder: index + 1,
-            scoreCriteriaId: 0
-          }));
-        } catch (error) {
-          console.error('Error fetching nationality options:', error);
-          // Fallback to empty options if API fails
-          sampleOptions = [];
-        }
-      } else if (fieldName === 'Country of Birth') {
-        try {
-          const countryOfBirthData = await lookupService.getLookupValuesByKey('CountryOfBirth', {
-            templateId: template?.id,
-            pageNumber: 1,
-            pageSize: 100
-          });
-          sampleOptions = countryOfBirthData.items.map((item, index) => ({
-            id: item.id,
-            fieldId: mockFieldId,
-            label: item.value,
-            displayOrder: index + 1,
-            scoreCriteriaId: 0
-          }));
-        } catch (error) {
-          console.error('Error fetching country of birth options:', error);
-          // Fallback to empty options if API fails
-          sampleOptions = [];
-        }
-      }
+      const { lookupData, sampleOptions } = await refreshLookupValues(fieldName);
 
       // Set the selected field and options for the dialog
       setSelectedField(mockField);
       setOptionFieldId(mockFieldId); // Set this so the dialog can find the field
       setFieldOptions(sampleOptions);
+      setLookupValues(lookupData);
+      setCurrentReadOnlyFieldName(fieldName);
       setOptionsDialogOpen(true);
     } catch (error) {
       console.error('Error opening read-only options dialog:', error);
@@ -4025,6 +4089,8 @@ export const TemplateDetailsPage = () => {
               setSelectedField(null);
               setOptionFieldId(null);
               setFieldOptions([]);
+              setLookupValues([]);
+              setCurrentReadOnlyFieldName(null);
             }
           }}
           field={optionFieldId && optionFieldId < 0 ? selectedField : getAllTemplateFields().find((f) => f.id === optionFieldId) || null}
@@ -4034,6 +4100,7 @@ export const TemplateDetailsPage = () => {
           onUpdateOption={handleUpdateOption}
           onDeleteOption={confirmDeleteOption}
           templateType={template.templateType}
+          lookupValues={lookupValues}
         />
 
         <ScoreCriteriaRangeDialog

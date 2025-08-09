@@ -500,6 +500,11 @@ export interface LookupValue {
   id: number;
   lookupId: number;
   value: string;
+  scoreCriteriaId?: number;
+  scoreCriteriaKey?: string;
+  scoreCriteriaScore?: number;
+  scoreCriteriaBGColor?: string;
+  scoreCriteriaColor?: string;
 }
 
 export interface LookupQueryParams {
