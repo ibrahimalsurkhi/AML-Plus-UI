@@ -2283,6 +2283,21 @@ export const TemplateDetailsPage = () => {
     return [...sectionFields, ...fieldsWithoutSection];
   };
 
+  // Helper function to calculate weight distribution percentages
+  const calculateWeightDistribution = (fields: TemplateField[], currentFieldWeight: number): string => {
+    const totalWeight = fields.reduce((sum, field) => sum + field.weight, 0);
+    if (totalWeight === 0) return '0.0';
+    
+    const percentage = (currentFieldWeight / totalWeight) * 100;
+    return percentage.toFixed(1);
+  };
+
+  // Helper function to get fields for distribution calculation (section-specific)
+  const getSectionFields = (sectionId: number): TemplateField[] => {
+    const section = templateSections.find(s => s.id === sectionId);
+    return section ? section.fields : [];
+  };
+
   const fetchTemplateFields = async (templateId: string) => {
     try {
       const data = await templateService.getTemplateFields(templateId);
@@ -3458,7 +3473,10 @@ export const TemplateDetailsPage = () => {
                                   <TableHead>Field</TableHead>
                                   <TableHead>Type</TableHead>
                                   {template.templateType === TemplateType.Record && (
-                                    <TableHead>Weight</TableHead>
+                                    <>
+                                      <TableHead>Weight</TableHead>
+                                      <TableHead>Distribution (%)</TableHead>
+                                    </>
                                   )}
                                   <TableHead>Required</TableHead>
                                   <TableHead className="text-right">Actions</TableHead>
@@ -3467,7 +3485,6 @@ export const TemplateDetailsPage = () => {
                               <TableBody>
                                 {section.fields.map((field) => {
                                   const fieldId = typeof field.id === 'number' ? field.id : null;
-                                  console.log('Field data:', field, 'fieldId:', fieldId);
 
                                   return (
                                     <TableRow key={field.id}>
@@ -3527,65 +3544,72 @@ export const TemplateDetailsPage = () => {
                                         </div>
                                       </TableCell>
                                       {template.templateType === TemplateType.Record && (
-                                        <TableCell>
-                                          {fieldId && (
-                                            <div className="flex items-center gap-2">
-                                              {editingWeight?.id === fieldId ? (
-                                                <div className="flex items-center gap-2">
-                                                  <Input
-                                                    type="number"
-                                                    min={0}
-                                                    step={0.1}
-                                                    value={editingWeight.value}
-                                                    onChange={(e) =>
-                                                      setEditingWeight({
-                                                        id: fieldId,
-                                                        value: Number(e.target.value)
-                                                      })
-                                                    }
-                                                    className="w-20"
-                                                  />
-                                                  <Button
-                                                    size="sm"
-                                                    onClick={() =>
-                                                      handleUpdateWeight(
-                                                        fieldId,
-                                                        editingWeight.value
-                                                      )
-                                                    }
-                                                  >
-                                                    <Icon name="check" className="text-green-500" />
-                                                  </Button>
-                                                  <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => setEditingWeight(null)}
-                                                  >
-                                                    <Icon name="close" className="text-gray-500" />
-                                                  </Button>
-                                                </div>
-                                              ) : (
-                                                <div className="flex items-center gap-2">
-                                                  <span className="text-sm font-medium">
-                                                    {field.weight}
-                                                  </span>
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                      setEditingWeight({
-                                                        id: fieldId,
-                                                        value: field.weight
-                                                      })
-                                                    }
-                                                  >
-                                                    <Icon name="edit" className="text-gray-500" />
-                                                  </Button>
-                                                </div>
-                                              )}
-                                            </div>
-                                          )}
-                                        </TableCell>
+                                        <>
+                                          <TableCell>
+                                            {fieldId && (
+                                              <div className="flex items-center gap-2">
+                                                {editingWeight?.id === fieldId ? (
+                                                  <div className="flex items-center gap-2">
+                                                    <Input
+                                                      type="number"
+                                                      min={0}
+                                                      step={0.1}
+                                                      value={editingWeight.value}
+                                                      onChange={(e) =>
+                                                        setEditingWeight({
+                                                          id: fieldId,
+                                                          value: Number(e.target.value)
+                                                        })
+                                                      }
+                                                      className="w-20"
+                                                    />
+                                                    <Button
+                                                      size="sm"
+                                                      onClick={() =>
+                                                        handleUpdateWeight(
+                                                          fieldId,
+                                                          editingWeight.value
+                                                        )
+                                                      }
+                                                    >
+                                                      <Icon name="check" className="text-green-500" />
+                                                    </Button>
+                                                    <Button
+                                                      size="sm"
+                                                      variant="ghost"
+                                                      onClick={() => setEditingWeight(null)}
+                                                    >
+                                                      <Icon name="close" className="text-gray-500" />
+                                                    </Button>
+                                                  </div>
+                                                ) : (
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium">
+                                                      {field.weight}
+                                                    </span>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      onClick={() =>
+                                                        setEditingWeight({
+                                                          id: fieldId,
+                                                          value: field.weight
+                                                        })
+                                                      }
+                                                    >
+                                                      <Icon name="edit" className="text-gray-500" />
+                                                    </Button>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            )}
+                                          </TableCell>
+                                          <TableCell>
+                                            <span className="text-sm text-gray-600">
+                                              {calculateWeightDistribution(getSectionFields(section.id), field.weight)}%
+                                            </span>
+                                          </TableCell>
+                                        </>
                                       )}
                                       <TableCell>
                                         {field.isRequired ? (
@@ -3707,7 +3731,10 @@ export const TemplateDetailsPage = () => {
                               <TableHead>Field</TableHead>
                               <TableHead>Type</TableHead>
                               {template.templateType === TemplateType.Record && (
-                                <TableHead>Weight</TableHead>
+                                <>
+                                  <TableHead>Weight</TableHead>
+                                  <TableHead>Distribution (%)</TableHead>
+                                </>
                               )}
                               <TableHead>Required</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
@@ -3716,12 +3743,6 @@ export const TemplateDetailsPage = () => {
                           <TableBody>
                             {fieldsWithoutSection.map((field) => {
                               const fieldId = typeof field.id === 'number' ? field.id : null;
-                              console.log(
-                                'Field without section data:',
-                                field,
-                                'fieldId:',
-                                fieldId
-                              );
 
                               return (
                                 <TableRow key={field.id}>
@@ -3772,62 +3793,69 @@ export const TemplateDetailsPage = () => {
                                     </div>
                                   </TableCell>
                                   {template.templateType === TemplateType.Record && (
-                                    <TableCell>
-                                      {fieldId && (
-                                        <div className="flex items-center gap-2">
-                                          {editingWeight?.id === fieldId ? (
-                                            <div className="flex items-center gap-2">
-                                              <Input
-                                                type="number"
-                                                min={0}
-                                                step={0.1}
-                                                value={editingWeight.value}
-                                                onChange={(e) =>
-                                                  setEditingWeight({
-                                                    id: fieldId,
-                                                    value: Number(e.target.value)
-                                                  })
-                                                }
-                                                className="w-20"
-                                              />
-                                              <Button
-                                                size="sm"
-                                                onClick={() =>
-                                                  handleUpdateWeight(fieldId, editingWeight.value)
-                                                }
-                                              >
-                                                <Icon name="check" className="text-green-500" />
-                                              </Button>
-                                              <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => setEditingWeight(null)}
-                                              >
-                                                <Icon name="close" className="text-gray-500" />
-                                              </Button>
-                                            </div>
-                                          ) : (
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-sm font-medium">
-                                                {field.weight}
-                                              </span>
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() =>
-                                                  setEditingWeight({
-                                                    id: fieldId,
-                                                    value: field.weight
-                                                  })
-                                                }
-                                              >
-                                                <Icon name="edit" className="text-gray-500" />
-                                              </Button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </TableCell>
+                                    <>
+                                      <TableCell>
+                                        {fieldId && (
+                                          <div className="flex items-center gap-2">
+                                            {editingWeight?.id === fieldId ? (
+                                              <div className="flex items-center gap-2">
+                                                <Input
+                                                  type="number"
+                                                  min={0}
+                                                  step={0.1}
+                                                  value={editingWeight.value}
+                                                  onChange={(e) =>
+                                                    setEditingWeight({
+                                                      id: fieldId,
+                                                      value: Number(e.target.value)
+                                                    })
+                                                  }
+                                                  className="w-20"
+                                                />
+                                                <Button
+                                                  size="sm"
+                                                  onClick={() =>
+                                                    handleUpdateWeight(fieldId, editingWeight.value)
+                                                  }
+                                                >
+                                                  <Icon name="check" className="text-green-500" />
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  onClick={() => setEditingWeight(null)}
+                                                >
+                                                  <Icon name="close" className="text-gray-500" />
+                                                </Button>
+                                              </div>
+                                            ) : (
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-sm font-medium">
+                                                  {field.weight}
+                                                </span>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() =>
+                                                    setEditingWeight({
+                                                      id: fieldId,
+                                                      value: field.weight
+                                                    })
+                                                  }
+                                                >
+                                                  <Icon name="edit" className="text-gray-500" />
+                                                </Button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        <span className="text-sm text-gray-600">
+                                          {calculateWeightDistribution(fieldsWithoutSection, field.weight)}%
+                                        </span>
+                                      </TableCell>
+                                    </>
                                   )}
                                   <TableCell>
                                     {field.isRequired ? (
