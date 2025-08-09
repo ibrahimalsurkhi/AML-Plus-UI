@@ -965,44 +965,44 @@ const TemplateFieldDialog = ({
             {/* Additional validation fields based on field type */}
             {(formData.fieldType === FieldType.Text ||
               formData.fieldType === FieldType.TextArea) && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="minLength">Min Length</Label>
-                  <Input
-                    id="minLength"
-                    type="number"
-                    min={0}
-                    value={formData.minLength || ''}
-                    onChange={(e) => {
-                      const value = e.target.value ? Number(e.target.value) : null;
-                      setFormData({ ...formData, minLength: value });
-                      if (errors.minLength) {
-                        setErrors({ ...errors, minLength: '' });
-                      }
-                    }}
-                    placeholder="Min length"
-                    className={errors.minLength ? 'border-red-500 focus-visible:ring-red-500' : ''}
-                  />
-                  {errors.minLength && (
-                    <p className="text-red-500 text-sm mt-1">{errors.minLength}</p>
-                  )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="minLength">Min Length</Label>
+                    <Input
+                      id="minLength"
+                      type="number"
+                      min={0}
+                      value={formData.minLength || ''}
+                      onChange={(e) => {
+                        const value = e.target.value ? Number(e.target.value) : null;
+                        setFormData({ ...formData, minLength: value });
+                        if (errors.minLength) {
+                          setErrors({ ...errors, minLength: '' });
+                        }
+                      }}
+                      placeholder="Min length"
+                      className={errors.minLength ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                    />
+                    {errors.minLength && (
+                      <p className="text-red-500 text-sm mt-1">{errors.minLength}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="maxLength">Max Length</Label>
+                    <Input
+                      id="maxLength"
+                      type="number"
+                      min={0}
+                      value={formData.maxLength || ''}
+                      onChange={(e) => {
+                        const value = e.target.value ? Number(e.target.value) : null;
+                        setFormData({ ...formData, maxLength: value });
+                      }}
+                      placeholder="Max length"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxLength">Max Length</Label>
-                  <Input
-                    id="maxLength"
-                    type="number"
-                    min={0}
-                    value={formData.maxLength || ''}
-                    onChange={(e) => {
-                      const value = e.target.value ? Number(e.target.value) : null;
-                      setFormData({ ...formData, maxLength: value });
-                    }}
-                    placeholder="Max length"
-                  />
-                </div>
-              </div>
-            )}
+              )}
 
             {formData.fieldType === FieldType.Number && (
               <div className="grid grid-cols-2 gap-4">
@@ -1120,6 +1120,7 @@ const OptionForm = ({
   scoreCriteria,
   onCancel,
   isCheckboxField,
+  isReadOnlyField,
   templateType
 }: {
   onSubmit: (data: Omit<FieldOption, 'id' | 'fieldId'>) => void;
@@ -1127,6 +1128,7 @@ const OptionForm = ({
   scoreCriteria: ScoreCriteria[];
   onCancel: () => void;
   isCheckboxField?: boolean;
+  isReadOnlyField?: boolean;
   templateType: TemplateType;
 }) => {
   const defaultOption: Omit<FieldOption, 'id' | 'fieldId'> = {
@@ -1161,7 +1163,7 @@ const OptionForm = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!isCheckboxField && !formData.label?.trim()) {
+    if (!isCheckboxField && !isReadOnlyField && !formData.label?.trim()) {
       newErrors.label = 'Label is required';
     }
 
@@ -1243,7 +1245,8 @@ const OptionForm = ({
             }}
             placeholder="Enter option label"
             className={errors.label ? 'border-red-500 focus-visible:ring-red-500' : ''}
-            disabled={isCheckboxField}
+            disabled={isCheckboxField || isReadOnlyField}
+            readOnly={isReadOnlyField}
           />
           {errors.label && <p className="text-red-500 text-sm mt-1">{errors.label}</p>}
         </div>
@@ -1301,7 +1304,7 @@ const OptionForm = ({
           type="submit"
           disabled={templateType === TemplateType.Record && scoreCriteria.length === 0}
         >
-          {isCheckboxField ? 'Update Score' : initialData ? 'Update' : 'Create'}
+          {isCheckboxField || isReadOnlyField ? 'Update Score' : initialData ? 'Update' : 'Create'}
         </Button>
       </div>
     </form>
@@ -1332,7 +1335,7 @@ const FieldOptionsDialog = ({
   const [isEditing, setIsEditing] = useState(false);
   const [selectedOption, setSelectedOption] = useState<FieldOption | null>(null);
   const isCheckboxField = field?.fieldType === FieldType.Checkbox;
-  const isReadOnlyField = field?.readOnly || field?.fieldType === FieldType.Lookup;
+  const isReadOnlyField = field?.readOnly;
 
   useEffect(() => {
     if (!open) {
@@ -1451,6 +1454,7 @@ const FieldOptionsDialog = ({
             scoreCriteria={scoreCriteria}
             onCancel={handleCancelEdit}
             isCheckboxField={isCheckboxField}
+            isReadOnlyField={isReadOnlyField}
             templateType={templateType}
           />
         ) : (
@@ -1537,6 +1541,7 @@ const FieldOptionsDialog = ({
                               <TableCell>{option.displayOrder}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
+
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -1545,6 +1550,7 @@ const FieldOptionsDialog = ({
                                   >
                                     <Icon name="edit" className="text-gray-500" />
                                   </Button>
+
                                   {!isCheckboxField && !isReadOnlyField && (
                                     <Button
                                       variant="ghost"
@@ -2440,6 +2446,16 @@ export const TemplateDetailsPage = () => {
   const handleCreateOption = async (option: Omit<FieldOption, 'id' | 'fieldId'>) => {
     if (!id || !optionFieldId) return;
 
+    // Skip API calls for read-only fields (negative IDs)
+    if (optionFieldId < 0) {
+      toast({
+        title: 'Not Allowed',
+        description: 'Cannot create new options for read-only dropdown fields. Options are managed externally.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     try {
       await templateService.createFieldOption(id, optionFieldId, option);
 
@@ -2466,28 +2482,58 @@ export const TemplateDetailsPage = () => {
     optionId: number,
     option: Omit<FieldOption, 'id' | 'fieldId'>
   ) => {
+    debugger;
     if (!id || !optionFieldId) return;
+    // For read-only fields (negative IDs), allow score updates but block other changes
+    if (optionFieldId < 0) {
+      // Find the original option to check if only score is being updated
+      const originalOption = fieldOptions.find(opt => opt.id === optionId);
+      try {
+        await templateService.updateFieldOption(id, optionFieldId, originalOption?.id || 0, option);
 
-    try {
-      await templateService.updateFieldOption(id, optionFieldId, optionId, option);
+        // Refresh options from server
+        const updatedOptions = await templateService.getFieldOptions(id, optionFieldId);
+        setFieldOptions(updatedOptions);
+        setSelectedOption(null);
 
-      // Refresh options from server
-      const updatedOptions = await templateService.getFieldOptions(id, optionFieldId);
-      setFieldOptions(updatedOptions);
-      setSelectedOption(null);
+        toast({
+          title: 'Success',
+          description: 'Option updated successfully'
+        });
+      } catch (err) {
+        console.error('Error updating option:', err);
+        toast({
+          title: 'Error',
+          description: 'Failed to update option',
+          variant: 'destructive'
+        });
+      }
 
-      toast({
-        title: 'Success',
-        description: 'Option updated successfully'
-      });
-    } catch (err) {
-      console.error('Error updating option:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to update option',
-        variant: 'destructive'
-      });
+
     }
+    else {
+      try {
+        await templateService.updateFieldOption(id, optionFieldId, optionId, option);
+
+        // Refresh options from server
+        const updatedOptions = await templateService.getFieldOptions(id, optionFieldId);
+        setFieldOptions(updatedOptions);
+        setSelectedOption(null);
+
+        toast({
+          title: 'Success',
+          description: 'Option updated successfully'
+        });
+      } catch (err) {
+        console.error('Error updating option:', err);
+        toast({
+          title: 'Error',
+          description: 'Failed to update option',
+          variant: 'destructive'
+        });
+      }
+    }
+
   };
 
   const confirmDeleteOption = (option: FieldOption) => {
@@ -2497,6 +2543,18 @@ export const TemplateDetailsPage = () => {
 
   const handleDeleteOption = async (optionId: number) => {
     if (!id || !optionFieldId) return;
+
+    // Skip API calls for read-only fields (negative IDs)
+    if (optionFieldId < 0) {
+      toast({
+        title: 'Not Allowed',
+        description: 'Cannot delete options for read-only dropdown fields. Options are managed externally.',
+        variant: 'destructive'
+      });
+      setOptionToDelete(null);
+      setDeleteOptionDialogOpen(false);
+      return;
+    }
 
     try {
       await templateService.deleteFieldOption(id, optionFieldId, optionId);
@@ -2688,8 +2746,10 @@ export const TemplateDetailsPage = () => {
   const handleOpenReadOnlyOptionsDialog = async (fieldName: string) => {
     try {
       // For read-only fields, we'll create a mock field object to display in the dialog
+      // Use a negative ID to distinguish from real fields
+      const mockFieldId = -Math.abs(fieldName === 'Nationality' ? 1 : 2);
       const mockField: TemplateField = {
-        id: 0, // This won't be used for read-only fields
+        id: mockFieldId,
         label: fieldName,
         fieldType: FieldType.Dropdown,
         isRequired: true,
@@ -2707,12 +2767,13 @@ export const TemplateDetailsPage = () => {
       if (fieldName === 'Nationality') {
         try {
           const nationalityData = await lookupService.getLookupValuesByKey('Nationality', {
+            templateId: template?.id,
             pageNumber: 1,
             pageSize: 100
           });
           sampleOptions = nationalityData.items.map((item, index) => ({
             id: item.id,
-            fieldId: 0,
+            fieldId: mockFieldId,
             label: item.value,
             displayOrder: index + 1,
             scoreCriteriaId: 0
@@ -2725,12 +2786,13 @@ export const TemplateDetailsPage = () => {
       } else if (fieldName === 'Country of Birth') {
         try {
           const countryOfBirthData = await lookupService.getLookupValuesByKey('CountryOfBirth', {
+            templateId: template?.id,
             pageNumber: 1,
             pageSize: 100
           });
           sampleOptions = countryOfBirthData.items.map((item, index) => ({
             id: item.id,
-            fieldId: 0,
+            fieldId: mockFieldId,
             label: item.value,
             displayOrder: index + 1,
             scoreCriteriaId: 0
@@ -2744,6 +2806,7 @@ export const TemplateDetailsPage = () => {
 
       // Set the selected field and options for the dialog
       setSelectedField(mockField);
+      setOptionFieldId(mockFieldId); // Set this so the dialog can find the field
       setFieldOptions(sampleOptions);
       setOptionsDialogOpen(true);
     } catch (error) {
@@ -2837,6 +2900,38 @@ export const TemplateDetailsPage = () => {
     } finally {
       setSectionToDelete(null);
       setDeleteSectionDialogOpen(false);
+    }
+  };
+
+  const handleDefaultScoreCriteriaChange = async (value: string) => {
+    if (!id) return;
+
+    try {
+      const defaultScoreCriteriaId = value === '' ? null : Number(value);
+      await templateService.updateTemplateDefaultScoreCriteria(id, defaultScoreCriteriaId);
+
+      // Update local template state
+      setTemplate(prev => prev ? {
+        ...prev,
+        defaultScoreCriteriaId,
+        defaultScoreCriteria: defaultScoreCriteriaId
+          ? scoreCriteria.find(c => c.id === defaultScoreCriteriaId) || null
+          : null
+      } : null);
+
+      toast({
+        title: 'Success',
+        description: defaultScoreCriteriaId
+          ? 'Default score criteria updated successfully'
+          : 'Default score criteria cleared successfully'
+      });
+    } catch (err) {
+      console.error('Error updating default score criteria:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to update default score criteria',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -2976,6 +3071,37 @@ export const TemplateDetailsPage = () => {
                         {TemplateStatus[template.status]}
                       </p>
                     </div>
+                    {template.templateType === TemplateType.Record && (
+                      <>
+                        <Separator />
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-gray-500">Default Score Criteria</p>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={template.defaultScoreCriteriaId || ''}
+                              onChange={(e) => handleDefaultScoreCriteriaChange(e.target.value)}
+                              className="flex h-9 w-full max-w-xs rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <option value="">Select default score criteria</option>
+                              {scoreCriteria.map((criteria) => (
+                                <option key={criteria.id} value={criteria.id}>
+                                  {criteria.key} ({criteria.score.toFixed(2)})
+                                </option>
+                              ))}
+                            </select>
+                            {template.defaultScoreCriteriaId && (
+                              <button
+                                onClick={() => handleDefaultScoreCriteriaChange('')}
+                                className="text-gray-400 hover:text-gray-600 text-sm"
+                                title="Clear default score criteria"
+                              >
+                                <Icon name="close" className="text-base" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -3068,9 +3194,8 @@ export const TemplateDetailsPage = () => {
                         >
                           <Icon
                             name="expand_more"
-                            className={`text-blue-600 transition-transform duration-200 ${
-                              isPersonalInfoCollapsed ? 'rotate-180' : ''
-                            }`}
+                            className={`text-blue-600 transition-transform duration-200 ${isPersonalInfoCollapsed ? 'rotate-180' : ''
+                              }`}
                           />
                         </Button>
                       </div>
@@ -3212,9 +3337,8 @@ export const TemplateDetailsPage = () => {
                             >
                               <Icon
                                 name="expand_more"
-                                className={`text-gray-500 transition-transform duration-200 ${
-                                  collapsedSections.has(`section-${section.id}`) ? 'rotate-180' : ''
-                                }`}
+                                className={`text-gray-500 transition-transform duration-200 ${collapsedSections.has(`section-${section.id}`) ? 'rotate-180' : ''
+                                  }`}
                               />
                             </Button>
                             <Button
@@ -3505,9 +3629,8 @@ export const TemplateDetailsPage = () => {
                             >
                               <Icon
                                 name="expand_more"
-                                className={`text-gray-500 transition-transform duration-200 ${
-                                  isFieldsWithoutSectionCollapsed ? 'rotate-180' : ''
-                                }`}
+                                className={`text-gray-500 transition-transform duration-200 ${isFieldsWithoutSectionCollapsed ? 'rotate-180' : ''
+                                  }`}
                               />
                             </Button>
                           </div>
@@ -3895,8 +4018,16 @@ export const TemplateDetailsPage = () => {
         {/* Field Options Dialog */}
         <FieldOptionsDialog
           open={optionsDialogOpen}
-          onOpenChange={setOptionsDialogOpen}
-          field={getAllTemplateFields().find((f) => f.id === optionFieldId) || null}
+          onOpenChange={(open) => {
+            setOptionsDialogOpen(open);
+            if (!open) {
+              // Clear state when dialog closes
+              setSelectedField(null);
+              setOptionFieldId(null);
+              setFieldOptions([]);
+            }
+          }}
+          field={optionFieldId && optionFieldId < 0 ? selectedField : getAllTemplateFields().find((f) => f.id === optionFieldId) || null}
           options={fieldOptions}
           scoreCriteria={scoreCriteria}
           onCreateOption={handleCreateOption}

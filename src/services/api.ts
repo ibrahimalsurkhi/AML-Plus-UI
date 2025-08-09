@@ -50,6 +50,8 @@ export interface Template {
   status: TemplateStatus;
   version: number;
   templateType: TemplateType;
+  defaultScoreCriteriaId?: number | null;
+  defaultScoreCriteria?: ScoreCriteria | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -336,6 +338,17 @@ export const templateService = {
       }
     );
     return response.data;
+  },
+  updateTemplateDefaultScoreCriteria: async (
+    templateId: string,
+    defaultScoreCriteriaId: number | null
+  ): Promise<void> => {
+    await api.put(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/default-score-criteria`,
+      {
+        defaultScoreCriteriaId
+      }
+    );
   }
 };
 
@@ -495,6 +508,7 @@ export interface LookupQueryParams {
 }
 
 export interface LookupValueQueryParams {
+  templateId?: number;
   pageNumber: number;
   pageSize: number;
 }
