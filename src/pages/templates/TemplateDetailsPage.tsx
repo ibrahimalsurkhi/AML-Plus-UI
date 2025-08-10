@@ -2210,6 +2210,7 @@ export const TemplateDetailsPage = () => {
   const [fieldDialogOpen, setFieldDialogOpen] = useState(false);
   const [selectedField, setSelectedField] = useState<TemplateField | null>(null);
   const [editingWeight, setEditingWeight] = useState<{ id: number; value: number } | null>(null);
+  const [editingPersonalWeight, setEditingPersonalWeight] = useState<{ field: string; value: number } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fieldToDelete, setFieldToDelete] = useState<TemplateField | null>(null);
 
@@ -2253,7 +2254,15 @@ export const TemplateDetailsPage = () => {
     try {
       setLoading(true);
       const data = await templateService.getTemplateById(templateId);
-      setTemplate(data);
+      
+      // Ensure weight properties exist with default values
+      const templateWithDefaults = {
+        ...data,
+        countryOfBirthWeight: data.countryOfBirthWeight ?? 0,
+        nationalityWeight: data.nationalityWeight ?? 0
+      };
+      
+      setTemplate(templateWithDefaults);
       setError(null);
     } catch (err) {
       setError('Failed to fetch template details');
@@ -2283,19 +2292,50 @@ export const TemplateDetailsPage = () => {
     return [...sectionFields, ...fieldsWithoutSection];
   };
 
-  // Helper function to calculate weight distribution percentages
-  const calculateWeightDistribution = (fields: TemplateField[], currentFieldWeight: number): string => {
-    const totalWeight = fields.reduce((sum, field) => sum + field.weight, 0);
-    if (totalWeight === 0) return '0.0';
+  // Helper function to calculate global weight distribution percentages
+  const calculateGlobalWeightDistribution = (currentFieldWeight: number): string => {
+    if (!template) return '0.0';
     
-    const percentage = (currentFieldWeight / totalWeight) * 100;
+    // Get total weight from personal information
+    const personalInfoWeight = (template.countryOfBirthWeight || 0) + (template.nationalityWeight || 0);
+    
+    // Get total weight from all template fields
+    const allFields = getAllTemplateFields();
+    const templateFieldsWeight = allFields.reduce((sum, field) => sum + (field.weight || 0), 0);
+    
+    // Calculate global total weight
+    const globalTotalWeight = personalInfoWeight + templateFieldsWeight;
+    
+    if (globalTotalWeight === 0) return '0.0';
+    
+    const percentage = ((currentFieldWeight || 0) / globalTotalWeight) * 100;
     return percentage.toFixed(1);
+  };
+
+  // Helper function to calculate weight distribution percentages (legacy for backwards compatibility)
+  const calculateWeightDistribution = (fields: TemplateField[], currentFieldWeight: number): string => {
+    return calculateGlobalWeightDistribution(currentFieldWeight);
   };
 
   // Helper function to get fields for distribution calculation (section-specific)
   const getSectionFields = (sectionId: number): TemplateField[] => {
     const section = templateSections.find(s => s.id === sectionId);
     return section ? section.fields : [];
+  };
+
+  // Helper function to calculate personal information weight distribution
+  const calculatePersonalWeightDistribution = (currentWeight: number): string => {
+    return calculateGlobalWeightDistribution(currentWeight);
+  };
+
+  // Helper function to get weight for personal information fields
+  const getPersonalFieldWeight = (fieldLabel: string): number => {
+    if (fieldLabel === 'Country of Birth') {
+      return template?.countryOfBirthWeight || 0;
+    } else if (fieldLabel === 'Nationality') {
+      return template?.nationalityWeight || 0;
+    }
+    return 0;
   };
 
   const fetchTemplateFields = async (templateId: string) => {
@@ -2480,6 +2520,42 @@ export const TemplateDetailsPage = () => {
       });
     } finally {
       setEditingWeight(null);
+    }
+  };
+
+  const handleUpdatePersonalWeight = async (field: string, newWeight: number) => {
+    if (!template?.id) return;
+
+    try {
+      setEditingPersonalWeight(null);
+      
+      const weights: { countryOfBirthWeight?: number; nationalityWeight?: number } = {};
+      if (field === 'countryOfBirth') {
+        weights.countryOfBirthWeight = newWeight;
+      } else if (field === 'nationality') {
+        weights.nationalityWeight = newWeight;
+      }
+
+      await templateService.updateTemplateWeights(template.id.toString(), weights);
+
+      // Update the template weights in state
+      setTemplate(prev => prev ? {
+        ...prev,
+        countryOfBirthWeight: field === 'countryOfBirth' ? newWeight : prev.countryOfBirthWeight,
+        nationalityWeight: field === 'nationality' ? newWeight : prev.nationalityWeight
+      } : null);
+
+      toast({
+        title: 'Success',
+        description: 'Personal information weight updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating personal weight:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update personal information weight',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -2777,36 +2853,6 @@ export const TemplateDetailsPage = () => {
     // Fetch ranges before opening dialog
     await fetchScoreCriteriaRanges(id, field.id);
     setRangesDialogOpen(true);
-  };
-
-  const handleUpdateWeight = async (fieldId: number, newWeight: number) => {
-    if (!id) return;
-
-    try {
-      const fieldToUpdate = getAllTemplateFields().find((f) => f.id === fieldId);
-      if (!fieldToUpdate) return;
-
-      const updatedField = await templateService.updateTemplateField(id, fieldId, {
-        ...fieldToUpdate,
-        weight: newWeight
-      });
-
-      // Refresh fields from server to get the latest data
-      await fetchTemplateFields(id);
-      setEditingWeight(null);
-
-      toast({
-        title: 'Success',
-        description: 'Field weight updated successfully'
-      });
-    } catch (err) {
-      console.error('Error updating field weight:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to update field weight',
-        variant: 'destructive'
-      });
-    }
   };
 
   const refreshLookupValues = async (fieldName: string) => {
@@ -3286,6 +3332,8 @@ export const TemplateDetailsPage = () => {
                         <TableRow>
                           <TableHead>Field</TableHead>
                           <TableHead>Type</TableHead>
+                          <TableHead>Weight</TableHead>
+                          <TableHead>Distribution (%)</TableHead>
                           <TableHead>Required</TableHead>
                           <TableHead className="text-right">Status</TableHead>
                         </TableRow>
@@ -3325,6 +3373,80 @@ export const TemplateDetailsPage = () => {
                               <Badge variant="outline" className="text-xs">
                                 {field.type}
                               </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {(field.label === 'Country of Birth' || field.label === 'Nationality') ? (
+                                <div className="flex items-center gap-2">
+                                  {editingPersonalWeight?.field === (field.label === 'Country of Birth' ? 'countryOfBirth' : 'nationality') ? (
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        step={0.1}
+                                        value={editingPersonalWeight.value}
+                                        onChange={(e) =>
+                                          setEditingPersonalWeight({
+                                            field: field.label === 'Country of Birth' ? 'countryOfBirth' : 'nationality',
+                                            value: Number(e.target.value)
+                                          })
+                                        }
+                                        className="w-20"
+                                      />
+                                      <Button
+                                        size="sm"
+                                        onClick={() =>
+                                          handleUpdatePersonalWeight(
+                                            field.label === 'Country of Birth' ? 'countryOfBirth' : 'nationality',
+                                            editingPersonalWeight.value
+                                          )
+                                        }
+                                      >
+                                        <Icon name="check" className="text-green-500" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => setEditingPersonalWeight(null)}
+                                      >
+                                        <Icon name="close" className="text-gray-500" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium">
+                                        {getPersonalFieldWeight(field.label)}
+                                      </span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          setEditingPersonalWeight({
+                                            field: field.label === 'Country of Birth' ? 'countryOfBirth' : 'nationality',
+                                            value: getPersonalFieldWeight(field.label)
+                                          })
+                                        }
+                                      >
+                                        <Icon name="edit" className="text-gray-500" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-500 text-sm">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {(field.label === 'Country of Birth' || field.label === 'Nationality') ? (
+                                <span className="text-sm text-gray-600">
+                                  {(() => {
+                                    const weight = getPersonalFieldWeight(field.label);
+                                    const distribution = calculatePersonalWeightDistribution(weight);
+                                    return `${distribution}%`;
+                                  })()}
+                                </span>
+                              ) : (
+                                <span className="text-gray-500 text-sm">-</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               <Badge variant="destructive" className="text-xs">
@@ -3566,7 +3688,7 @@ export const TemplateDetailsPage = () => {
                                                     <Button
                                                       size="sm"
                                                       onClick={() =>
-                                                        handleUpdateWeight(
+                                                        handleWeightChange(
                                                           fieldId,
                                                           editingWeight.value
                                                         )
@@ -3815,7 +3937,7 @@ export const TemplateDetailsPage = () => {
                                                 <Button
                                                   size="sm"
                                                   onClick={() =>
-                                                    handleUpdateWeight(fieldId, editingWeight.value)
+                                                    handleWeightChange(fieldId, editingWeight.value)
                                                   }
                                                 >
                                                   <Icon name="check" className="text-green-500" />

@@ -52,6 +52,8 @@ export interface Template {
   templateType: TemplateType;
   defaultScoreCriteriaId?: number | null;
   defaultScoreCriteria?: ScoreCriteria | null;
+  countryOfBirthWeight?: number;
+  nationalityWeight?: number;
 }
 
 export interface PaginatedResponse<T> {
@@ -222,6 +224,9 @@ export const templateService = {
     await api.put(`${API_CONFIG.endpoints.templates.list}/${templateId}/fields/${fieldId}/weight`, {
       weight
     });
+  },
+  updateTemplateWeights: async (templateId: string, weights: { countryOfBirthWeight?: number; nationalityWeight?: number }): Promise<void> => {
+    await api.put(`${API_CONFIG.endpoints.templates.list}/${templateId}/weights`, weights);
   },
   getFieldOptions: async (templateId: string, fieldId: number): Promise<FieldOption[]> => {
     const response = await api.get<FieldOption[]>(
