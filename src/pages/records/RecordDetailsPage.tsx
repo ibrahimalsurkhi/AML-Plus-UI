@@ -42,12 +42,31 @@ interface ExtendedTemplateField extends TemplateField {
   }>;
 }
 
+// Extended section interface with processed fields
+interface ExtendedTemplateSection {
+  id: number;
+  title: string;
+  displayOrder: number;
+  fields: ExtendedTemplateField[];
+}
+
+// Extended field response to handle optionId field
+interface ExtendedFieldResponse {
+  id: number;
+  fieldId: number;
+  valueText: string | null;
+  valueNumber: number | null;
+  valueDate: string | null;
+  optionId?: string | null;
+}
+
 const RecordDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [record, setRecord] = useState<Record | null>(null);
   const [templateName, setTemplateName] = useState<string>('');
-  const [fields, setFields] = useState<ExtendedTemplateField[]>([]);
+  const [sections, setSections] = useState<ExtendedTemplateSection[]>([]);
+  const [fieldsWithoutSection, setFieldsWithoutSection] = useState<ExtendedTemplateField[]>([]);
   const [loading, setLoading] = useState(true);
   const [cases, setCases] = useState<Case[]>([]);
 
@@ -74,15 +93,65 @@ const RecordDetailsPage = () => {
         const fieldsResponse = await templateService.getTemplateFields(
           fullRecord.templateId.toString()
         );
-        // Get all fields from sections and fields without section
-        const allFields = [
-          ...fieldsResponse.sections.flatMap((section) => section.fields),
-          ...fieldsResponse.fieldsWithoutSection
-        ];
 
-        // Fetch options for fields that need them
-        const fieldsWithOptions = await Promise.all(
-          allFields.map(async (field) => {
+        // Process sections with their fields
+        const processedSections = await Promise.all(
+          fieldsResponse.sections.map(async (section) => {
+            const fieldsWithOptions = await Promise.all(
+              section.fields.map(async (field) => {
+                const extendedField: ExtendedTemplateField = { ...field };
+
+                // Fetch options for option-based fields
+                if (
+                  field.fieldType === FieldType.Dropdown ||
+                  field.fieldType === FieldType.Radio ||
+                  field.fieldType === FieldType.Checkbox
+                ) {
+                  const options = await templateService.getFieldOptions(
+                    fullRecord.templateId.toString(),
+                    field.id!
+                  );
+                  extendedField.options = options;
+                }
+
+                // Fetch lookup values for Lookup fields
+                if (field.fieldType === FieldType.Lookup && field.lookupId) {
+                  try {
+                    const lookupValues = await lookupService.getLookupValues(field.lookupId, {
+                      pageNumber: 1,
+                      pageSize: 100
+                    });
+                    // Convert lookup values to field options format
+                    extendedField.options = lookupValues.items.map(
+                      (lookupValue: LookupValue, index: number) => ({
+                        id: lookupValue.id,
+                        fieldId: field.id!,
+                        label: lookupValue.value,
+                        scoreCriteriaId: lookupValue.scoreCriteriaId || 0,
+                        displayOrder: index + 1
+                      })
+                    );
+                    console.log(`Loaded ${lookupValues.items.length} lookup values for field ${field.id}:`, extendedField.options);
+                  } catch (error) {
+                    console.error(`Error fetching lookup values for field ${field.id}:`, error);
+                    extendedField.options = [];
+                  }
+                }
+
+                return extendedField;
+              })
+            );
+
+            return {
+              ...section,
+              fields: fieldsWithOptions
+            };
+          })
+        );
+
+        // Process fields without section
+        const processedFieldsWithoutSection = await Promise.all(
+          fieldsResponse.fieldsWithoutSection.map(async (field) => {
             const extendedField: ExtendedTemplateField = { ...field };
 
             // Fetch options for option-based fields
@@ -111,10 +180,11 @@ const RecordDetailsPage = () => {
                     id: lookupValue.id,
                     fieldId: field.id!,
                     label: lookupValue.value,
-                    scoreCriteriaId: 0, // Default score criteria
+                    scoreCriteriaId: lookupValue.scoreCriteriaId || 0,
                     displayOrder: index + 1
                   })
                 );
+                console.log(`Loaded ${lookupValues.items.length} lookup values for field ${field.id}:`, extendedField.options);
               } catch (error) {
                 console.error(`Error fetching lookup values for field ${field.id}:`, error);
                 extendedField.options = [];
@@ -125,7 +195,8 @@ const RecordDetailsPage = () => {
           })
         );
 
-        setFields(fieldsWithOptions);
+        setSections(processedSections);
+        setFieldsWithoutSection(processedFieldsWithoutSection);
 
         // Fetch cases by recordId
         caseService.getCasesByRecordId(fullRecord.id).then(setCases);
@@ -175,7 +246,7 @@ const RecordDetailsPage = () => {
     fieldType: FieldType,
     options?: ExtendedTemplateField['options']
   ) => {
-    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId);
+    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId) as ExtendedFieldResponse | undefined;
     if (!response) return null;
 
     switch (fieldType) {
@@ -190,10 +261,38 @@ const RecordDetailsPage = () => {
       case FieldType.Radio:
       case FieldType.Checkbox:
       case FieldType.Lookup:
-        if (response.valueText) {
-          // Find the option that matches the valueText (which is the option ID)
-          const option = options?.find((opt) => opt.id?.toString() === response.valueText);
-          return option?.label || response.valueText;
+        // For debugging lookup fields
+        if (fieldType === FieldType.Lookup) {
+          console.log(`Lookup field ${fieldId}:`, {
+            valueText: response.valueText,
+            optionId: response.optionId,
+            availableOptions: options?.map(opt => ({ id: opt.id, label: opt.label }))
+          });
+        }
+        
+        // Try to get the value from optionId first, then valueText
+        const valueToMatch = response.optionId || response.valueText;
+        
+        if (valueToMatch) {
+          // Try multiple matching strategies:
+          // 1. Match by option ID (string comparison)
+          const optionById = options?.find((opt) => opt.id?.toString() === valueToMatch);
+          // 2. Match by option ID (number comparison)  
+          const optionByNumericId = options?.find((opt) => opt.id === parseInt(valueToMatch));
+          // 3. Match by label
+          const optionByLabel = options?.find((opt) => opt.label === valueToMatch);
+          
+          const option = optionById || optionByNumericId || optionByLabel;
+          
+          if (fieldType === FieldType.Lookup && !option) {
+            console.warn(`No matching option found for lookup field ${fieldId} with value: ${valueToMatch}`, {
+              optionId: response.optionId,
+              valueText: response.valueText,
+              availableOptions: options
+            });
+          }
+          
+          return option?.label || valueToMatch;
         }
         return null;
       default:
@@ -321,21 +420,57 @@ const RecordDetailsPage = () => {
           </CardContent>
         </Card>
 
-        {/* Template Fields Card */}
-        {fields.length > 0 && (
-          <Card className="shadow-sm border-primary/10">
+        {/* Template Fields organized by Sections */}
+        {sections.map((section) => (
+          <Card key={section.id} className="shadow-sm border-primary/10">
             <CardHeader className="bg-primary/5 border-b">
               <h2 className="text-xl font-semibold flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
-                Template Fields
+                {section.title}
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Additional information based on the template requirements.
+                Fields organized under the {section.title} section.
               </p>
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {fields.map((field) => {
+                {section.fields.map((field) => {
+                  const value = getFieldValue(field.id!, field.fieldType, field.options);
+                  return (
+                    <div
+                      key={field.id}
+                      className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                        {getFieldIcon(field.fieldType)}
+                        {field.label}
+                      </div>
+                      <div className="text-base font-medium">
+                        {value !== null ? value : <span className="text-muted-foreground">-</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {/* Fields without Section */}
+        {fieldsWithoutSection.length > 0 && (
+          <Card className="shadow-sm border-primary/10">
+            <CardHeader className="bg-primary/5 border-b">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Additional Information
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Additional template fields not organized under specific sections.
+              </p>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {fieldsWithoutSection.map((field) => {
                   const value = getFieldValue(field.id!, field.fieldType, field.options);
                   return (
                     <div
