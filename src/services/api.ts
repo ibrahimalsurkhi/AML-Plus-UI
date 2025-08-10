@@ -374,8 +374,8 @@ export interface Record {
   middleName: string | null;
   lastName: string;
   dateOfBirth: string;
-  country: number;
-  nationality: number;
+  countryOfBirthLookupValueId: number;
+  nationalityLookupValueId: number;
   identification: string;
   tenantId: number;
   fieldResponses: FieldResponse[];

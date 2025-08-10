@@ -77,9 +77,17 @@ const baseValidationSchema = Yup.object().shape({
   dateOfBirth: Yup.string().required('Date of birth is required'),
   identification: Yup.string().required('Identification is required'),
   templateId: Yup.number().required('Template is required'),
-  countryOfBirthLookupValueId: Yup.number().nullable(),
-  nationalityLookupValueId: Yup.number().nullable(),
-  customerReferenceId: Yup.string()
+  countryOfBirthLookupValueId: Yup.number()
+    .nullable()
+    .transform((value) => (isNaN(value) ? null : value))
+    .required('Country of birth is required')
+    .test('not-zero', 'Country of birth is required', (value) => value !== null && value > 0),
+  nationalityLookupValueId: Yup.number()
+    .nullable()
+    .transform((value) => (isNaN(value) ? null : value))
+    .required('Nationality is required')
+    .test('not-zero', 'Nationality is required', (value) => value !== null && value > 0),
+  customerReferenceId: Yup.string().required('Customer reference is required')
 }) as Yup.ObjectSchema<BaseFormValues>;
 
 // Add helper function to get min and max values from ranges
@@ -391,8 +399,8 @@ const NewRecordPage = () => {
         : templates.length > 0
           ? templates[0].id
           : 0,
-      countryOfBirthLookupValueId: null,
-      nationalityLookupValueId: null,
+      countryOfBirthLookupValueId: null as any,
+      nationalityLookupValueId: null as any,
       customerReferenceId: ''
     },
     validationSchema,
@@ -562,6 +570,25 @@ const NewRecordPage = () => {
           ? new Date(String(values.dateOfBirth)).toISOString()
           : '';
 
+        // Validate required fields before submission
+        if (!values.countryOfBirthLookupValueId || values.countryOfBirthLookupValueId <= 0) {
+          toast({
+            title: 'Validation Error',
+            description: 'Please select a country of birth.',
+            variant: 'destructive'
+          });
+          return;
+        }
+
+        if (!values.nationalityLookupValueId || values.nationalityLookupValueId <= 0) {
+          toast({
+            title: 'Validation Error',
+            description: 'Please select a nationality.',
+            variant: 'destructive'
+          });
+          return;
+        }
+
         // Create the record with all required fields
         const recordData = {
           firstName: values.firstName,
@@ -571,14 +598,19 @@ const NewRecordPage = () => {
           identification: values.identification,
           tenantId: selectedTemplate.tenantId,
           userId: '', // Placeholder, update as needed
-          country: values.countryOfBirthLookupValueId || 0,
-          nationality: values.nationalityLookupValueId || 0,
+          countryOfBirthLookupValueId: values.countryOfBirthLookupValueId,
+          nationalityLookupValueId: values.nationalityLookupValueId,
           fieldResponses,
           score: 0, // Default score
           scoreBGColor: '#ffffff', // Default background color
           uuid: uniqueID(), // Generate unique ID
           customerReferenceId: values.customerReferenceId || ''
         };
+
+        // Debug: Log the data being sent to the backend
+        console.log('Sending record data to backend:', recordData);
+        console.log('Country value:', values.countryOfBirthLookupValueId);
+        console.log('Nationality value:', values.nationalityLookupValueId);
 
         const response = (await recordService.createRecord(values.templateId, recordData)) as any;
 
@@ -1112,18 +1144,24 @@ const NewRecordPage = () => {
                     ) : null}
                   </div>
                   <div>
-                    <Label htmlFor="countryOfBirthLookupValueId">Country of Birth</Label>
+                    <Label htmlFor="countryOfBirthLookupValueId" className="flex items-center">
+                      Country of Birth <span className="text-red-500 ml-1">*</span>
+                    </Label>
                     <Select
                       name="countryOfBirthLookupValueId"
-                      value={formik.values.countryOfBirthLookupValueId?.toString() || ''}
+                      value={formik.values.countryOfBirthLookupValueId ? formik.values.countryOfBirthLookupValueId.toString() : ''}
                       onValueChange={(value: string) => {
                         formik.setFieldValue(
                           'countryOfBirthLookupValueId',
-                          value ? parseInt(value) : null
+                          value && value !== '' ? parseInt(value) : null
                         );
                       }}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className={
+                        formik.touched.countryOfBirthLookupValueId && formik.errors.countryOfBirthLookupValueId
+                          ? 'border-red-500 w-full'
+                          : 'w-full'
+                      }>
                         <SelectValue placeholder="Select country of birth" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1134,20 +1172,31 @@ const NewRecordPage = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {formik.touched.countryOfBirthLookupValueId && formik.errors.countryOfBirthLookupValueId ? (
+                      <div className="text-red-500 text-sm mt-1">
+                        {formik.errors.countryOfBirthLookupValueId as string}
+                      </div>
+                    ) : null}
                   </div>
                   <div>
-                    <Label htmlFor="nationalityLookupValueId">Nationality</Label>
+                    <Label htmlFor="nationalityLookupValueId" className="flex items-center">
+                      Nationality <span className="text-red-500 ml-1">*</span>
+                    </Label>
                     <Select
                       name="nationalityLookupValueId"
-                      value={formik.values.nationalityLookupValueId?.toString() || ''}
+                      value={formik.values.nationalityLookupValueId ? formik.values.nationalityLookupValueId.toString() : ''}
                       onValueChange={(value: string) => {
                         formik.setFieldValue(
                           'nationalityLookupValueId',
-                          value ? parseInt(value) : null
+                          value && value !== '' ? parseInt(value) : null
                         );
                       }}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className={
+                        formik.touched.nationalityLookupValueId && formik.errors.nationalityLookupValueId
+                          ? 'border-red-500 w-full'
+                          : 'w-full'
+                      }>
                         <SelectValue placeholder="Select nationality" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1158,16 +1207,33 @@ const NewRecordPage = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {formik.touched.nationalityLookupValueId && formik.errors.nationalityLookupValueId ? (
+                      <div className="text-red-500 text-sm mt-1">
+                        {formik.errors.nationalityLookupValueId as string}
+                      </div>
+                    ) : null}
                   </div>
                   <div>
-                    <Label htmlFor="customerReferenceId">Customer Reference ID</Label>
+                    <Label htmlFor="customerReferenceId" className="flex items-center">
+                      Customer Reference ID <span className="text-red-500 ml-1">*</span>
+                    </Label>
                     <Input
                       id="customerReferenceId"
                       name="customerReferenceId"
                       value={formik.values.customerReferenceId}
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
+                      className={
+                        formik.touched.customerReferenceId && formik.errors.customerReferenceId
+                          ? 'border-red-500'
+                          : ''
+                      }
                     />
+                    {formik.touched.customerReferenceId && formik.errors.customerReferenceId ? (
+                      <div className="text-red-500 text-sm mt-1">
+                        {formik.errors.customerReferenceId as string}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </CardContent>
