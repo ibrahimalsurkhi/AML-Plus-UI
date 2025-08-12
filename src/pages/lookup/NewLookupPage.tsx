@@ -10,7 +10,7 @@ import { toast } from '@/components/ui/use-toast';
 const NewLookupPage = () => {
   const navigate = useNavigate();
   const [name, setName] = useState('');
-  const [isShared, setIsShared] = useState(false);
+  const [isShared, setIsShared] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -58,14 +58,7 @@ const NewLookupPage = () => {
                   required
                 />
               </div>
-              <div>
-                <label className="block mb-1 font-medium">Is Shared</label>
-                <input
-                  type="checkbox"
-                  checked={isShared}
-                  onChange={(e) => setIsShared(e.target.checked)}
-                />
-              </div>
+              
               <Button type="submit" disabled={loading}>
                 {loading ? 'Creating...' : 'Create'}
               </Button>

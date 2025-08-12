@@ -113,7 +113,6 @@ const LookupPage = () => {
                   <TableRow>
                     <TableHead>ID</TableHead>
                     <TableHead>Name</TableHead>
-                    <TableHead>Is Shared</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -122,7 +121,6 @@ const LookupPage = () => {
                     <TableRow key={lookup.id} className="hover:bg-gray-50 cursor-pointer">
                       <TableCell>{lookup.id}</TableCell>
                       <TableCell onClick={() => handleEdit(lookup.id)}>{lookup.name}</TableCell>
-                      <TableCell>{lookup.isShared ? 'Yes' : 'No'}</TableCell>
                       <TableCell>
                         <Button size="sm" variant="ghost" onClick={() => handleEdit(lookup.id)}>
                           Edit

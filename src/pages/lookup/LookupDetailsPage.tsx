@@ -39,7 +39,7 @@ const LookupDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [valueLoading, setValueLoading] = useState(false);
   const [editName, setEditName] = useState('');
-  const [editIsShared, setEditIsShared] = useState(false);
+  const [editIsShared, setEditIsShared] = useState(true);
   const [newValue, setNewValue] = useState('');
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize] = useState(20);
@@ -178,14 +178,7 @@ const LookupDetailsPage = () => {
                 onChange={(e) => setEditName(e.target.value)}
               />
             </div>
-            <div>
-              <label className="block mb-1 font-medium">Is Shared</label>
-              <input
-                type="checkbox"
-                checked={editIsShared}
-                onChange={(e) => setEditIsShared(e.target.checked)}
-              />
-            </div>
+            
             <Button onClick={handleUpdateLookup}>Save</Button>
           </CardContent>
         </Card>
