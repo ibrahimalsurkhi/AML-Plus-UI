@@ -177,17 +177,17 @@ const CaseDetailsPage = () => {
               <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
                   <FileText className="w-4 h-4" />
-                  Medium Threshold
+                  Target Threshold
                 </div>
-                <div className="text-base font-medium">{caseData.mediumThreshold}</div>
+                <div className="text-base font-medium">{caseData.targetThreshold}</div>
               </div>
               <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
                   <FileText className="w-4 h-4" />
-                  Exceeds Medium Threshold
+                  Exceeds Target Threshold
                 </div>
                 <div className="text-base font-medium">
-                  {caseData.exceedsMediumThreshold ? 'Yes' : 'No'}
+                  {caseData.exceedsTargetThreshold ? 'Yes' : 'No'}
                 </div>
               </div>
             </div>

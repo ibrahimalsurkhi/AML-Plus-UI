@@ -187,7 +187,7 @@ const CasesPage = () => {
                             {item.score}
                           </div>
                         </TableCell>
-                        <TableCell>{item.exceedsMediumThreshold ? 'Yes' : 'No'}</TableCell>
+                        <TableCell>{item.exceedsTargetThreshold ? 'Yes' : 'No'}</TableCell>
                         <TableCell>{CaseStatusMap[Number(item.status)] || item.status}</TableCell>
                         <TableCell>{SourceTypeMap[Number(item.source)] || item.source}</TableCell>
                         <TableCell className="text-right">

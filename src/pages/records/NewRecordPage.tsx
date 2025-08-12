@@ -614,10 +614,10 @@ const NewRecordPage = () => {
 
         const response = (await recordService.createRecord(values.templateId, recordData)) as any;
 
-        if (response?.exceedsMediumThreshold) {
+        if (response?.exceedsTargetThreshold) {
           toast({
             title: 'Case Created',
-            description: 'This record exceeds the medium threshold. A case has been created.',
+            description: 'This record exceeds the target threshold. A case has been created.',
             variant: 'destructive'
           });
         }

@@ -54,6 +54,7 @@ export interface Template {
   defaultScoreCriteria?: ScoreCriteria | null;
   countryOfBirthWeight?: number;
   nationalityWeight?: number;
+  scoreToOpenCase?: number;
 }
 
 export interface PaginatedResponse<T> {
@@ -191,6 +192,12 @@ export const templateService = {
   deleteScoreCriteria: async (templateId: string, criteriaId: number): Promise<void> => {
     await api.delete(
       `${API_CONFIG.endpoints.templates.list}/${templateId}/score-criteria/${criteriaId}`
+    );
+  },
+  updateScoreToOpenCase: async (templateId: string, scoreToOpenCase: number): Promise<void> => {
+    await api.put(
+      `${API_CONFIG.endpoints.templates.list}/${templateId}/score-to-open-case`,
+      { scoreToOpenCase }
     );
   },
   getTemplateFields: async (templateId: string): Promise<TemplateFieldsResponse> => {
@@ -438,8 +445,8 @@ export interface Case {
   fullName: string;
   score: number;
   scoreBGColor: string;
-  mediumThreshold: number;
-  exceedsMediumThreshold: boolean;
+  targetThreshold: number;
+  exceedsTargetThreshold: boolean;
   status: string;
   source: string;
   created?: string;

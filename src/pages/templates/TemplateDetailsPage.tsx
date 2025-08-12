@@ -2242,6 +2242,9 @@ export const TemplateDetailsPage = () => {
   const [isPersonalInfoCollapsed, setIsPersonalInfoCollapsed] = useState(false);
   const [isFieldsWithoutSectionCollapsed, setIsFieldsWithoutSectionCollapsed] = useState(false);
 
+  // Score to Open Case state
+  const [scoreToOpenCase, setScoreToOpenCase] = useState<string>('');
+
   useEffect(() => {
     if (id) {
       fetchTemplateDetails(id);
@@ -2259,10 +2262,12 @@ export const TemplateDetailsPage = () => {
       const templateWithDefaults = {
         ...data,
         countryOfBirthWeight: data.countryOfBirthWeight ?? 0,
-        nationalityWeight: data.nationalityWeight ?? 0
+        nationalityWeight: data.nationalityWeight ?? 0,
+        scoreToOpenCase: data.scoreToOpenCase ?? 0
       };
       
       setTemplate(templateWithDefaults);
+      setScoreToOpenCase(templateWithDefaults.scoreToOpenCase?.toString() || '0');
       setError(null);
     } catch (err) {
       setError('Failed to fetch template details');
@@ -2556,6 +2561,54 @@ export const TemplateDetailsPage = () => {
         description: 'Failed to update personal information weight',
         variant: 'destructive'
       });
+    }
+  };
+
+  // Score to Open Case handler
+  const handleScoreToOpenCaseChange = async () => {
+    if (!id || !template) return;
+
+    const numericValue = parseFloat(scoreToOpenCase);
+    
+    // Validation
+    if (isNaN(numericValue) || numericValue < 0 || numericValue > 5) {
+      toast({
+        title: 'Invalid Value',
+        description: 'Score to open case must be a number between 0 and 5',
+        variant: 'destructive'
+      });
+      // Reset to previous value
+      setScoreToOpenCase(template.scoreToOpenCase?.toString() || '0');
+      return;
+    }
+
+    // If the value hasn't changed, don't make API call
+    if (numericValue === template.scoreToOpenCase) {
+      return;
+    }
+
+    try {
+      await templateService.updateScoreToOpenCase(id, numericValue);
+      
+      // Update local state
+      setTemplate(prev => prev ? {
+        ...prev,
+        scoreToOpenCase: numericValue
+      } : null);
+
+      toast({
+        title: 'Success',
+        description: 'Score to open case threshold updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating score to open case:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update score to open case threshold',
+        variant: 'destructive'
+      });
+      // Reset to previous value
+      setScoreToOpenCase(template.scoreToOpenCase?.toString() || '0');
     }
   };
 
@@ -3163,6 +3216,46 @@ export const TemplateDetailsPage = () => {
               </CardHeader>
               <CardContent className="px-6 py-8">
                 <ScoreCriteriaBar criteria={scoreCriteria} onChange={handleScoreChange} />
+                
+                {/* Score to Open Case Input */}
+                <div className="mt-8 pt-6 border-t border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-900">Case Creation Threshold</h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Automatically create a case when the record score exceeds this threshold
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="max-w-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <label htmlFor="scoreToOpenCase" className="block text-xs font-medium text-gray-700 mb-1">
+                          Score Threshold
+                        </label>
+                        <input
+                          id="scoreToOpenCase"
+                          type="number"
+                          min="0"
+                          max="5"
+                          step="0.01"
+                          value={scoreToOpenCase}
+                          onChange={(e) => setScoreToOpenCase(e.target.value)}
+                          onBlur={handleScoreToOpenCaseChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                          placeholder="e.g., 3.50"
+                        />
+                      </div>
+                      <div className="text-xs text-gray-500 self-end pb-2">
+                        / 5.00
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Range: 0.00 - 5.00
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}

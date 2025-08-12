@@ -25,7 +25,10 @@ import {
   IdCard,
   FileType,
   UserRound,
-  Cake
+  Cake,
+  Globe,
+  Flag,
+  CreditCard
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
@@ -60,10 +63,16 @@ interface ExtendedFieldResponse {
   optionId?: string | null;
 }
 
+// Extended Record interface to include lookup value objects
+interface ExtendedRecord extends Record {
+  countryOfBirthLookupValue?: LookupValue;
+  nationalityLookupValue?: LookupValue;
+}
+
 const RecordDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [record, setRecord] = useState<Record | null>(null);
+  const [record, setRecord] = useState<ExtendedRecord | null>(null);
   const [templateName, setTemplateName] = useState<string>('');
   const [sections, setSections] = useState<ExtendedTemplateSection[]>([]);
   const [fieldsWithoutSection, setFieldsWithoutSection] = useState<ExtendedTemplateField[]>([]);
@@ -81,7 +90,7 @@ const RecordDetailsPage = () => {
 
         // Now get the full record details using the template ID
         const fullRecord = await recordService.getRecordById(recordId);
-        setRecord(fullRecord);
+        setRecord(fullRecord as ExtendedRecord);
 
         // Get the template name
         const templateDetails = await templateService.getTemplateById(
@@ -364,7 +373,7 @@ const RecordDetailsPage = () => {
             </p>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
                   <Hash className="w-4 h-4" />
@@ -378,6 +387,13 @@ const RecordDetailsPage = () => {
                   Identification
                 </div>
                 <div className="text-base font-medium">{record?.identification || '-'}</div>
+              </div>
+              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                  <CreditCard className="w-4 h-4" />
+                  Customer Reference ID
+                </div>
+                <div className="text-base font-medium">{record?.customerReferenceId || '-'}</div>
               </div>
               <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
@@ -413,7 +429,29 @@ const RecordDetailsPage = () => {
                   Date of Birth
                 </div>
                 <div className="text-base font-medium">
-                  {new Date(record.dateOfBirth).toLocaleDateString()}
+                  {new Date(record.dateOfBirth).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </div>
+              </div>
+              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                  <Globe className="w-4 h-4" />
+                  Country of Birth
+                </div>
+                <div className="text-base font-medium">
+                  {record.countryOfBirthLookupValue?.value || '-'}
+                </div>
+              </div>
+              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                  <Flag className="w-4 h-4" />
+                  Nationality
+                </div>
+                <div className="text-base font-medium">
+                  {record.nationalityLookupValue?.value || '-'}
                 </div>
               </div>
             </div>
@@ -508,8 +546,8 @@ const RecordDetailsPage = () => {
                       <th className="border px-3 py-2 text-left">ID</th>
                       <th className="border px-3 py-2 text-left">Full Name</th>
                       <th className="border px-3 py-2 text-left">Score</th>
-                      <th className="border px-3 py-2 text-left">Medium Threshold</th>
-                      <th className="border px-3 py-2 text-left">Exceeds Medium</th>
+                      <th className="border px-3 py-2 text-left">Target Threshold</th>
+                      <th className="border px-3 py-2 text-left">Exceeds Target</th>
                       <th className="border px-3 py-2 text-left">Status</th>
                       <th className="border px-3 py-2 text-left">Source</th>
                       <th className="border px-3 py-2 text-left">Created</th>
@@ -529,9 +567,9 @@ const RecordDetailsPage = () => {
                             {c.score}
                           </span>
                         </td>
-                        <td className="border px-3 py-2">{c.mediumThreshold}</td>
+                        <td className="border px-3 py-2">{c.targetThreshold}</td>
                         <td className="border px-3 py-2">
-                          {c.exceedsMediumThreshold ? 'Yes' : 'No'}
+                          {c.exceedsTargetThreshold ? 'Yes' : 'No'}
                         </td>
                         <td className="border px-3 py-2">{c.status}</td>
                         <td className="border px-3 py-2">{c.source}</td>
