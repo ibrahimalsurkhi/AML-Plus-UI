@@ -14,14 +14,16 @@ export enum AggregateFieldId {
   Amount = 2,
   TransactionCount = 3,
   TransactionTime = 4,
-  CurrencyAmount = 5
+  CurrencyAmount = 5,
+  RiskStatus = 6
 }
 export const AggregateFieldIdOptions = [
   { label: 'Transaction Status', value: AggregateFieldId.TransactionStatus },
   { label: 'Amount', value: AggregateFieldId.Amount },
-  { label: 'Transaction Count', value: AggregateFieldId.TransactionCount },
+  { label: 'Risk Status', value: AggregateFieldId.RiskStatus },
+  /*{ label: 'Transaction Count', value: AggregateFieldId.TransactionCount },
   { label: 'Transaction Time', value: AggregateFieldId.TransactionTime },
-  { label: 'Currency Amount', value: AggregateFieldId.CurrencyAmount }
+  { label: 'Currency Amount', value: AggregateFieldId.CurrencyAmount }*/
 ];
 
 // AggregateFunction
@@ -136,6 +138,28 @@ export const ComparisonOperatorOptions = [
   { label: 'Not Contains', value: ComparisonOperator.NotContains },
   { label: 'In', value: ComparisonOperator.In },
   { label: 'Not In', value: ComparisonOperator.NotIn }
+];
+
+// RiskStatus enum
+export enum RiskStatus {
+  Low = 1,
+  Medium = 2,
+  High = 3
+}
+export const RiskStatusOptions = [
+  { label: 'Low', value: RiskStatus.Low },
+  { label: 'Medium', value: RiskStatus.Medium },
+  { label: 'High', value: RiskStatus.High }
+];
+
+// RiskStatusOperator enum
+export enum RiskStatusOperator {
+  AtLeastOne = 11,
+  All = 12
+}
+export const RiskStatusOperatorOptions = [
+  { label: 'AtLeastOne', value: RiskStatusOperator.AtLeastOne },
+  { label: 'All', value: RiskStatusOperator.All }
 ];
 
 // Rule Type options for RuleBuilderPage

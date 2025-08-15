@@ -13,7 +13,9 @@ import {
   StatusOperator,
   ComparisonOperator,
   AggregateFunction,
-  RuleTypeOptions
+  RuleTypeOptions,
+  RiskStatusOptions,
+  RiskStatusOperatorOptions
 } from './enums';
 import { Input } from '@/components/ui/input';
 import {
@@ -234,6 +236,9 @@ function getOperatorLabel(value: any, fieldId: any, operatorProp?: any) {
     if (fieldId === AggregateFieldId.TransactionStatus) {
       return getLabel(StatusOperatorOptions, operatorProp) || '[Operator]';
     }
+    if (fieldId === AggregateFieldId.RiskStatus) {
+      return getLabel(RiskStatusOperatorOptions, operatorProp) || '[Operator]';
+    }
     if (
       fieldId === AggregateFieldId.Amount ||
       fieldId === AggregateFieldId.TransactionCount ||
@@ -247,6 +252,9 @@ function getOperatorLabel(value: any, fieldId: any, operatorProp?: any) {
   // Fallback to aggregateFunction for legacy data
   if (fieldId === AggregateFieldId.TransactionStatus) {
     return getLabel(StatusOperatorOptions, value) || '[Operator]';
+  }
+  if (fieldId === AggregateFieldId.RiskStatus) {
+    return getLabel(RiskStatusOperatorOptions, value) || '[Operator]';
   }
   if (
     fieldId === AggregateFieldId.Amount ||
@@ -488,6 +496,12 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                         ComparisonOperator: v ? Number(v) : undefined,
                         aggregateFunction: null
                       });
+                    } else if (condition.aggregateFieldId === AggregateFieldId.RiskStatus) {
+                      onChange({
+                        ...condition,
+                        ComparisonOperator: v ? Number(v) : undefined,
+                        aggregateFunction: null
+                      });
                     } else {
                       onChange({
                         ...condition,
@@ -508,16 +522,22 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                             {opt.label}
                           </SelectItem>
                         ))
-                      : condition.aggregateFieldId === AggregateFieldId.Amount ||
-                          condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
-                          condition.aggregateFieldId === AggregateFieldId.TransactionTime ||
-                          condition.aggregateFieldId === AggregateFieldId.CurrencyAmount
-                        ? ComparisonOperatorOptions.map((opt) => (
+                      : condition.aggregateFieldId === AggregateFieldId.RiskStatus
+                        ? RiskStatusOperatorOptions.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value.toString()}>
                               {opt.label}
                             </SelectItem>
                           ))
-                        : null}
+                        : condition.aggregateFieldId === AggregateFieldId.Amount ||
+                            condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
+                            condition.aggregateFieldId === AggregateFieldId.TransactionTime ||
+                            condition.aggregateFieldId === AggregateFieldId.CurrencyAmount
+                          ? ComparisonOperatorOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value.toString()}>
+                                {opt.label}
+                              </SelectItem>
+                            ))
+                          : null}
                   </SelectContent>
                 </Select>
               </div>
@@ -544,6 +564,22 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                 }}
                 placeholder="Select status(es)"
               />
+            ) : condition.aggregateFieldId === AggregateFieldId.RiskStatus ? (
+              <Select
+                value={condition.jsonValue || ''}
+                onValueChange={(v) => handleFieldChange('jsonValue', v)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select risk status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {RiskStatusOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value.toString()}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : condition.aggregateFieldId === AggregateFieldId.TransactionTime ? (
               <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
                 <PopoverTrigger asChild>
@@ -586,7 +622,8 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
           <div className="p-0">
             <div className="border rounded-lg bg-gray-50 p-6 mt-4">
               <div className="flex items-center mb-6 gap-2">
-                {condition.aggregateFieldId !== AggregateFieldId.TransactionStatus && (
+                {condition.aggregateFieldId !== AggregateFieldId.TransactionStatus && 
+                 condition.aggregateFieldId !== AggregateFieldId.RiskStatus && (
                   <>
                     <Switch
                       checked={!!condition.isAggregated}
@@ -606,6 +643,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                 )}
               </div>
               {condition.aggregateFieldId !== AggregateFieldId.TransactionStatus &&
+                condition.aggregateFieldId !== AggregateFieldId.RiskStatus &&
                 condition.isAggregated && (
                   <div className="mb-4">
                     <label className="block text-sm font-medium mb-1 text-gray-700">
