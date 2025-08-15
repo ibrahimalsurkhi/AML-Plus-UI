@@ -12,7 +12,10 @@ import {
   caseService,
   Case,
   lookupService,
-  type LookupValue
+  type LookupValue,
+  accountService,
+  fieldResponseService,
+  type FieldResponseDetail
 } from '@/services/api';
 import { Container } from '@/components/container';
 import {
@@ -28,7 +31,10 @@ import {
   Cake,
   Globe,
   Flag,
-  CreditCard
+  CreditCard,
+  ChevronDown,
+  ChevronRight,
+  Building
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
@@ -78,6 +84,15 @@ const RecordDetailsPage = () => {
   const [fieldsWithoutSection, setFieldsWithoutSection] = useState<ExtendedTemplateField[]>([]);
   const [loading, setLoading] = useState(true);
   const [cases, setCases] = useState<Case[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  // Bank countries lookup state
+  const [bankCountries, setBankCountries] = useState<any[]>([]);
+  const [bankCountriesLoading, setBankCountriesLoading] = useState(false);
+  // Account field responses display state
+  const [expandedAccounts, setExpandedAccounts] = useState<{ [key: number]: boolean }>({});
+  const [accountFieldResponses, setAccountFieldResponses] = useState<{ [key: number]: FieldResponseDetail[] }>({});
+  const [loadingAccountResponses, setLoadingAccountResponses] = useState<{ [key: number]: boolean }>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -209,6 +224,27 @@ const RecordDetailsPage = () => {
 
         // Fetch cases by recordId
         caseService.getCasesByRecordId(fullRecord.id).then(setCases);
+
+        // Fetch accounts by recordId
+        setAccountsLoading(true);
+        accountService
+          .getAccountsByRecordId(fullRecord.id)
+          .then((accountsData) => {
+            console.log('Fetched accounts data:', accountsData);
+            if (accountsData && accountsData.length > 0) {
+              console.log('First account structure:', accountsData[0]);
+            }
+            setAccounts(accountsData);
+          })
+          .catch((error) => {
+            console.error('Error fetching accounts:', error);
+            toast({
+              title: 'Error',
+              description: 'Failed to fetch accounts. Please try again.',
+              variant: 'destructive'
+            });
+          })
+          .finally(() => setAccountsLoading(false));
       } catch (error) {
         console.error('Error fetching record details:', error);
         toast({
@@ -222,6 +258,24 @@ const RecordDetailsPage = () => {
     };
     fetchData();
   }, [id]);
+
+  // Fetch bank countries from lookup service using "CountryOfBirth" key
+  useEffect(() => {
+    const fetchBankCountries = async () => {
+      setBankCountriesLoading(true);
+      try {
+        const values = await lookupService.getLookupValuesByKey('CountryOfBirth', { pageNumber: 1, pageSize: 100 });
+        console.log('Fetched bank countries from CountryOfBirth lookup:', values.items);
+        setBankCountries(values.items);
+      } catch (err) {
+        console.error('Error fetching bank countries from CountryOfBirth lookup:', err);
+        // Don't show toast error for this as it's not critical
+      } finally {
+        setBankCountriesLoading(false);
+      }
+    };
+    fetchBankCountries();
+  }, []);
 
   if (loading) {
     return (
@@ -327,6 +381,85 @@ const RecordDetailsPage = () => {
       default:
         return <FileText className="w-4 h-4" />;
     }
+  };
+
+  // Function to toggle account expansion and fetch field responses
+  const toggleAccountExpansion = async (accountId: number) => {
+    const isCurrentlyExpanded = expandedAccounts[accountId];
+    
+    // Toggle expansion state
+    setExpandedAccounts((prev: { [key: number]: boolean }) => ({
+      ...prev,
+      [accountId]: !isCurrentlyExpanded
+    }));
+
+    // If expanding and we don't have data yet, fetch it
+    if (!isCurrentlyExpanded && !accountFieldResponses[accountId]) {
+      setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({ ...prev, [accountId]: true }));
+      
+      try {
+        const responses = await fieldResponseService.getFieldResponses({ accountId });
+        setAccountFieldResponses((prev: { [key: number]: FieldResponseDetail[] }) => ({
+          ...prev,
+          [accountId]: responses
+        }));
+      } catch (error) {
+        console.error('Error fetching account field responses:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load account field responses',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({ ...prev, [accountId]: false }));
+      }
+    }
+  };
+
+  // Function to render field response value
+  const renderFieldResponseValue = (response: FieldResponseDetail) => {
+    if (response.valueText) return response.valueText;
+    if (response.valueNumber !== null) return response.valueNumber.toString();
+    if (response.valueDate) return new Date(response.valueDate).toLocaleDateString();
+    if (response.optionValue) return response.optionValue;
+    return '-';
+  };
+
+  // Helper function to get bank country display value from CountryOfBirth lookup
+  const getBankCountryDisplayValue = (account: any) => {
+    console.log('Getting bank country for account:', account.id, {
+      bankOfCountryName: account.bankOfCountryName,
+      bankOfCountryId: account.bankOfCountryId,
+      bankOfCountryLookupValueId: account.bankOfCountryLookupValueId,
+      bankCountriesAvailable: bankCountries.length
+    });
+    
+    // First, try to use the bankOfCountryName if it exists and is not empty
+    if (account.bankOfCountryName && account.bankOfCountryName.trim() !== '') {
+      console.log('Using bankOfCountryName:', account.bankOfCountryName);
+      return account.bankOfCountryName;
+    }
+    
+    // If we have a bankOfCountryId, try to find it in the lookup values
+    if (account.bankOfCountryId && bankCountries.length > 0) {
+      const country = bankCountries.find(c => c.id === account.bankOfCountryId || c.id === parseInt(account.bankOfCountryId));
+      if (country) {
+        console.log('Found country by bankOfCountryId:', country.value);
+        return country.value;
+      }
+    }
+    
+    // If we have a bankOfCountryLookupValueId, try to find it in the lookup values
+    if (account.bankOfCountryLookupValueId && bankCountries.length > 0) {
+      const country = bankCountries.find(c => c.id === account.bankOfCountryLookupValueId || c.id === parseInt(account.bankOfCountryLookupValueId));
+      if (country) {
+        console.log('Found country by bankOfCountryLookupValueId:', country.value);
+        return country.value;
+      }
+    }
+    
+    console.log('No bank country found, returning -');
+    return '-';
   };
 
   return (
@@ -526,6 +659,138 @@ const RecordDetailsPage = () => {
                   );
                 })}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Related Accounts Section */}
+        {accounts.length > 0 && (
+          <Card className="shadow-sm border-primary/10">
+            <CardHeader className="bg-primary/5 border-b">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Building className="w-5 h-5 text-primary" />
+                Related Accounts
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Account information associated with this record.
+              </p>
+            </CardHeader>
+            <CardContent className="p-6">
+              {accountsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="animate-spin w-8 h-8 text-primary" />
+                  <span className="ml-2 text-muted-foreground">Loading accounts...</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {accounts.map((account) => (
+                    <Card key={account.id} className="border bg-card hover:bg-accent/5 transition-colors">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <div className="flex flex-col space-y-1">
+                                <div className="text-sm font-medium text-muted-foreground">Account Name</div>
+                                <div className="text-base font-semibold">{account.name}</div>
+                              </div>
+                              <div className="flex flex-col space-y-1">
+                                <div className="text-sm font-medium text-muted-foreground">Account Number</div>
+                                <div className="text-base font-mono">{account.number}</div>
+                              </div>
+                              <div className="flex flex-col space-y-1">
+                                <div className="text-sm font-medium text-muted-foreground">Bank Country</div>
+                                <div className="text-base">{getBankCountryDisplayValue(account)}</div>
+                              </div>
+                              <div className="flex flex-col space-y-1">
+                                <div className="text-sm font-medium text-muted-foreground">Bank City</div>
+                                <div className="text-base">{account.bankOfCity || '-'}</div>
+                              </div>
+                              <div className="flex flex-col space-y-1">
+                                <div className="text-sm font-medium text-muted-foreground">Status</div>
+                                <div className="text-base">
+                                  <span className={cn(
+                                    "px-2 py-1 rounded-full text-xs font-medium",
+                                    account.accountStatus === 1 ? "bg-green-100 text-green-800" :
+                                    account.accountStatus === 2 ? "bg-yellow-100 text-yellow-800" :
+                                    account.accountStatus === 3 ? "bg-red-100 text-red-800" :
+                                    account.accountStatus === 4 ? "bg-orange-100 text-orange-800" :
+                                    "bg-gray-100 text-gray-800"
+                                  )}>
+                                    {account.accountStatus === 1 ? 'Active' :
+                                     account.accountStatus === 2 ? 'Inactive' :
+                                     account.accountStatus === 3 ? 'Closed' :
+                                     account.accountStatus === 4 ? 'Suspended' :
+                                     'Unknown'}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col space-y-1">
+                                <div className="text-sm font-medium text-muted-foreground">Created</div>
+                                <div className="text-base">
+                                  {account.creationDate ? new Date(account.creationDate).toLocaleDateString() : '-'}
+                                </div>
+                              </div>
+                              <div className="flex flex-col space-y-1">
+                                <div className="text-sm font-medium text-muted-foreground">Account ID</div>
+                                <div className="text-base font-mono">{account.id}</div>
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleAccountExpansion(account.id)}
+                            className="ml-4 p-2 hover:bg-gray-100 rounded transition-colors"
+                            aria-label={expandedAccounts[account.id] ? 'Collapse details' : 'Expand details'}
+                          >
+                            {expandedAccounts[account.id] ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                        
+                        {/* Expandable Field Responses Section */}
+                        {expandedAccounts[account.id] && (
+                          <div className="mt-4 pt-4 border-t">
+                            {loadingAccountResponses[account.id] ? (
+                              <div className="flex items-center justify-center py-4">
+                                <Loader2 className="animate-spin w-6 h-6 text-primary" />
+                                <span className="ml-2 text-sm text-muted-foreground">Loading field responses...</span>
+                              </div>
+                            ) : accountFieldResponses[account.id] && accountFieldResponses[account.id].length > 0 ? (
+                              <div className="space-y-3">
+                                <h4 className="font-medium text-sm text-muted-foreground">Additional Account Information:</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {accountFieldResponses[account.id].map((response: FieldResponseDetail) => (
+                                    <div key={response.id} className="p-3 rounded border bg-gray-50/50">
+                                      <div className="text-sm font-medium text-gray-700 mb-1">
+                                        {response.fieldName}
+                                      </div>
+                                      <div className="text-sm text-gray-900">
+                                        {renderFieldResponseValue(response)}
+                                      </div>
+                                      {response.created && (
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          Created: {new Date(response.created).toLocaleDateString()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-gray-500 py-2">
+                                No additional field responses found for this account.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
