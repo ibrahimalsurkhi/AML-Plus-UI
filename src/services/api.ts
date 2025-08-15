@@ -889,6 +889,43 @@ export interface TransactionCaseDetails {
   record?: Record;
 }
 
+// Field Response interfaces
+export interface FieldResponseDetail {
+  id: number;
+  masterResponseId: number | null;
+  fieldId: number;
+  fieldName: string;
+  optionId: number | null;
+  optionValue: string | null;
+  templateFieldScoreCriteriaId: number | null;
+  transactionId: number | null;
+  accountId: number | null;
+  valueText: string | null;
+  valueNumber: number | null;
+  valueDate: string | null;
+  created: string;
+  createdBy: string;
+  lastModified: string;
+  lastModifiedBy: string;
+}
+
+// Field Response Service
+export const fieldResponseService = {
+  getFieldResponses: async (params: {
+    masterResponseId?: number;
+    transactionId?: number;
+    accountId?: number;
+  }): Promise<FieldResponseDetail[]> => {
+    const queryParams = new URLSearchParams();
+    if (params.masterResponseId) queryParams.append('MasterResponseId', params.masterResponseId.toString());
+    if (params.transactionId) queryParams.append('TransactionId', params.transactionId.toString());
+    if (params.accountId) queryParams.append('AccountId', params.accountId.toString());
+    
+    const response = await api.get<FieldResponseDetail[]>(`/FieldResponses?${queryParams.toString()}`);
+    return response.data;
+  }
+};
+
 export const transactionService = {
   createTransaction: async (data: TransactionCreate): Promise<number> => {
     console.log('Creating transaction with data:', data);

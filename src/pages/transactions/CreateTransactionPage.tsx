@@ -34,10 +34,10 @@ import {
   DialogBody,
   DialogFooter
 } from '@/components/ui/dialog';
-import { recordService, accountService, transactionService } from '@/services/api';
+import { recordService, accountService, transactionService, fieldResponseService, type FieldResponseDetail } from '@/services/api';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
 
 // Define field option type
 interface FieldOption {
@@ -110,6 +110,17 @@ const CreateTransactionPage = () => {
   const [templateFields, setTemplateFields] = useState<ExtendedTemplateField[]>([]);
   const [templateFieldsLoading, setTemplateFieldsLoading] = useState(false);
   const [fieldResponses, setFieldResponses] = useState<any[]>([]);
+  // Account template fields state
+  const [accountTemplateFields, setAccountTemplateFields] = useState<ExtendedTemplateField[]>([]);
+  const [accountTemplateFieldsLoading, setAccountTemplateFieldsLoading] = useState(false);
+  const [senderAccountFieldResponses, setSenderAccountFieldResponses] = useState<any[]>([]);
+  const [recipientAccountFieldResponses, setRecipientAccountFieldResponses] = useState<any[]>([]);
+  const [senderAccountErrors, setSenderAccountErrors] = useState<Record<string, string>>({});
+  const [recipientAccountErrors, setRecipientAccountErrors] = useState<Record<string, string>>({});
+  // Account field responses display state
+  const [expandedAccounts, setExpandedAccounts] = useState<Record<number, boolean>>({});
+  const [accountFieldResponses, setAccountFieldResponses] = useState<Record<number, FieldResponseDetail[]>>({});
+  const [loadingAccountResponses, setLoadingAccountResponses] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     const fetchTypes = async () => {
@@ -203,6 +214,82 @@ const CreateTransactionPage = () => {
     };
 
     fetchTemplateFields();
+  }, []);
+
+  // Fetch account template fields for template ID 13
+  useEffect(() => {
+    const fetchAccountTemplateFields = async () => {
+      setAccountTemplateFieldsLoading(true);
+      try {
+        const fieldsResponse = await templateService.getTemplateFields('13');
+        // Get all fields from sections and fields without section
+        const allFields = [
+          ...fieldsResponse.sections.flatMap((section) => section.fields),
+          ...fieldsResponse.fieldsWithoutSection
+        ];
+
+        // Fetch options and ranges for fields that need them
+        const fieldsWithOptions = await Promise.all(
+          allFields.map(async (field) => {
+            const extendedField: ExtendedTemplateField = { ...field };
+
+            // Fetch options for option-based fields
+            if (
+              field.fieldType === FieldType.Dropdown ||
+              field.fieldType === FieldType.Radio ||
+              field.fieldType === FieldType.Checkbox
+            ) {
+              const options = await templateService.getFieldOptions('13', field.id!);
+              extendedField.options = options.map((opt) => ({
+                ...opt,
+                value: opt.label
+              }));
+            }
+
+            // Fetch lookup values for Lookup fields
+            if (field.fieldType === FieldType.Lookup && field.lookupId) {
+              try {
+                const lookupValues = await lookupService.getLookupValues(field.lookupId, {
+                  pageNumber: 1,
+                  pageSize: 100
+                });
+                extendedField.options = lookupValues.items.map((lookupValue, index) => ({
+                  id: lookupValue.id,
+                  fieldId: field.id!,
+                  label: lookupValue.value,
+                  scoreCriteriaId: 0,
+                  displayOrder: index + 1,
+                  value: lookupValue.value
+                }));
+              } catch (error) {
+                console.error(`Error fetching lookup values for field ${field.id}:`, error);
+                extendedField.options = [];
+              }
+            }
+
+            // Fetch ranges for number fields
+            if (field.fieldType === FieldType.Number) {
+              const ranges = await templateService.getTemplateScoreCriteriaRanges('13', field.id!);
+              extendedField.ranges = ranges;
+            }
+
+            return extendedField;
+          })
+        );
+        setAccountTemplateFields(fieldsWithOptions);
+      } catch (error) {
+        console.error('Error fetching account template fields:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch account template fields. Please try again.',
+          variant: 'destructive'
+        });
+      } finally {
+        setAccountTemplateFieldsLoading(false);
+      }
+    };
+
+    fetchAccountTemplateFields();
   }, []);
 
   // Fetch bank countries from lookup service
@@ -774,6 +861,84 @@ const CreateTransactionPage = () => {
     </Label>
   );
 
+  // Handle account field value changes
+  const handleAccountFieldChange = (fieldId: number, value: any, fieldType: FieldType, accountType: 'sender' | 'recipient') => {
+    const setFieldResponses = accountType === 'sender' ? setSenderAccountFieldResponses : setRecipientAccountFieldResponses;
+    
+    setFieldResponses((prev) => {
+      const existingIndex = prev.findIndex((fr) => fr.fieldId === fieldId);
+      let response: any = {
+        id: 0,
+        fieldId: fieldId
+      };
+
+      switch (fieldType) {
+        case FieldType.Text:
+        case FieldType.TextArea:
+          response.valueText = String(value);
+          response.valueNumber = null;
+          response.valueDate = null;
+          break;
+        case FieldType.Number:
+          const numericValue = value !== undefined && value !== '' ? Number(value) : null;
+          response.valueNumber = numericValue;
+
+          // Find the matching range based on the value
+          const field = accountTemplateFields.find((f) => f.id === fieldId);
+          const matchingRange = field?.ranges?.find(
+            (range) =>
+              numericValue !== null &&
+              numericValue >= range.minValue &&
+              numericValue <= range.maxValue
+          );
+
+          response.templateFieldScoreCriteriaId = matchingRange
+            ? matchingRange.id.toString()
+            : null;
+          response.valueDate = null;
+          response.valueText = null;
+          break;
+        case FieldType.Date:
+          response.valueText = null;
+          response.valueNumber = null;
+          response.valueDate = value ? new Date(String(value)).toISOString() : null;
+          break;
+        case FieldType.Dropdown:
+        case FieldType.Radio:
+        case FieldType.Checkbox:
+        case FieldType.Lookup:
+          const fieldWithOptions = accountTemplateFields.find((f) => f.id === fieldId);
+          let selectedOption;
+
+          if (fieldType === FieldType.Checkbox) {
+            selectedOption = fieldWithOptions?.options?.find(
+              (opt) => opt.label.toLowerCase() === (value === true ? 'checked' : 'unchecked')
+            );
+            if (!selectedOption && fieldWithOptions?.options?.[0]) {
+              selectedOption = fieldWithOptions.options[0];
+            }
+          } else {
+            selectedOption = fieldWithOptions?.options?.find(
+              (opt) => opt.id && opt.id.toString() === value
+            );
+          }
+
+          response.optionId = selectedOption?.id ? selectedOption.id.toString() : null;
+          response.valueNumber = null;
+          response.valueDate = null;
+          break;
+      }
+
+      if (existingIndex >= 0) {
+        const newResponses = [...prev];
+        newResponses[existingIndex] = response;
+        return newResponses;
+      } else {
+        return [...prev, response];
+      }
+    });
+  };
+
   // Handle field value changes
   const handleFieldChange = (fieldId: number, value: any, fieldType: FieldType) => {
     setFieldResponses((prev) => {
@@ -854,6 +1019,223 @@ const CreateTransactionPage = () => {
         return [...prev, response];
       }
     });
+  };
+
+  // Render account dynamic form field based on field type
+  const renderAccountDynamicField = (field: ExtendedTemplateField, accountType: 'sender' | 'recipient') => {
+    const fieldName = `account_field_${field.id}`;
+    const fieldResponses = accountType === 'sender' ? senderAccountFieldResponses : recipientAccountFieldResponses;
+    const currentResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
+    const fieldValue = currentResponse
+      ? field.fieldType === FieldType.Number
+        ? currentResponse.valueNumber
+        : field.fieldType === FieldType.Date
+          ? currentResponse.valueDate
+          : field.fieldType === FieldType.Checkbox
+            ? currentResponse.optionId === currentResponse.optionId
+            : field.fieldType === FieldType.Dropdown ||
+                field.fieldType === FieldType.Radio ||
+                field.fieldType === FieldType.Lookup
+              ? currentResponse.optionId
+              : currentResponse.valueText
+      : '';
+
+    const fieldErrors = accountType === 'sender' ? senderAccountErrors : recipientAccountErrors;
+    const fieldErrorKey = `field_${field.id}`;
+    const fieldError = fieldErrors[fieldErrorKey];
+    const isInvalid = !!fieldError;
+
+    const fieldWrapperClasses = cn(
+      'space-y-2',
+      field.fieldType === FieldType.Checkbox ? 'flex items-start space-x-2' : '',
+      field.fieldType === FieldType.Radio ? 'space-y-3' : ''
+    );
+
+    const inputClasses = cn(
+      'w-full', 
+      field.fieldType === FieldType.Checkbox ? 'mt-1' : '',
+      isInvalid ? 'border-red-500 focus-visible:ring-red-500' : ''
+    );
+
+    switch (field.fieldType) {
+      case FieldType.Text:
+      case FieldType.TextArea:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            {field.fieldType === FieldType.Text ? (
+              <Input
+                id={fieldName}
+                value={(fieldValue as string) || ''}
+                onChange={(e) => handleAccountFieldChange(field.id!, e.target.value, field.fieldType, accountType)}
+                className={inputClasses}
+                placeholder={field.placeholder}
+                minLength={field.minLength || undefined}
+                maxLength={field.maxLength || undefined}
+              />
+            ) : (
+              <Textarea
+                id={fieldName}
+                value={(fieldValue as string) || ''}
+                onChange={(e) => handleAccountFieldChange(field.id!, e.target.value, field.fieldType, accountType)}
+                className={inputClasses}
+                placeholder={field.placeholder}
+                minLength={field.minLength || undefined}
+                maxLength={field.maxLength || undefined}
+                rows={4}
+              />
+            )}
+            {fieldError && <p className="text-sm text-red-500 mt-1">{fieldError}</p>}
+          </div>
+        );
+
+      case FieldType.Number:
+        const { min, max } = getRangeBounds(field.ranges);
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            <Input
+              id={fieldName}
+              type="number"
+              value={(fieldValue as number) || ''}
+              onChange={(e) => handleAccountFieldChange(field.id!, e.target.value, field.fieldType, accountType)}
+              className={inputClasses}
+              placeholder={field.placeholder}
+              min={min !== undefined ? min : field.minValue || undefined}
+              max={max !== undefined ? max : field.maxValue || undefined}
+              step="any"
+            />
+            {fieldError && <p className="text-sm text-red-500 mt-1">{fieldError}</p>}
+          </div>
+        );
+
+      case FieldType.Date:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            <Input
+              id={fieldName}
+              type="date"
+              value={
+                typeof fieldValue === 'string' || typeof fieldValue === 'number'
+                  ? String(fieldValue)
+                  : ''
+              }
+              onChange={(e) => handleAccountFieldChange(field.id!, e.target.value, field.fieldType, accountType)}
+              className={inputClasses}
+              min={field.minDate || undefined}
+              max={field.maxDate || undefined}
+            />
+            {fieldError && <p className="text-sm text-red-500 mt-1">{fieldError}</p>}
+          </div>
+        );
+
+      case FieldType.Checkbox:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            <div className="flex items-start space-x-2">
+              <Checkbox
+                id={fieldName}
+                checked={Boolean(fieldValue)}
+                onCheckedChange={(checked) => {
+                  handleAccountFieldChange(field.id!, checked, field.fieldType, accountType);
+                }}
+                className={cn('mt-1', inputClasses)}
+              />
+              <div className="space-y-1">
+                {renderFieldLabel(field, fieldName)}
+                {fieldError && <p className="text-sm text-red-500">{fieldError}</p>}
+              </div>
+            </div>
+          </div>
+        );
+
+      case FieldType.Dropdown:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            <Select
+              value={(fieldValue as string) || ''}
+              onValueChange={(value: string) => {
+                handleAccountFieldChange(field.id!, value, field.fieldType, accountType);
+              }}
+            >
+              <SelectTrigger className={cn(inputClasses, 'w-full')}>
+                <SelectValue placeholder={field.placeholder || 'Select an option'} />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options?.map(
+                  (option: FieldOption) =>
+                    option.id && (
+                      <SelectItem key={option.id} value={option.id.toString()}>
+                        {option.label}
+                      </SelectItem>
+                    )
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+
+      case FieldType.Lookup:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            <Select
+              value={(fieldValue as string) || ''}
+              onValueChange={(value: string) => {
+                handleAccountFieldChange(field.id!, value, field.fieldType, accountType);
+              }}
+            >
+              <SelectTrigger className={cn(inputClasses, 'w-full')}>
+                <SelectValue placeholder={field.placeholder || 'Select a lookup value'} />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options?.map(
+                  (option: FieldOption) =>
+                    option.id && (
+                      <SelectItem key={option.id} value={option.id.toString()}>
+                        {option.label}
+                      </SelectItem>
+                    )
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+
+      case FieldType.Radio:
+        return (
+          <div key={field.id} className={fieldWrapperClasses}>
+            {renderFieldLabel(field, fieldName)}
+            <div className="space-y-2">
+              {field.options?.map(
+                (option: FieldOption) =>
+                  option.id && (
+                    <div key={option.id} className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id={`${fieldName}_${option.id}`}
+                        value={option.id.toString()}
+                        checked={fieldValue === option.id.toString()}
+                        onChange={(e) => {
+                          handleAccountFieldChange(field.id!, e.target.value, field.fieldType, accountType);
+                        }}
+                        className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <Label htmlFor={`${fieldName}_${option.id}`} className="text-sm font-normal">
+                        {option.label}
+                      </Label>
+                    </div>
+                  )
+              )}
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
   };
 
   // Render dynamic form field based on field type
@@ -1071,6 +1453,197 @@ const CreateTransactionPage = () => {
       // Otherwise maintain original order
       return (a.displayOrder || 0) - (b.displayOrder || 0);
     });
+  };
+
+  // Validate account creation
+  const validateAccountCreation = (accountData: any, fieldResponses: any[], accountType: 'sender' | 'recipient') => {
+    const errors: string[] = [];
+    const fieldErrors: Record<string, string> = {};
+
+    // Validate static fields
+    if (!accountData.name?.trim()) {
+      errors.push('Account name is required');
+      fieldErrors['name'] = 'Account name is required';
+    }
+    if (!accountData.number?.trim()) {
+      errors.push('Account number is required');
+      fieldErrors['number'] = 'Account number is required';
+    }
+    if (!accountData.bankOfCountryId) {
+      errors.push('Bank country is required');
+      fieldErrors['bankOfCountryId'] = 'Bank country is required';
+    }
+    if (!accountData.bankOfCity?.trim()) {
+      errors.push('Bank city is required');
+      fieldErrors['bankOfCity'] = 'Bank city is required';
+    }
+    if (!accountData.creationDate) {
+      errors.push('Creation date is required');
+      fieldErrors['creationDate'] = 'Creation date is required';
+    }
+    if (!accountData.accountStatus) {
+      errors.push('Account status is required');
+      fieldErrors['accountStatus'] = 'Account status is required';
+    }
+
+    // Validate dynamic template fields
+    accountTemplateFields.forEach((field) => {
+      const fieldKey = `field_${field.id}`;
+      
+      if (field.isRequired) {
+        const fieldResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
+        
+        if (!fieldResponse) {
+          errors.push(`${field.label} is required`);
+          fieldErrors[fieldKey] = `${field.label} is required`;
+          return;
+        }
+
+        // Check if the field has a value based on its type
+        let hasValue = false;
+        switch (field.fieldType) {
+          case FieldType.Text:
+          case FieldType.TextArea:
+            hasValue = fieldResponse.valueText && fieldResponse.valueText.trim() !== '';
+            break;
+          case FieldType.Number:
+            hasValue = fieldResponse.valueNumber !== null && fieldResponse.valueNumber !== undefined;
+            break;
+          case FieldType.Date:
+            hasValue = fieldResponse.valueDate && fieldResponse.valueDate.trim() !== '';
+            break;
+          case FieldType.Dropdown:
+          case FieldType.Radio:
+          case FieldType.Lookup:
+            hasValue = fieldResponse.optionId && fieldResponse.optionId.trim() !== '';
+            break;
+          case FieldType.Checkbox:
+            // Checkbox is considered valid if it has an optionId (checked or unchecked)
+            hasValue = fieldResponse.optionId && fieldResponse.optionId.trim() !== '';
+            break;
+        }
+
+        if (!hasValue) {
+          errors.push(`${field.label} is required`);
+          fieldErrors[fieldKey] = `${field.label} is required`;
+        }
+      }
+
+      // Validate number field ranges
+      if (field.fieldType === FieldType.Number && field.ranges) {
+        const fieldResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
+        if (fieldResponse && fieldResponse.valueNumber !== null && fieldResponse.valueNumber !== undefined) {
+          const { min, max } = getRangeBounds(field.ranges);
+          const value = fieldResponse.valueNumber;
+          
+          if (min !== undefined && value < min) {
+            const errorMsg = `${field.label} must be at least ${min}`;
+            errors.push(errorMsg);
+            fieldErrors[fieldKey] = errorMsg;
+          }
+          if (max !== undefined && value > max) {
+            const errorMsg = `${field.label} must be at most ${max}`;
+            errors.push(errorMsg);
+            fieldErrors[fieldKey] = errorMsg;
+          }
+        }
+      }
+
+      // Validate text field length constraints
+      if ((field.fieldType === FieldType.Text || field.fieldType === FieldType.TextArea)) {
+        const fieldResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
+        if (fieldResponse && fieldResponse.valueText) {
+          const textLength = fieldResponse.valueText.length;
+          
+          if (field.minLength && textLength < field.minLength) {
+            const errorMsg = `${field.label} must be at least ${field.minLength} characters`;
+            errors.push(errorMsg);
+            fieldErrors[fieldKey] = errorMsg;
+          }
+          if (field.maxLength && textLength > field.maxLength) {
+            const errorMsg = `${field.label} must be at most ${field.maxLength} characters`;
+            errors.push(errorMsg);
+            fieldErrors[fieldKey] = errorMsg;
+          }
+        }
+      }
+
+      // Validate date field constraints
+      if (field.fieldType === FieldType.Date) {
+        const fieldResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
+        if (fieldResponse && fieldResponse.valueDate) {
+          const fieldDate = new Date(fieldResponse.valueDate);
+          
+          if (field.minDate) {
+            const minDate = new Date(field.minDate);
+            if (fieldDate < minDate) {
+              const errorMsg = `${field.label} must be on or after ${field.minDate}`;
+              errors.push(errorMsg);
+              fieldErrors[fieldKey] = errorMsg;
+            }
+          }
+          if (field.maxDate) {
+            const maxDate = new Date(field.maxDate);
+            if (fieldDate > maxDate) {
+              const errorMsg = `${field.label} must be on or before ${field.maxDate}`;
+              errors.push(errorMsg);
+              fieldErrors[fieldKey] = errorMsg;
+            }
+          }
+        }
+      }
+    });
+
+    // Update error state
+    if (accountType === 'sender') {
+      setSenderAccountErrors(fieldErrors);
+    } else {
+      setRecipientAccountErrors(fieldErrors);
+    }
+
+    return errors;
+  };
+
+  // Function to toggle account expansion and fetch field responses
+  const toggleAccountExpansion = async (accountId: number) => {
+    const isCurrentlyExpanded = expandedAccounts[accountId];
+    
+    // Toggle expansion state
+    setExpandedAccounts(prev => ({
+      ...prev,
+      [accountId]: !isCurrentlyExpanded
+    }));
+
+    // If expanding and we don't have data yet, fetch it
+    if (!isCurrentlyExpanded && !accountFieldResponses[accountId]) {
+      setLoadingAccountResponses(prev => ({ ...prev, [accountId]: true }));
+      
+      try {
+        const responses = await fieldResponseService.getFieldResponses({ accountId });
+        setAccountFieldResponses(prev => ({
+          ...prev,
+          [accountId]: responses
+        }));
+      } catch (error) {
+        console.error('Error fetching account field responses:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load account field responses',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoadingAccountResponses(prev => ({ ...prev, [accountId]: false }));
+      }
+    }
+  };
+
+  // Function to render field response value
+  const renderFieldResponseValue = (response: FieldResponseDetail) => {
+    if (response.valueText) return response.valueText;
+    if (response.valueNumber !== null) return response.valueNumber.toString();
+    if (response.valueDate) return new Date(response.valueDate).toLocaleDateString();
+    if (response.optionValue) return response.optionValue;
+    return '-';
   };
 
   return (
@@ -1297,13 +1870,45 @@ const CreateTransactionPage = () => {
                       <Button
                         type="button"
                         onClick={() => {
+                          // Reset sender modal state
+                          setSelectedSenderRecord(null);
+                          setSelectedSenderAccount(null);
+                          setSenderAccounts([]);
+                          setShowCreateAccount(false);
+                          setSenderAccount({});
+                          setSenderAccountFieldResponses([]);
+                          setSenderAccountErrors({});
+                          // Reset expansion state
+                          setExpandedAccounts({});
+                          setAccountFieldResponses({});
+                          setLoadingAccountResponses({});
+                          
                           setSenderDialogOpen(true);
                           fetchRecords();
                         }}
                       >
                         Select or Create Customer
                       </Button>
-                      <Dialog open={senderDialogOpen} onOpenChange={setSenderDialogOpen}>
+                      <Dialog 
+                        open={senderDialogOpen} 
+                        onOpenChange={(open) => {
+                          setSenderDialogOpen(open);
+                          if (!open) {
+                            // Reset state when modal is closed
+                            setSelectedSenderRecord(null);
+                            setSelectedSenderAccount(null);
+                            setSenderAccounts([]);
+                            setShowCreateAccount(false);
+                            setSenderAccount({});
+                            setSenderAccountFieldResponses([]);
+                            setSenderAccountErrors({});
+                            // Reset expansion state
+                            setExpandedAccounts({});
+                            setAccountFieldResponses({});
+                            setLoadingAccountResponses({});
+                          }
+                        }}
+                      >
                         <DialogContent className="max-w-4xl w-full">
                           <DialogHeader>
                             <DialogTitle>Select Customer & Account</DialogTitle>
@@ -1394,28 +1999,82 @@ const CreateTransactionPage = () => {
                                       </thead>
                                       <tbody>
                                         {senderAccounts.map((acc) => (
-                                          <tr key={acc.id}>
-                                            <td className="border px-3 py-2">
-                                              <input
-                                                type="radio"
-                                                name="senderAccount"
-                                                checked={selectedSenderAccount?.id === acc.id}
-                                                onChange={() => {
-                                                  console.log('Selecting sender account:', acc);
-                                                  setSelectedSenderAccount(acc);
-                                                }}
-                                              />
-                                            </td>
-                                            <td className="border px-3 py-2">{acc.name}</td>
-                                            <td className="border px-3 py-2">{acc.number}</td>
-                                            <td className="border px-3 py-2">
-                                              {acc.bankOfCountryName}
-                                            </td>
-                                            <td className="border px-3 py-2">{acc.bankOfCity}</td>
-                                            <td className="border px-3 py-2">
-                                              {acc.accountStatus}
-                                            </td>
-                                          </tr>
+                                          <React.Fragment key={acc.id}>
+                                            <tr>
+                                              <td className="border px-3 py-2">
+                                                <input
+                                                  type="radio"
+                                                  name="senderAccount"
+                                                  checked={selectedSenderAccount?.id === acc.id}
+                                                  onChange={() => {
+                                                    console.log('Selecting sender account:', acc);
+                                                    setSelectedSenderAccount(acc);
+                                                  }}
+                                                />
+                                              </td>
+                                              <td className="border px-3 py-2">
+                                                <div className="flex items-center gap-2">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => toggleAccountExpansion(acc.id)}
+                                                    className="p-1 hover:bg-gray-100 rounded"
+                                                  >
+                                                    {expandedAccounts[acc.id] ? (
+                                                      <ChevronDown className="h-4 w-4" />
+                                                    ) : (
+                                                      <ChevronRight className="h-4 w-4" />
+                                                    )}
+                                                  </button>
+                                                  {acc.name}
+                                                </div>
+                                              </td>
+                                              <td className="border px-3 py-2">{acc.number}</td>
+                                              <td className="border px-3 py-2">
+                                                {acc.bankOfCountryName}
+                                              </td>
+                                              <td className="border px-3 py-2">{acc.bankOfCity}</td>
+                                              <td className="border px-3 py-2">
+                                                {acc.accountStatus}
+                                              </td>
+                                            </tr>
+                                            {expandedAccounts[acc.id] && (
+                                              <tr>
+                                                <td colSpan={6} className="border px-3 py-2 bg-gray-50">
+                                                  {loadingAccountResponses[acc.id] ? (
+                                                    <div className="flex items-center justify-center py-4">
+                                                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                                                      <span className="ml-2 text-sm text-muted-foreground">Loading field responses...</span>
+                                                    </div>
+                                                  ) : accountFieldResponses[acc.id] && accountFieldResponses[acc.id].length > 0 ? (
+                                                    <div className="space-y-2">
+                                                      <h4 className="font-medium text-sm">Account Field Responses:</h4>
+                                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        {accountFieldResponses[acc.id].map((response) => (
+                                                          <div key={response.id} className="bg-white p-3 rounded border">
+                                                            <div className="text-sm font-medium text-gray-700">
+                                                              {response.fieldName}
+                                                            </div>
+                                                            <div className="text-sm text-gray-900 mt-1">
+                                                              {renderFieldResponseValue(response)}
+                                                            </div>
+                                                            {response.created && (
+                                                              <div className="text-xs text-gray-500 mt-1">
+                                                                Created: {new Date(response.created).toLocaleDateString()}
+                                                              </div>
+                                                            )}
+                                                          </div>
+                                                        ))}
+                                                      </div>
+                                                    </div>
+                                                  ) : (
+                                                    <div className="text-sm text-gray-500 py-2">
+                                                      No field responses found for this account.
+                                                    </div>
+                                                  )}
+                                                </td>
+                                              </tr>
+                                            )}
+                                          </React.Fragment>
                                         ))}
                                       </tbody>
                                     </table>
@@ -1527,16 +2186,87 @@ const CreateTransactionPage = () => {
                                         </SelectContent>
                                       </Select>
                                     </div>
+
+                                    {/* Dynamic Template Fields for Account */}
+                                    {accountTemplateFields.length > 0 && (
+                                      <div className="mt-6 pt-4 border-t">
+                                        <h4 className="text-md font-medium mb-3 text-muted-foreground">
+                                          Additional Account Information
+                                        </h4>
+                                        {accountTemplateFieldsLoading ? (
+                                          <div className="flex items-center justify-center py-4">
+                                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                                            <span className="ml-2 text-sm text-muted-foreground">Loading fields...</span>
+                                          </div>
+                                        ) : (
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {sortFields(accountTemplateFields)
+                                              .filter((field) => field.fieldType !== FieldType.Checkbox)
+                                              .map((field) => (
+                                                <div
+                                                  key={field.id}
+                                                  className={cn(
+                                                    'p-3 rounded border bg-gray-50/50',
+                                                    field.fieldType === FieldType.TextArea ? 'md:col-span-2' : ''
+                                                  )}
+                                                >
+                                                  {renderAccountDynamicField(field, 'sender')}
+                                                </div>
+                                              ))}
+                                          </div>
+                                        )}
+
+                                        {/* Checkbox fields for account template */}
+                                        {accountTemplateFields.some((field) => field.fieldType === FieldType.Checkbox) && (
+                                          <div className="mt-4 pt-3 border-t">
+                                            <h5 className="text-sm font-medium mb-2 text-muted-foreground">
+                                              Account Options
+                                            </h5>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                              {sortFields(accountTemplateFields)
+                                                .filter((field) => field.fieldType === FieldType.Checkbox)
+                                                .map((field) => (
+                                                  <div key={field.id} className="p-2 rounded border bg-gray-50/30">
+                                                    {renderAccountDynamicField(field, 'sender')}
+                                                  </div>
+                                                ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
                                     <Button
                                       type="button"
                                       size="sm"
-                                      className="mt-2"
+                                      className="mt-4"
                                       onClick={async () => {
+                                        // Clear previous errors
+                                        setSenderAccountErrors({});
+                                        
+                                        // Validate before creating account
+                                        const validationErrors = validateAccountCreation(
+                                          senderAccount,
+                                          senderAccountFieldResponses,
+                                          'sender'
+                                        );
+
+                                        if (validationErrors.length > 0) {
+                                          toast({
+                                            title: 'Validation Error',
+                                            description: validationErrors[0], // Show first error
+                                            variant: 'destructive'
+                                          });
+                                          return;
+                                        }
+
                                         setAccountsLoading(true);
                                         try {
                                           const accountData = {
                                             ...senderAccount,
-                                            recordId: selectedSenderRecord.id
+                                            recordId: selectedSenderRecord.id,
+                                            templateId: 13,
+                                            fieldResponses: senderAccountFieldResponses
                                           };
                                           const res =
                                             await accountService.createAccount(accountData);
@@ -1546,9 +2276,10 @@ const CreateTransactionPage = () => {
                                           ]);
                                           setShowCreateAccount(false);
                                           setSenderAccount({});
+                                          setSenderAccountFieldResponses([]);
                                           toast({
                                             title: 'Success',
-                                            description: 'Account created'
+                                            description: 'Account created successfully'
                                           });
                                           // After account creation, select it and close the dialog
                                           setSelectedSenderAccount({
@@ -1557,10 +2288,11 @@ const CreateTransactionPage = () => {
                                           });
                                           setForm((f) => ({ ...f, senderId: res.id }));
                                           setSenderDialogOpen(false);
-                                        } catch {
+                                        } catch (error: any) {
+                                          console.error('Error creating sender account:', error);
                                           toast({
                                             title: 'Error',
-                                            description: 'Failed to create account',
+                                            description: error?.response?.data?.message || 'Failed to create account',
                                             variant: 'destructive'
                                           });
                                         } finally {
@@ -1665,13 +2397,45 @@ const CreateTransactionPage = () => {
                         type="button"
                         onClick={() => {
                           console.log('Opening recipient dialog...');
+                          // Reset recipient modal state
+                          setSelectedRecipientRecord(null);
+                          setSelectedRecipientAccount(null);
+                          setRecipientAccounts([]);
+                          setShowCreateRecipientAccount(false);
+                          setRecipientAccount({});
+                          setRecipientAccountFieldResponses([]);
+                          setRecipientAccountErrors({});
+                          // Reset expansion state
+                          setExpandedAccounts({});
+                          setAccountFieldResponses({});
+                          setLoadingAccountResponses({});
+                          
                           setRecipientDialogOpen(true);
                           fetchRecipientRecords();
                         }}
                       >
                         Select or Create Customer
                       </Button>
-                      <Dialog open={recipientDialogOpen} onOpenChange={setRecipientDialogOpen}>
+                      <Dialog 
+                        open={recipientDialogOpen} 
+                        onOpenChange={(open) => {
+                          setRecipientDialogOpen(open);
+                          if (!open) {
+                            // Reset state when modal is closed
+                            setSelectedRecipientRecord(null);
+                            setSelectedRecipientAccount(null);
+                            setRecipientAccounts([]);
+                            setShowCreateRecipientAccount(false);
+                            setRecipientAccount({});
+                            setRecipientAccountFieldResponses([]);
+                            setRecipientAccountErrors({});
+                            // Reset expansion state
+                            setExpandedAccounts({});
+                            setAccountFieldResponses({});
+                            setLoadingAccountResponses({});
+                          }
+                        }}
+                      >
                         <DialogContent className="max-w-4xl w-full">
                           <DialogHeader>
                             <DialogTitle>Select Customer & Account</DialogTitle>
@@ -1762,28 +2526,82 @@ const CreateTransactionPage = () => {
                                       </thead>
                                       <tbody>
                                         {recipientAccounts.map((acc) => (
-                                          <tr key={acc.id}>
-                                            <td className="border px-3 py-2">
-                                              <input
-                                                type="radio"
-                                                name="recipientAccount"
-                                                checked={selectedRecipientAccount?.id === acc.id}
-                                                onChange={() => {
-                                                  console.log('Selecting recipient account:', acc);
-                                                  setSelectedRecipientAccount(acc);
-                                                }}
-                                              />
-                                            </td>
-                                            <td className="border px-3 py-2">{acc.name}</td>
-                                            <td className="border px-3 py-2">{acc.number}</td>
-                                            <td className="border px-3 py-2">
-                                              {acc.bankOfCountryName}
-                                            </td>
-                                            <td className="border px-3 py-2">{acc.bankOfCity}</td>
-                                            <td className="border px-3 py-2">
-                                              {acc.accountStatus}
-                                            </td>
-                                          </tr>
+                                          <React.Fragment key={acc.id}>
+                                            <tr>
+                                              <td className="border px-3 py-2">
+                                                <input
+                                                  type="radio"
+                                                  name="recipientAccount"
+                                                  checked={selectedRecipientAccount?.id === acc.id}
+                                                  onChange={() => {
+                                                    console.log('Selecting recipient account:', acc);
+                                                    setSelectedRecipientAccount(acc);
+                                                  }}
+                                                />
+                                              </td>
+                                              <td className="border px-3 py-2">
+                                                <div className="flex items-center gap-2">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => toggleAccountExpansion(acc.id)}
+                                                    className="p-1 hover:bg-gray-100 rounded"
+                                                  >
+                                                    {expandedAccounts[acc.id] ? (
+                                                      <ChevronDown className="h-4 w-4" />
+                                                    ) : (
+                                                      <ChevronRight className="h-4 w-4" />
+                                                    )}
+                                                  </button>
+                                                  {acc.name}
+                                                </div>
+                                              </td>
+                                              <td className="border px-3 py-2">{acc.number}</td>
+                                              <td className="border px-3 py-2">
+                                                {acc.bankOfCountryName}
+                                              </td>
+                                              <td className="border px-3 py-2">{acc.bankOfCity}</td>
+                                              <td className="border px-3 py-2">
+                                                {acc.accountStatus}
+                                              </td>
+                                            </tr>
+                                            {expandedAccounts[acc.id] && (
+                                              <tr>
+                                                <td colSpan={6} className="border px-3 py-2 bg-gray-50">
+                                                  {loadingAccountResponses[acc.id] ? (
+                                                    <div className="flex items-center justify-center py-4">
+                                                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                                                      <span className="ml-2 text-sm text-muted-foreground">Loading field responses...</span>
+                                                    </div>
+                                                  ) : accountFieldResponses[acc.id] && accountFieldResponses[acc.id].length > 0 ? (
+                                                    <div className="space-y-2">
+                                                      <h4 className="font-medium text-sm">Account Field Responses:</h4>
+                                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        {accountFieldResponses[acc.id].map((response) => (
+                                                          <div key={response.id} className="bg-white p-3 rounded border">
+                                                            <div className="text-sm font-medium text-gray-700">
+                                                              {response.fieldName}
+                                                            </div>
+                                                            <div className="text-sm text-gray-900 mt-1">
+                                                              {renderFieldResponseValue(response)}
+                                                            </div>
+                                                            {response.created && (
+                                                              <div className="text-xs text-gray-500 mt-1">
+                                                                Created: {new Date(response.created).toLocaleDateString()}
+                                                              </div>
+                                                            )}
+                                                          </div>
+                                                        ))}
+                                                      </div>
+                                                    </div>
+                                                  ) : (
+                                                    <div className="text-sm text-gray-500 py-2">
+                                                      No field responses found for this account.
+                                                    </div>
+                                                  )}
+                                                </td>
+                                              </tr>
+                                            )}
+                                          </React.Fragment>
                                         ))}
                                       </tbody>
                                     </table>
@@ -1894,16 +2712,87 @@ const CreateTransactionPage = () => {
                                         </SelectContent>
                                       </Select>
                                     </div>
+
+                                    {/* Dynamic Template Fields for Recipient Account */}
+                                    {accountTemplateFields.length > 0 && (
+                                      <div className="mt-6 pt-4 border-t">
+                                        <h4 className="text-md font-medium mb-3 text-muted-foreground">
+                                          Additional Account Information
+                                        </h4>
+                                        {accountTemplateFieldsLoading ? (
+                                          <div className="flex items-center justify-center py-4">
+                                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                                            <span className="ml-2 text-sm text-muted-foreground">Loading fields...</span>
+                                          </div>
+                                        ) : (
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {sortFields(accountTemplateFields)
+                                              .filter((field) => field.fieldType !== FieldType.Checkbox)
+                                              .map((field) => (
+                                                <div
+                                                  key={field.id}
+                                                  className={cn(
+                                                    'p-3 rounded border bg-gray-50/50',
+                                                    field.fieldType === FieldType.TextArea ? 'md:col-span-2' : ''
+                                                  )}
+                                                >
+                                                  {renderAccountDynamicField(field, 'recipient')}
+                                                </div>
+                                              ))}
+                                          </div>
+                                        )}
+
+                                        {/* Checkbox fields for account template */}
+                                        {accountTemplateFields.some((field) => field.fieldType === FieldType.Checkbox) && (
+                                          <div className="mt-4 pt-3 border-t">
+                                            <h5 className="text-sm font-medium mb-2 text-muted-foreground">
+                                              Account Options
+                                            </h5>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                              {sortFields(accountTemplateFields)
+                                                .filter((field) => field.fieldType === FieldType.Checkbox)
+                                                .map((field) => (
+                                                  <div key={field.id} className="p-2 rounded border bg-gray-50/30">
+                                                    {renderAccountDynamicField(field, 'recipient')}
+                                                  </div>
+                                                ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
                                     <Button
                                       type="button"
                                       size="sm"
-                                      className="mt-2"
+                                      className="mt-4"
                                       onClick={async () => {
+                                        // Clear previous errors
+                                        setRecipientAccountErrors({});
+                                        
+                                        // Validate before creating account
+                                        const validationErrors = validateAccountCreation(
+                                          recipientAccount,
+                                          recipientAccountFieldResponses,
+                                          'recipient'
+                                        );
+
+                                        if (validationErrors.length > 0) {
+                                          toast({
+                                            title: 'Validation Error',
+                                            description: validationErrors[0], // Show first error
+                                            variant: 'destructive'
+                                          });
+                                          return;
+                                        }
+
                                         setRecipientAccountsLoading(true);
                                         try {
                                           const accountData = {
                                             ...recipientAccount,
-                                            recordId: selectedRecipientRecord.id
+                                            recordId: selectedRecipientRecord.id,
+                                            templateId: 13,
+                                            fieldResponses: recipientAccountFieldResponses
                                           };
                                           const res =
                                             await accountService.createAccount(accountData);
@@ -1913,9 +2802,10 @@ const CreateTransactionPage = () => {
                                           ]);
                                           setShowCreateRecipientAccount(false);
                                           setRecipientAccount({});
+                                          setRecipientAccountFieldResponses([]);
                                           toast({
                                             title: 'Success',
-                                            description: 'Account created'
+                                            description: 'Account created successfully'
                                           });
                                           setSelectedRecipientAccount({
                                             ...recipientAccount,
@@ -1923,10 +2813,11 @@ const CreateTransactionPage = () => {
                                           });
                                           setForm((f) => ({ ...f, recipientId: res.id }));
                                           setRecipientDialogOpen(false);
-                                        } catch {
+                                        } catch (error: any) {
+                                          console.error('Error creating recipient account:', error);
                                           toast({
                                             title: 'Error',
-                                            description: 'Failed to create account',
+                                            description: error?.response?.data?.message || 'Failed to create account',
                                             variant: 'destructive'
                                           });
                                         } finally {
