@@ -22,13 +22,14 @@ import {
   FilterByOptions,
   DurationTypeOptions,
   AccountTypeOptions,
-  ComparisonOperatorOptions
+  ComparisonOperatorOptions,
+  AggregateCustomValueFieldIdOptions
 } from '@/pages/rules/enums';
 import { Settings, Database, Filter, Clock, FilterIcon } from 'lucide-react';
 
 const initialCustomValue: CreateCustomValueRequest = {
   title: '',
-  isAggregated: false,
+  isAggregated: true,
   isAggregatedCustomField: false,
   aggregateFieldId: null,
   customFieldId: null,
@@ -136,7 +137,7 @@ const CreateCustomValuePage = () => {
           <CardContent className="p-6">
             <div className="space-y-6">
               {/* Is Aggregated Toggle */}
-              <div className="flex items-center space-x-2 p-4 bg-gray-50 rounded-lg border">
+              {/*<div className="flex items-center space-x-2 p-4 bg-gray-50 rounded-lg border">
                 <Switch
                   checked={customValue.isAggregated}
                   onCheckedChange={(checked) => handleFieldChange('isAggregated', checked)}
@@ -151,7 +152,7 @@ const CreateCustomValuePage = () => {
               </div>
 
               {/* Use Custom Field Toggle */}
-              <div className="flex items-center space-x-2 p-4 bg-gray-50 rounded-lg border">
+              {/*<div className="flex items-center space-x-2 p-4 bg-gray-50 rounded-lg border">
                 <Switch
                   checked={customValue.isAggregatedCustomField}
                   onCheckedChange={(checked) => handleFieldChange('isAggregatedCustomField', checked)}
@@ -163,7 +164,7 @@ const CreateCustomValuePage = () => {
                 <span className="text-xs text-gray-500 ml-2">
                   Apply custom field logic
                 </span>
-              </div>
+              </div>*/}
 
               {/* Field */}
 
@@ -179,7 +180,7 @@ const CreateCustomValuePage = () => {
                     <SelectValue placeholder="Select field" />
                   </SelectTrigger>
                   <SelectContent>
-                    {AggregateFieldIdOptions.map((option) => (
+                    {AggregateCustomValueFieldIdOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value.toString()}>
                         {option.label}
                       </SelectItem>
@@ -191,7 +192,7 @@ const CreateCustomValuePage = () => {
 
               {/* Grid for other aggregation settings */}
               {customValue.isAggregated && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Aggregate Function */}
                   <div>
                     <label className="block text-sm font-medium mb-2 text-gray-700">
@@ -235,70 +236,8 @@ const CreateCustomValuePage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-              )}
 
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Filter & Comparison Settings Section */}
-        {customValue.isAggregated && (
-          <Card className="bg-white border border-gray-200 shadow-sm">
-            <CardHeader className="bg-orange-50 border-b border-gray-200 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <Filter className="text-orange-600 w-5 h-5" />
-                <h2 className="text-lg font-semibold text-gray-900">Filter & Comparison Settings</h2>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Filter By */}
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Filter By
-                  </label>
-                  <Select
-                    value={customValue.filterBy?.toString() || ''}
-                    onValueChange={(value) => handleFieldChange('filterBy', Number(value))}
-                  >
-                    <SelectTrigger className="w-full bg-white border-gray-200">
-                      <SelectValue placeholder="Select filter" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FilterByOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value.toString()}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Comparison Operator */}
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Comparison Operator
-                  </label>
-                  <Select
-                    value={customValue.comparisonOperator?.toString() || ''}
-                    onValueChange={(value) => handleFieldChange('comparisonOperator', Number(value))}
-                  >
-                    <SelectTrigger className="w-full bg-white border-gray-200">
-                      <SelectValue placeholder="Select operator" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ComparisonOperatorOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value.toString()}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Account Type */}
-                <div>
+                  <div>
                   <label className="block text-sm font-medium mb-2 text-gray-700">
                     Account Type
                   </label>
@@ -318,10 +257,14 @@ const CreateCustomValuePage = () => {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                </div>
+              )}
+
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Filter & Comparison Settings Section */}
 
         {/* Time Range Settings Section */}
         {customValue.isAggregated && (

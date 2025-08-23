@@ -54,7 +54,7 @@ export const CustomValueFiltersSection: React.FC<CustomValueFiltersSectionProps>
           variant="default"
           size="sm"
           onClick={addFilter}
-          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+          className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white"
         >
           <Plus className="w-4 h-4" />
           Add Filter
@@ -147,19 +147,12 @@ export const CustomValueFiltersSection: React.FC<CustomValueFiltersSectionProps>
                     <Input
                       value={filter.jsonValue}
                       onChange={(e) => updateFilter(index, 'jsonValue', e.target.value)}
-                      placeholder="Enter value or JSON"
+                      placeholder="Enter value"
                       className="w-full bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
-                {/* Helper text */}
-                <div className="mt-4">
-                  <p className="text-xs text-gray-500">
-                    For complex values, use JSON format: {"{"}"key": "value"{"}"}.
-                    For simple values, enter directly.
-                  </p>
-                </div>
               </div>
             </div>
           ))}

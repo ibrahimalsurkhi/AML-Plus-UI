@@ -17,11 +17,21 @@ export enum AggregateFieldId {
   CurrencyAmount = 5,
   RiskStatus = 6
 }
+
 export const AggregateFieldIdOptions = [
   { label: 'Transaction Status', value: AggregateFieldId.TransactionStatus },
   { label: 'Amount', value: AggregateFieldId.Amount },
   { label: 'Risk Status', value: AggregateFieldId.RiskStatus },
   /*{ label: 'Transaction Count', value: AggregateFieldId.TransactionCount },
+  { label: 'Transaction Time', value: AggregateFieldId.TransactionTime },
+  { label: 'Currency Amount', value: AggregateFieldId.CurrencyAmount }*/
+];
+
+export const AggregateCustomValueFieldIdOptions = [
+  { label: 'Amount', value: AggregateFieldId.Amount },
+  /*{ label: 'Transaction Status', value: AggregateFieldId.TransactionStatus },
+  { label: 'Risk Status', value: AggregateFieldId.RiskStatus },
+  { label: 'Transaction Count', value: AggregateFieldId.TransactionCount },
   { label: 'Transaction Time', value: AggregateFieldId.TransactionTime },
   { label: 'Currency Amount', value: AggregateFieldId.CurrencyAmount }*/
 ];
