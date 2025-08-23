@@ -276,55 +276,99 @@ const CreateCustomValuePage = () => {
               </div>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Duration */}
-                <div>
+              <div className="flex gap-6 w-full">
+                {/* Duration & Type */}
+                <div className="flex-1">
                   <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Duration
+                    Duration & Type
                   </label>
-                  <Input
-                    type="number"
-                    value={customValue.duration || ''}
-                    onChange={(e) => handleFieldChange('duration', Number(e.target.value))}
-                    placeholder="Enter duration"
-                    className="w-full bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Duration Type */}
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Duration Type
-                  </label>
-                  <Select
-                    value={customValue.durationType?.toString() || ''}
-                    onValueChange={(value) => handleFieldChange('durationType', Number(value))}
-                  >
-                    <SelectTrigger className="w-full bg-white border-gray-200">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DurationTypeOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value.toString()}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-3 w-full">
+                    <Input
+                      type="number"
+                      value={customValue.duration ?? ''}
+                      onChange={(e) => {
+                        const durationVal = e.target.value ? Number(e.target.value) : null;
+                        
+                        if (durationVal) {
+                          // If Duration is entered, reset Last Transaction Count and auto-set durationType if not set
+                          setCustomValue(prev => ({
+                            ...prev,
+                            duration: durationVal,
+                            durationType: prev.durationType || 1,
+                            lastTransactionCount: null
+                          }));
+                        } else {
+                          // If Duration is cleared, also clear durationType
+                          setCustomValue(prev => ({
+                            ...prev,
+                            duration: null,
+                            durationType: null
+                          }));
+                        }
+                      }}
+                      placeholder="Duration"
+                      className="w-1/2 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                      min={1}
+                      disabled={!!customValue.lastTransactionCount}
+                    />
+                    <Select
+                      value={
+                        customValue.durationType !== null && customValue.durationType !== undefined
+                          ? customValue.durationType.toString()
+                          : ''
+                      }
+                      onValueChange={(value) =>
+                        handleFieldChange('durationType', value ? Number(value) : null)
+                      }
+                      disabled={!!customValue.lastTransactionCount}
+                    >
+                      <SelectTrigger className="w-1/2 bg-white border-gray-200">
+                        <SelectValue placeholder="Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DurationTypeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value.toString()}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Set both duration and type, or use transaction count below.
+                  </p>
                 </div>
 
                 {/* Last Transaction Count */}
-                <div>
+                <div className="flex-1">
                   <label className="block text-sm font-medium mb-2 text-gray-700">
                     Last Transaction Count
                   </label>
                   <Input
                     type="number"
-                    value={customValue.lastTransactionCount || ''}
-                    onChange={(e) => handleFieldChange('lastTransactionCount', Number(e.target.value))}
-                    placeholder="Enter count"
+                    value={customValue.lastTransactionCount ?? ''}
+                    onChange={(e) => {
+                      const lastTransactionCountVal = e.target.value ? Number(e.target.value) : null;
+                      
+                      // If Last Transaction Count is entered, reset Duration & Type
+                      if (lastTransactionCountVal) {
+                        setCustomValue(prev => ({
+                          ...prev,
+                          lastTransactionCount: lastTransactionCountVal,
+                          duration: null,
+                          durationType: null
+                        }));
+                      } else {
+                        handleFieldChange('lastTransactionCount', lastTransactionCountVal);
+                      }
+                    }}
+                    placeholder="Count"
                     className="w-full bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    min={1}
                   />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Or specify the number of last transactions to aggregate.
+                  </p>
                 </div>
               </div>
             </CardContent>

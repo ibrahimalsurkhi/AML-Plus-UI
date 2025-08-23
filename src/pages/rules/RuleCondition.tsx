@@ -732,10 +732,23 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                           value={condition.duration ?? ''}
                           onChange={(e) => {
                             const durationVal = e.target.value ? Number(e.target.value) : null;
-                            if (durationVal && !condition.durationType)
-                              handleFieldChange('durationType', 1);
-                            if (!durationVal) handleFieldChange('durationType', null);
-                            handleFieldChange('duration', durationVal);
+                            
+                            if (durationVal) {
+                              // If Duration is entered, reset Last Transaction Count and auto-set durationType if not set
+                              onChange({
+                                ...condition,
+                                duration: durationVal,
+                                durationType: condition.durationType || 1,
+                                lastTransactionCount: null
+                              });
+                            } else {
+                              // If Duration is cleared, also clear durationType
+                              onChange({
+                                ...condition,
+                                duration: null,
+                                durationType: null
+                              });
+                            }
                           }}
                           placeholder="Duration"
                           className="w-1/2"
@@ -777,12 +790,21 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                       <Input
                         type="number"
                         value={condition.lastTransactionCount ?? ''}
-                        onChange={(e) =>
-                          handleFieldChange(
-                            'lastTransactionCount',
-                            e.target.value ? Number(e.target.value) : null
-                          )
-                        }
+                        onChange={(e) => {
+                          const lastTransactionCountVal = e.target.value ? Number(e.target.value) : null;
+                          
+                          // If Last Transaction Count is entered, reset Duration & Type
+                          if (lastTransactionCountVal) {
+                            onChange({
+                              ...condition,
+                              lastTransactionCount: lastTransactionCountVal,
+                              duration: null,
+                              durationType: null
+                            });
+                          } else {
+                            handleFieldChange('lastTransactionCount', lastTransactionCountVal);
+                          }
+                        }}
                         placeholder="Count"
                         className="w-full"
                         min={1}
