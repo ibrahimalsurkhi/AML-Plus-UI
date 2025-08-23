@@ -106,6 +106,7 @@ import TransactionsPage from '@/pages/transactions';
 import TransactionDetailsPage from '@/pages/transactions/TransactionDetailsPage';
 import TransactionCasesPage from '@/pages/transaction-cases';
 import TransactionCaseDetailsPage from '@/pages/transaction-cases/TransactionCaseDetailsPage';
+import { CreateCustomValuePage, CustomValueListPage } from '@/pages/custom-values';
 
 const AppRoutingSetup = (): ReactElement => {
   return (
@@ -232,6 +233,8 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/transactions/:id" element={<TransactionDetailsPage />} />
           <Route path="/transaction-cases" element={<TransactionCasesPage />} />
           <Route path="/transaction-cases/:uuid" element={<TransactionCaseDetailsPage />} />
+          <Route path="/custom-values" element={<CustomValueListPage />} />
+          <Route path="/custom-values/new" element={<CreateCustomValuePage />} />
           {/* TODO: Add create and edit/detail pages when implemented */}
         </Route>
       </Route>

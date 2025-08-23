@@ -926,6 +926,81 @@ export const fieldResponseService = {
   }
 };
 
+// Custom Value interfaces
+export interface CustomValueFilter {
+  aggregateFieldId: number;
+  comparisonOperator: number;
+  jsonValue: string;
+}
+
+export interface CustomValue {
+  id?: number;
+  key: number;
+  title: string;
+  isAggregated: boolean;
+  isAggregatedCustomField: boolean;
+  aggregateFieldId: number | null;
+  customFieldId: number | null;
+  aggregateFunction: number | null;
+  aggregationBy: number | null;
+  filterBy: number | null;
+  comparisonOperator: number | null;
+  duration: number | null;
+  durationType: number | null;
+  lastTransactionCount: number | null;
+  accountType: number | null;
+  filters: CustomValueFilter[];
+}
+
+export interface CreateCustomValueRequest {
+  title: string;
+  isAggregated: boolean;
+  isAggregatedCustomField: boolean;
+  aggregateFieldId: number | null;
+  customFieldId: number | null;
+  aggregateFunction: number | null;
+  aggregationBy: number | null;
+  filterBy: number | null;
+  comparisonOperator: number | null;
+  duration: number | null;
+  durationType: number | null;
+  lastTransactionCount: number | null;
+  accountType: number | null;
+  filters: CustomValueFilter[];
+}
+
+export const customValueService = {
+  createCustomValue: async (data: CreateCustomValueRequest): Promise<CustomValue> => {
+    console.log('Creating custom value with data:', data);
+    const response = await api.post<CustomValue>('/api/CustomValues', data);
+    console.log('Custom value creation response:', response.data);
+    return response.data;
+  },
+  getCustomValues: async (params: {
+    pageNumber: number;
+    pageSize: number;
+  }): Promise<PaginatedResponse<CustomValue>> => {
+    const response = await api.get<PaginatedResponse<CustomValue>>('/api/CustomValues', {
+      params: {
+        PageNumber: params.pageNumber,
+        PageSize: params.pageSize
+      }
+    });
+    return response.data;
+  },
+  getCustomValueById: async (id: number): Promise<CustomValue> => {
+    const response = await api.get<CustomValue>(`/api/CustomValues/${id}`);
+    return response.data;
+  },
+  updateCustomValue: async (id: number, data: CreateCustomValueRequest): Promise<CustomValue> => {
+    const response = await api.put<CustomValue>(`/api/CustomValues/${id}`, data);
+    return response.data;
+  },
+  deleteCustomValue: async (id: number): Promise<void> => {
+    await api.delete(`/api/CustomValues/${id}`);
+  }
+};
+
 export const transactionService = {
   createTransaction: async (data: TransactionCreate): Promise<number> => {
     console.log('Creating transaction with data:', data);
