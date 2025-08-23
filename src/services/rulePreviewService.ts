@@ -21,7 +21,9 @@ let customValuesCacheLoaded = false;
 async function loadCustomValues() {
   if (!customValuesCacheLoaded) {
     try {
+      console.log('Debug - Loading custom values...');
       customValuesCache = await customValueService.getCustomValueOptions();
+      console.log('Debug - Loaded custom values:', customValuesCache);
       customValuesCacheLoaded = true;
     } catch (error) {
       console.error('Failed to load custom values for preview:', error);
@@ -31,8 +33,18 @@ async function loadCustomValues() {
 
 // Helper to get custom value title
 function getCustomValueTitle(customValueId: number): string {
-  const customValue = customValuesCache.find(cv => cv.id === customValueId);
-  return customValue ? customValue.title : `Custom Value #${customValueId}`;
+  debugger;
+  console.log('Debug - getCustomValueTitle called with ID:', customValueId, 'type:', typeof customValueId);
+  console.log('Debug - customValuesCache:', customValuesCache);
+  console.log('Debug - customValuesCacheLoaded:', customValuesCacheLoaded);
+  
+  // Try both exact match and loose match in case of type mismatch
+  const customValue = customValuesCache.find(cv => 
+    cv.id === customValueId || cv.id == customValueId
+  );
+  console.log('Debug - found customValue:', customValue);
+  
+  return customValue ? `"${customValue.title}"` : `Custom Value #${customValueId}`;
 }
 
 // Helper to get label from options
@@ -139,8 +151,17 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
         let value = '[Value]';
         
         // Check if custom value is selected for Amount field
+        console.log('Debug - Checking condition:', {
+          aggregateFieldId: cond.aggregateFieldId,
+          isAmount: cond.aggregateFieldId === AggregateFieldId.Amount,
+          customValueId: cond.customValueId,
+          hasCustomValueId: !!cond.customValueId
+        });
+        
         if (cond.aggregateFieldId === AggregateFieldId.Amount && cond.customValueId) {
+          console.log('Debug - Getting custom value title for ID:', cond.customValueId);
           value = getCustomValueTitle(cond.customValueId);
+          console.log('Debug - Got custom value title:', value);
         } else if (cond.jsonValue) {
           try {
             if (cond.aggregateFieldId === AggregateFieldId.TransactionTime) {
