@@ -37,11 +37,6 @@ export const MENU_SIDEBAR: TMenuConfig = [
         path: '/rules'
       },
       {
-        title: 'Create Custom Value',
-        icon: 'setting-2',
-        path: '/custom-values'
-      },
-      {
         title: 'Templates',
         icon: 'document',
         path: '/templates'

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AggregateFieldIdOptions,
   AggregateFunctionOptions,
@@ -17,6 +17,7 @@ import {
   RiskStatusOptions,
   RiskStatusOperatorOptions
 } from './enums';
+import { customValueService, CustomValueOption } from '@/services/api';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -27,8 +28,9 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Settings, Trash2 } from 'lucide-react';
-import { useRef, useEffect } from 'react';
+import { Settings, Trash2, Plus, Calculator, Layers } from 'lucide-react';
+import { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { KeenIcon } from '@/components';
 import { Calendar } from '@/components/ui/calendar';
@@ -49,6 +51,7 @@ export interface Condition {
   lastTransactionCount: number | null;
   accountType: number | null;
   jsonValue: string;
+  customValueId?: number | null; // ID of selected custom value
   ComparisonOperator?: number; // Changed property name to match backend expectation
 }
 
@@ -283,9 +286,33 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
   conditionIndex,
   readOnly
 }) => {
+  const navigate = useNavigate();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [showAggError, setShowAggError] = useState(false);
+  const [customValues, setCustomValues] = useState<CustomValueOption[]>([]);
+  const [valueType, setValueType] = useState<'manual' | 'custom'>(() => {
+    // Initialize based on existing condition data
+    return condition.customValueId ? 'custom' : 'manual';
+  }); // Track if user wants manual entry or custom value
+
+  // Load custom values when component mounts (needed for both edit and read-only modes)
+  useEffect(() => {
+    const loadCustomValues = async () => {
+      try {
+        const values = await customValueService.getCustomValueOptions();
+        setCustomValues(values);
+      } catch (error) {
+        console.error('Failed to load custom values:', error);
+      }
+    };
+    loadCustomValues();
+  }, []);
+
+  // Sync valueType when condition changes (e.g., when switching between conditions)
+  useEffect(() => {
+    setValueType(condition.customValueId ? 'custom' : 'manual');
+  }, [condition.customValueId]);
 
   const handleFieldChange = (field: keyof Condition, value: any) => {
     if (readOnly) return;
@@ -603,6 +630,105 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                   />
                 </PopoverContent>
               </Popover>
+            ) : condition.aggregateFieldId === AggregateFieldId.Amount ? (
+              <div className="space-y-2">
+                {/* Compact Toggle + Input */}
+                <div className="flex gap-2">
+                  {/* Value Type Toggle - Compact */}
+                  <div className="flex bg-gray-100 rounded-md p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setValueType('manual');
+                        // Reset customValueId when switching to manual
+                        onChange({
+                          ...condition,
+                          customValueId: null
+                        });
+                      }}
+                      className={clsx(
+                        'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all',
+                        valueType === 'manual'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      )}
+                    >
+                      <Calculator className="w-3 h-3" />
+                      Manual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setValueType('custom');
+                        // Reset jsonValue when switching to custom
+                        onChange({
+                          ...condition,
+                          jsonValue: ''
+                        });
+                      }}
+                      className={clsx(
+                        'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all',
+                        valueType === 'custom'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      )}
+                    >
+                      <Layers className="w-3 h-3" />
+                      Custom
+                    </button>
+                  </div>
+                  
+                  {/* Value Input - Inline */}
+                  {valueType === 'manual' ? (
+                    <div className="relative flex-1">
+                      <Input
+                        value={condition.jsonValue}
+                        onChange={(e) => handleFieldChange('jsonValue', e.target.value)}
+                        placeholder="0.00"
+                        className="pl-6 text-right font-mono h-8 text-sm"
+                        type="number"
+                        step="0.01"
+                      />
+                      <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">$</span>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex gap-1">
+                      <Select
+                        value={condition.customValueId?.toString() || ''}
+                        onValueChange={(value) => {
+                          // Set customValueId and clear jsonValue when custom value is selected
+                          onChange({
+                            ...condition,
+                            customValueId: value ? Number(value) : null,
+                            jsonValue: ''
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="flex-1 h-8 text-sm">
+                          <SelectValue placeholder="Select custom value" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {customValues.map((customValue) => (
+                            <SelectItem key={customValue.id} value={customValue.id.toString()}>
+                              {customValue.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      {/* Create Button - Icon Only */}
+                      <button
+                        type="button"
+                        onClick={() => navigate('/custom-values/new')}
+                        className="flex items-center justify-center w-8 h-8 text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 transition-colors"
+                        title="Create New Custom Value"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : (
               <Input
                 value={condition.jsonValue}

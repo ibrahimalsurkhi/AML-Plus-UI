@@ -11,6 +11,29 @@ import {
   AggregateFieldId,
   FilterByOptions
 } from '../pages/rules/enums';
+import { customValueService } from './api';
+
+// Cache for custom values to avoid multiple API calls
+let customValuesCache: { id: number; title: string }[] = [];
+let customValuesCacheLoaded = false;
+
+// Load custom values once
+async function loadCustomValues() {
+  if (!customValuesCacheLoaded) {
+    try {
+      customValuesCache = await customValueService.getCustomValueOptions();
+      customValuesCacheLoaded = true;
+    } catch (error) {
+      console.error('Failed to load custom values for preview:', error);
+    }
+  }
+}
+
+// Helper to get custom value title
+function getCustomValueTitle(customValueId: number): string {
+  const customValue = customValuesCache.find(cv => cv.id === customValueId);
+  return customValue ? customValue.title : `Custom Value #${customValueId}`;
+}
 
 // Helper to get label from options
 function getLabel(options: { label: string; value: any }[], value: any) {
@@ -64,9 +87,13 @@ export interface RuleGroupType {
   >;
 }
 
-export function getRulePreview(group: RuleGroupType | any): string {
+export async function getRulePreview(group: RuleGroupType | any): Promise<string> {
   if (!group) return '';
   if (!group.children || group.children.length === 0) return '';
+  
+  // Load custom values if not already loaded
+  await loadCustomValues();
+  
   const op = group.operator === OperatorId.And ? 'AND' : 'OR';
   return group.children
     .map((child: any) => {
@@ -110,7 +137,11 @@ export function getRulePreview(group: RuleGroupType | any): string {
         }
 
         let value = '[Value]';
-        if (cond.jsonValue) {
+        
+        // Check if custom value is selected for Amount field
+        if (cond.aggregateFieldId === AggregateFieldId.Amount && cond.customValueId) {
+          value = getCustomValueTitle(cond.customValueId);
+        } else if (cond.jsonValue) {
           try {
             if (cond.aggregateFieldId === AggregateFieldId.TransactionTime) {
               const date = new Date(cond.jsonValue);
@@ -177,7 +208,9 @@ export function getRulePreview(group: RuleGroupType | any): string {
 
         return preview.trim();
       } else if ('operator' in child && 'children' in child) {
-        return `(${getRulePreview(child as RuleGroupType)})`;
+        // For nested groups, we'll need to handle this recursively
+        // For now, let's return a placeholder
+        return `(${child.operator === OperatorId.And ? 'AND' : 'OR'} Group)`;
       }
       return '';
     })

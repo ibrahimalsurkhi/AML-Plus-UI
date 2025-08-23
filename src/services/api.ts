@@ -952,6 +952,12 @@ export interface CustomValue {
   filters: CustomValueFilter[];
 }
 
+// Simplified interface for dropdown selections
+export interface CustomValueOption {
+  id: number;
+  title: string;
+}
+
 export interface CreateCustomValueRequest {
   title: string;
   isAggregated: boolean;
@@ -972,7 +978,7 @@ export interface CreateCustomValueRequest {
 export const customValueService = {
   createCustomValue: async (data: CreateCustomValueRequest): Promise<CustomValue> => {
     console.log('Creating custom value with data:', data);
-    const response = await api.post<CustomValue>('/api/CustomValues', data);
+    const response = await api.post<CustomValue>('/CustomValues', data);
     console.log('Custom value creation response:', response.data);
     return response.data;
   },
@@ -980,13 +986,26 @@ export const customValueService = {
     pageNumber: number;
     pageSize: number;
   }): Promise<PaginatedResponse<CustomValue>> => {
-    const response = await api.get<PaginatedResponse<CustomValue>>('/api/CustomValues', {
+    const response = await api.get<PaginatedResponse<CustomValue>>('/CustomValues', {
       params: {
         PageNumber: params.pageNumber,
         PageSize: params.pageSize
       }
     });
     return response.data;
+  },
+  getCustomValueOptions: async (): Promise<CustomValueOption[]> => {
+    const response = await api.get<PaginatedResponse<CustomValue>>('/CustomValues', {
+      params: {
+        PageNumber: 1,
+        PageSize: 100 // Get a large number to include all custom values
+      }
+    });
+    // Transform the response to simplified options
+    return response.data.items.map(item => ({
+      id: item.id || item.key,
+      title: item.title
+    }));
   },
   getCustomValueById: async (id: number): Promise<CustomValue> => {
     const response = await api.get<CustomValue>(`/api/CustomValues/${id}`);

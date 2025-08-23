@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/container';
@@ -31,7 +31,22 @@ const initialRule = {
 
 const RuleBuilderPage = () => {
   const [rule, setRule] = useState(initialRule);
+  const [rulePreview, setRulePreview] = useState<string>('');
   const navigate = useNavigate();
+
+  // Update rule preview when rule changes
+  useEffect(() => {
+    const updatePreview = async () => {
+      try {
+        const preview = await getRulePreview(rule.root);
+        setRulePreview(preview);
+      } catch (error) {
+        console.error('Error generating rule preview:', error);
+        setRulePreview('[Error generating preview]');
+      }
+    };
+    updatePreview();
+  }, [rule.root]);
 
   const handleResetRule = () => {
     setRule(initialRule);
@@ -100,7 +115,7 @@ const RuleBuilderPage = () => {
         <div>
           <label className="block font-medium mb-2">Rule Preview</label>
           <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm font-mono text-gray-800">
-            {getRulePreview(rule.root) ||
+            {rulePreview ||
               '[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]'}
           </div>
         </div>
