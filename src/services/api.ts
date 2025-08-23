@@ -746,6 +746,7 @@ export interface TransactionCreate {
   transactionStatus: number;
   senderId?: number;
   recipientId?: number;
+  fieldResponses?: FieldResponse[];
 }
 
 export enum TransactionProcessingStatus {

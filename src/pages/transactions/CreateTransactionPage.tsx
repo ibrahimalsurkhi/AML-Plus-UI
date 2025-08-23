@@ -529,6 +529,7 @@ const CreateTransactionPage = () => {
     e.preventDefault();
     console.log('Form submission started');
     console.log('Current form state:', form);
+    console.log('Field responses (custom fields):', fieldResponses);
     console.log('Selected sender account:', selectedSenderAccount);
     console.log('Selected recipient account:', selectedRecipientAccount);
     console.log('Sender account object:', senderAccount);
@@ -620,10 +621,8 @@ const CreateTransactionPage = () => {
 
       let createdTransaction: number;
       try {
-        // DEBUGGING: Testing basic transaction creation without field responses
-        // The issue might be that fieldResponses are not supported in TransactionCreate interface
-        // or they need to be sent via a separate API call after transaction creation
-        const basicTransactionData = {
+        // Create transaction with field responses included
+        const transactionDataWithFields = {
           transactionTypeId: Number(form.transactionTypeId),
           transactionCurrencyId: Number(form.transactionCurrencyId),
           transactionAmount: Number(form.transactionAmount),
@@ -633,11 +632,18 @@ const CreateTransactionPage = () => {
           transactionPurpose: form.transactionPurpose,
           transactionStatus: Number(form.transactionStatus),
           senderId: senderId ? Number(senderId) : undefined,
-          recipientId: recipientId ? Number(recipientId) : undefined
+          recipientId: recipientId ? Number(recipientId) : undefined,
+          fieldResponses: fieldResponses.map(fr => ({
+            id: fr.id || 0,
+            fieldId: fr.fieldId,
+            valueText: fr.valueText,
+            valueNumber: fr.valueNumber,
+            valueDate: fr.valueDate
+          }))
         };
 
-        console.log('Testing basic transaction creation with data:', basicTransactionData);
-        createdTransaction = await transactionService.createTransaction(basicTransactionData);
+        console.log('Creating transaction with field responses included:', transactionDataWithFields);
+        createdTransaction = await transactionService.createTransaction(transactionDataWithFields);
         console.log('Transaction creation response:', createdTransaction);
       } catch (error: any) {
         console.error('Error creating transaction:', error);
@@ -666,6 +672,8 @@ const CreateTransactionPage = () => {
         toast({ title: 'Success', description: 'Transaction created successfully!' });
         return;
       }
+
+
 
       setSuccess(true);
       toast({
