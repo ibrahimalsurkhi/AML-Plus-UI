@@ -1014,13 +1014,17 @@ const CreateTransactionPage = () => {
       ? field.fieldType === FieldType.Number
         ? currentResponse.valueNumber
         : field.fieldType === FieldType.Date
-          ? currentResponse.valueDate
+          ? currentResponse.valueDate ? currentResponse.valueDate.split('T')[0] : ''
           : field.fieldType === FieldType.Checkbox
-            ? currentResponse.optionId === currentResponse.optionId
+            ? (() => {
+                if (!currentResponse.optionId) return false;
+                const selectedOption = field.options?.find(opt => opt.id?.toString() === currentResponse.optionId?.toString());
+                return selectedOption?.label.toLowerCase() === 'checked';
+              })()
             : field.fieldType === FieldType.Dropdown ||
                 field.fieldType === FieldType.Radio ||
                 field.fieldType === FieldType.Lookup
-              ? currentResponse.optionId
+              ? currentResponse.optionId ? currentResponse.optionId.toString() : ''
               : currentResponse.valueText
       : '';
 
@@ -1230,13 +1234,17 @@ const CreateTransactionPage = () => {
       ? field.fieldType === FieldType.Number
         ? currentResponse.valueNumber
         : field.fieldType === FieldType.Date
-          ? currentResponse.valueDate
+          ? currentResponse.valueDate ? currentResponse.valueDate.split('T')[0] : ''
           : field.fieldType === FieldType.Checkbox
-            ? currentResponse.optionId === currentResponse.optionId
+            ? (() => {
+                if (!currentResponse.optionId) return false;
+                const selectedOption = field.options?.find(opt => opt.id?.toString() === currentResponse.optionId?.toString());
+                return selectedOption?.label.toLowerCase() === 'checked';
+              })()
             : field.fieldType === FieldType.Dropdown ||
                 field.fieldType === FieldType.Radio ||
                 field.fieldType === FieldType.Lookup
-              ? currentResponse.optionId
+              ? currentResponse.optionId ? currentResponse.optionId.toString() : ''
               : currentResponse.valueText
       : '';
 
