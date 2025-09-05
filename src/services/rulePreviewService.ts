@@ -387,7 +387,8 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
             : '';
         preview += value !== '[Value]' ? ` ${value}` : ' [Value]';
 
-        if (cond.filterBy) {
+        // Only show Filter By if aggregation is enabled
+        if (cond.isAggregated && cond.filterBy) {
           const filterByLabel = getLabel(FilterByOptions, cond.filterBy);
           preview += filterByLabel ? ` by ${filterByLabel}` : '';
         }
@@ -402,10 +403,13 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
           preview += ` in last [${cond.lastTransactionCount}] transactions`;
         }
 
-        if (transferType !== '[Account Type]') {
-          preview += ` for ${transferType}`;
-        } else {
-          preview += ' for [Account Type]';
+        // Only show Account Type if aggregation is enabled
+        if (cond.isAggregated) {
+          if (transferType !== '[Account Type]') {
+            preview += ` for ${transferType}`;
+          } else {
+            preview += ' for [Account Type]';
+          }
         }
 
         return preview.trim();

@@ -908,6 +908,16 @@ export interface FieldResponseDetail {
   optionId: number | null;
   optionValue: string | null;
   templateFieldScoreCriteriaId: number | null;
+  templateScoreCriteriaId: number | null;
+  score: number | null;
+  templateScoreCriteria?: {
+    id: number;
+    templateId: number;
+    key: string;
+    bgColor: string;
+    color: string;
+    score: number;
+  } | null;
   transactionId: number | null;
   accountId: number | null;
   valueText: string | null;

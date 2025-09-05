@@ -1112,56 +1112,60 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                     )}
                   </div>
                 )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Account Type
-                  </label>
-                  <Select
-                    value={
-                      condition.accountType !== null && condition.accountType !== undefined
-                        ? condition.accountType.toString()
-                        : ''
-                    }
-                    onValueChange={(v) => handleFieldChange('accountType', v ? Number(v) : null)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Account type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {AccountTypeOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value.toString()}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              {/* Only show Account Type and Filter By if Use aggregation is enabled */}
+              {condition.isAggregated && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-gray-700">
+                      Account Type
+                    </label>
+                    <Select
+                      value={
+                        condition.accountType !== null && condition.accountType !== undefined
+                          ? condition.accountType.toString()
+                          : ''
+                      }
+                      onValueChange={(v) => handleFieldChange('accountType', v ? Number(v) : null)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Account type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AccountTypeOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value.toString()}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-gray-700">Filter By</label>
+                    <Select
+                      value={
+                        condition.filterBy !== null && condition.filterBy !== undefined
+                          ? condition.filterBy.toString()
+                          : ''
+                      }
+                      onValueChange={(v) => handleFieldChange('filterBy', v ? Number(v) : null)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Filter by" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FilterByOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value.toString()}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">Filter By</label>
-                  <Select
-                    value={
-                      condition.filterBy !== null && condition.filterBy !== undefined
-                        ? condition.filterBy.toString()
-                        : ''
-                    }
-                    onValueChange={(v) => handleFieldChange('filterBy', v ? Number(v) : null)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Filter by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FilterByOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value.toString()}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {/* Only show Duration & Type and Last Transaction Count if Use aggregation is enabled */}
-                {condition.isAggregated && (
-                  <div className="md:col-span-2 flex gap-6 w-full">
+              )}
+              {/* Only show Duration & Type and Last Transaction Count if Use aggregation is enabled */}
+              {condition.isAggregated && (
+                <div className="md:col-span-2 flex gap-6 w-full">
                     {/* Duration & Type */}
                     <div className="flex-1">
                       <label className="block text-sm font-medium mb-1 text-gray-700">
@@ -1254,9 +1258,8 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                         Or specify the number of last transactions to aggregate.
                       </p>
                     </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

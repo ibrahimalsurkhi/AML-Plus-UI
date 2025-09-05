@@ -14,16 +14,6 @@ export const MENU_SIDEBAR: TMenuConfig = [
         title: 'Sanction Search',
         icon: 'parcel-tracking',
         path: '/sanction-search'
-      },
-      {
-        title: 'Transaction Monitoring',
-        icon: 'sort',
-        path: '/transactions'
-      },
-      {
-        title: 'Transaction Types',
-        icon: 'sort',
-        path: '/transaction-types'
       }
     ]
   },
@@ -31,21 +21,18 @@ export const MENU_SIDEBAR: TMenuConfig = [
     title: 'Compliance Management',
     icon: 'document',
     children: [
+      
       {
-        title: 'Rule Builder',
-        icon: 'document',
-        path: '/rules'
+        title: 'Transaction Monitoring',
+        icon: 'sort',
+        path: '/transactions'
       },
       {
-        title: 'Templates',
-        icon: 'document',
-        path: '/templates'
-      },
-      {
-        title: 'Records',
-        icon: 'simcard-2',
-        path: '/records'
+        title: 'Transaction Cases',
+        icon: 'shield-tick',
+        path: '/transaction-cases'
       }
+      
     ]
   },
   {
@@ -53,14 +40,14 @@ export const MENU_SIDEBAR: TMenuConfig = [
     icon: 'devices-2',
     children: [
       {
+        title: 'Records',
+        icon: 'simcard-2',
+        path: '/records'
+      },
+      {
         title: 'Cases',
         icon: 'devices-2',
         path: '/cases'
-      },
-      {
-        title: 'Transaction Cases',
-        icon: 'shield-tick',
-        path: '/transaction-cases'
       }
     ]
   },
@@ -72,7 +59,22 @@ export const MENU_SIDEBAR: TMenuConfig = [
         title: 'Lookup',
         icon: 'sort',
         path: '/lookup'
-      }
+      },
+      {
+        title: 'Transaction Types',
+        icon: 'sort',
+        path: '/transaction-types'
+      },
+      {
+        title: 'Rule Builder',
+        icon: 'document',
+        path: '/rules'
+      },
+      {
+        title: 'Templates',
+        icon: 'document',
+        path: '/templates'
+      },
     ]
   }
 ];
