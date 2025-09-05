@@ -39,7 +39,12 @@ const defaultCondition = (): Condition => ({
   durationType: null,
   lastTransactionCount: null,
   accountType: AccountType.AllAccounts, // Default to All Accounts
-  jsonValue: ''
+  jsonValue: '',
+  // New properties for custom fields
+  selectedFieldId: null,
+  customFieldType: null,
+  customFieldOptions: [],
+  customFieldLookupId: null
 });
 
 const defaultGroup = (): RuleGroupType => ({

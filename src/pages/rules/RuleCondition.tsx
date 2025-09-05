@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   AggregateFieldIdOptions,
+  FIELD_DIVIDER,
+  CUSTOM_FIELD_PREFIX,
+  isCustomField,
+  getCustomFieldId,
+  createCustomFieldId,
   AggregateFunctionOptions,
   AggregationByOptions,
   FilterByOptions,
@@ -17,7 +22,16 @@ import {
   RiskStatusOptions,
   RiskStatusOperatorOptions
 } from './enums';
-import { customValueService, CustomValueOption } from '@/services/api';
+import { 
+  customValueService, 
+  CustomValueOption, 
+  templateService, 
+  lookupService, 
+  FieldType, 
+  TemplateField, 
+  FieldOption, 
+  LookupValue 
+} from '@/services/api';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -53,6 +67,11 @@ export interface Condition {
   jsonValue: string;
   customValueId?: number | null; // ID of selected custom value
   ComparisonOperator?: number; // Changed property name to match backend expectation
+  // New properties for custom fields
+  selectedFieldId?: string | number | null; // This will store either static field id or custom_<id>
+  customFieldType?: number | null; // Store the FieldType of the custom field
+  customFieldOptions?: Array<{ id: number; label: string; value?: string }>; // Options for dropdown/radio/checkbox
+  customFieldLookupId?: number | null; // Lookup ID for lookup fields
 }
 
 interface RuleConditionProps {
@@ -295,8 +314,15 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
     // Initialize based on existing condition data
     return condition.customValueId ? 'custom' : 'manual';
   }); // Track if user wants manual entry or custom value
+  
+  // New state for custom fields
+  const [customFields, setCustomFields] = useState<TemplateField[]>([]);
+  const [combinedFieldOptions, setCombinedFieldOptions] = useState<Array<{ label: string; value: string | number; isDivider?: boolean }>>([]);
+  const [customFieldOptions, setCustomFieldOptions] = useState<Array<{ id: number; label: string; value?: string }>>([]);
+  const [customFieldLookupValues, setCustomFieldLookupValues] = useState<LookupValue[]>([]);
+  const [loadingCustomFieldOptions, setLoadingCustomFieldOptions] = useState(false);
 
-  // Load custom values when component mounts (needed for both edit and read-only modes)
+  // Load custom values and custom fields when component mounts
   useEffect(() => {
     const loadCustomValues = async () => {
       try {
@@ -306,13 +332,97 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
         console.error('Failed to load custom values:', error);
       }
     };
+    
+    const loadCustomFields = async () => {
+      try {
+        // Fetch template fields for template ID 15 (transaction template)
+        const fieldsResponse = await templateService.getTemplateFields('15');
+        // Get all fields from sections and fields without section
+        const allFields = [
+          ...fieldsResponse.sections.flatMap((section) => section.fields),
+          ...fieldsResponse.fieldsWithoutSection
+        ];
+        
+        // Filter fields by allowed types: dropdown, lookup, radio, checkbox, number
+        const allowedFields = allFields.filter(field => 
+          field.fieldType === FieldType.Dropdown ||
+          field.fieldType === FieldType.Lookup ||
+          field.fieldType === FieldType.Radio ||
+          field.fieldType === FieldType.Checkbox ||
+          field.fieldType === FieldType.Number
+        );
+        
+        setCustomFields(allowedFields);
+        
+        // Create combined field options with static fields + divider + custom fields
+        const combined = [
+          ...AggregateFieldIdOptions.map(opt => ({ label: opt.label, value: opt.value })),
+          FIELD_DIVIDER,
+          ...allowedFields.map(field => ({
+            label: field.label,
+            value: createCustomFieldId(field.id!)
+          }))
+        ];
+        setCombinedFieldOptions(combined);
+        
+      } catch (error) {
+        console.error('Failed to load custom fields:', error);
+      }
+    };
+    
     loadCustomValues();
+    loadCustomFields();
   }, []);
 
   // Sync valueType when condition changes (e.g., when switching between conditions)
   useEffect(() => {
     setValueType(condition.customValueId ? 'custom' : 'manual');
   }, [condition.customValueId]);
+  
+  // Load custom field options when a custom field is selected
+  useEffect(() => {
+    const loadCustomFieldOptions = async () => {
+      if (!condition.selectedFieldId || !isCustomField(condition.selectedFieldId)) {
+        setCustomFieldOptions([]);
+        setCustomFieldLookupValues([]);
+        return;
+      }
+      
+      const customFieldId = getCustomFieldId(condition.selectedFieldId);
+      const field = customFields.find(f => f.id === customFieldId);
+      
+      if (!field) return;
+      
+      setLoadingCustomFieldOptions(true);
+      
+      try {
+        if (field.fieldType === FieldType.Dropdown || 
+            field.fieldType === FieldType.Radio || 
+            field.fieldType === FieldType.Checkbox) {
+          // Load field options
+          const options = await templateService.getFieldOptions('15', field.id!);
+          setCustomFieldOptions(options.map(opt => ({
+            id: opt.id!,
+            label: opt.label,
+            value: opt.label
+          })));
+        } else if (field.fieldType === FieldType.Lookup && field.lookupId) {
+          // Load lookup values
+          const lookupValues = await lookupService.getLookupValues(field.lookupId, {
+            pageNumber: 1,
+            pageSize: 100
+          });
+          setCustomFieldLookupValues(lookupValues.items);
+        }
+      } catch (error) {
+        console.error('Failed to load custom field options:', error);
+      } finally {
+        setLoadingCustomFieldOptions(false);
+      }
+    };
+    
+    loadCustomFieldOptions();
+  }, [condition.selectedFieldId, customFields]);
 
   const handleFieldChange = (field: keyof Condition, value: any) => {
     if (readOnly) return;
@@ -371,17 +481,36 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
             <div>
               <div className="text-xs text-muted-foreground mb-1">Field</div>
               <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
-                {getLabel(AggregateFieldIdOptions, condition.aggregateFieldId)}
+                {condition.customFieldId ? 
+                  customFields.find(f => f.id === condition.customFieldId)?.label || '[Custom Field]' :
+                  getLabel(AggregateFieldIdOptions, condition.aggregateFieldId)
+                }
               </div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground mb-1">Operator</div>
               <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
-                {getOperatorLabel(
-                  condition.aggregateFunction,
-                  condition.aggregateFieldId,
-                  condition.ComparisonOperator
-                )}
+                {(() => {
+                  // Custom field logic
+                  if (condition.customFieldId !== null && condition.customFieldType !== null) {
+                    if (condition.customFieldType === FieldType.Dropdown ||
+                        condition.customFieldType === FieldType.Radio ||
+                        condition.customFieldType === FieldType.Checkbox ||
+                        condition.customFieldType === FieldType.Lookup) {
+                      return getLabel(StatusOperatorOptions, condition.ComparisonOperator) || '[Operator]';
+                    } else if (condition.customFieldType === FieldType.Number) {
+                      return getLabel(ComparisonOperatorOptions, condition.ComparisonOperator) || '[Operator]';
+                    }
+                    return '[Operator]';
+                  }
+                  
+                  // Static field logic (existing)
+                  return getOperatorLabel(
+                    condition.aggregateFunction,
+                    condition.aggregateFieldId,
+                    condition.ComparisonOperator
+                  );
+                })()}
               </div>
             </div>
             {condition.isAggregated && (
@@ -397,6 +526,44 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
               <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
                 {(() => {
                   if (!condition.jsonValue) return '[Value]';
+                  
+                  // Handle custom fields
+                  if (condition.customFieldId !== null && condition.customFieldType !== null) {
+                    try {
+                      const parsed = JSON.parse(condition.jsonValue);
+                      if (Array.isArray(parsed)) {
+                        if (condition.customFieldType === FieldType.Dropdown ||
+                            condition.customFieldType === FieldType.Radio ||
+                            condition.customFieldType === FieldType.Checkbox) {
+                          // Show option labels if available
+                          const labels = parsed
+                            .map((id: number) => {
+                              const option = customFieldOptions.find(opt => opt.id === id);
+                              return option ? option.label : id;
+                            })
+                            .join(', ');
+                          return labels || condition.jsonValue;
+                        } else if (condition.customFieldType === FieldType.Lookup) {
+                          // Show lookup value labels if available
+                          const labels = parsed
+                            .map((id: number) => {
+                              const value = customFieldLookupValues.find(val => val.id === id);
+                              return value ? value.value : id;
+                            })
+                            .join(', ');
+                          return labels || condition.jsonValue;
+                        } else {
+                          return parsed.join(', ');
+                        }
+                      } else {
+                        return parsed;
+                      }
+                    } catch {
+                      return condition.jsonValue;
+                    }
+                  }
+                  
+                  // Handle static fields (existing logic)
                   try {
                     if (condition.aggregateFieldId === AggregateFieldId.TransactionTime) {
                       const date = new Date(condition.jsonValue);
@@ -477,14 +644,42 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
             ) : (
               <div className="flex gap-2">
                 <Select
-                  value={condition.aggregateFieldId?.toString() || ''}
+                  value={condition.selectedFieldId?.toString() || condition.aggregateFieldId?.toString() || ''}
                   onValueChange={(v) => {
-                    onChange({
-                      ...condition,
-                      aggregateFieldId: v ? Number(v) : null,
-                      jsonValue: '',
-                      aggregateFunction: null // reset operator when field changes
-                    });
+                    const isCustom = isCustomField(v);
+                    
+                    if (isCustom) {
+                      // Handle custom field selection
+                      const customFieldId = getCustomFieldId(v);
+                      const field = customFields.find(f => f.id === customFieldId);
+                      
+                      onChange({
+                        ...condition,
+                        selectedFieldId: v,
+                        customFieldId: customFieldId,
+                        customFieldType: field?.fieldType || null,
+                        customFieldLookupId: field?.lookupId || null,
+                        isAggregatedCustomField: true, // Set to true for custom fields
+                        aggregateFieldId: null, // clear static field
+                        jsonValue: '',
+                        aggregateFunction: null,
+                        ComparisonOperator: undefined
+                      });
+                    } else {
+                      // Handle static field selection
+                      onChange({
+                        ...condition,
+                        selectedFieldId: v,
+                        aggregateFieldId: v ? Number(v) : null,
+                        customFieldId: null, // clear custom field
+                        customFieldType: null,
+                        customFieldLookupId: null,
+                        isAggregatedCustomField: false, // Set to false for static fields
+                        jsonValue: '',
+                        aggregateFunction: null,
+                        ComparisonOperator: undefined
+                      });
+                    }
                   }}
                   disabled={readOnly}
                 >
@@ -492,11 +687,20 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                     <SelectValue placeholder="Select Field" />
                   </SelectTrigger>
                   <SelectContent>
-                    {AggregateFieldIdOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value.toString()}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
+                    {combinedFieldOptions.map((opt, index) => {
+                      if (opt.isDivider) {
+                        return (
+                          <div key={index} className="px-2 py-1 text-xs text-gray-500 bg-gray-50 font-medium">
+                            {opt.label}
+                          </div>
+                        );
+                      }
+                      return (
+                        <SelectItem key={opt.value} value={opt.value.toString()}>
+                          {opt.label}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 {/* Operator dropdown, depends on field */}
@@ -505,66 +709,105 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                     (condition.ComparisonOperator ?? condition.aggregateFunction)?.toString() ?? ''
                   }
                   onValueChange={(v) => {
-                    // For comparison/status operators, store as 'ComparisonOperator'; for aggregate functions, store as number
-                    if (
-                      condition.aggregateFieldId === AggregateFieldId.Amount ||
-                      condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
-                      condition.aggregateFieldId === AggregateFieldId.TransactionTime ||
-                      condition.aggregateFieldId === AggregateFieldId.CurrencyAmount
-                    ) {
-                      onChange({
-                        ...condition,
-                        ComparisonOperator: v ? Number(v) : undefined,
-                        aggregateFunction: null
-                      });
-                    } else if (condition.aggregateFieldId === AggregateFieldId.TransactionStatus) {
-                      onChange({
-                        ...condition,
-                        ComparisonOperator: v ? Number(v) : undefined,
-                        aggregateFunction: null
-                      });
-                    } else if (condition.aggregateFieldId === AggregateFieldId.RiskStatus) {
+                    // Determine if we're dealing with a custom field
+                    const isCustom = condition.customFieldId !== null;
+                    
+                    if (isCustom) {
+                      // For custom fields, always use ComparisonOperator
                       onChange({
                         ...condition,
                         ComparisonOperator: v ? Number(v) : undefined,
                         aggregateFunction: null
                       });
                     } else {
-                      onChange({
-                        ...condition,
-                        aggregateFunction: v ? Number(v) : null,
-                        ComparisonOperator: undefined
-                      });
+                      // For static fields, use existing logic
+                      if (
+                        condition.aggregateFieldId === AggregateFieldId.Amount ||
+                        condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
+                        condition.aggregateFieldId === AggregateFieldId.TransactionTime ||
+                        condition.aggregateFieldId === AggregateFieldId.CurrencyAmount
+                      ) {
+                        onChange({
+                          ...condition,
+                          ComparisonOperator: v ? Number(v) : undefined,
+                          aggregateFunction: null
+                        });
+                      } else if (condition.aggregateFieldId === AggregateFieldId.TransactionStatus) {
+                        onChange({
+                          ...condition,
+                          ComparisonOperator: v ? Number(v) : undefined,
+                          aggregateFunction: null
+                        });
+                      } else if (condition.aggregateFieldId === AggregateFieldId.RiskStatus) {
+                        onChange({
+                          ...condition,
+                          ComparisonOperator: v ? Number(v) : undefined,
+                          aggregateFunction: null
+                        });
+                      } else {
+                        onChange({
+                          ...condition,
+                          aggregateFunction: v ? Number(v) : null,
+                          ComparisonOperator: undefined
+                        });
+                      }
                     }
                   }}
-                  disabled={!condition.aggregateFieldId || condition.isAggregated || readOnly}
+                  disabled={(!condition.aggregateFieldId && !condition.customFieldId) || condition.isAggregated || readOnly}
                 >
                   <SelectTrigger className="w-full min-w-[160px]">
                     <SelectValue placeholder="Operator" />
                   </SelectTrigger>
                   <SelectContent>
-                    {condition.aggregateFieldId === AggregateFieldId.TransactionStatus
-                      ? StatusOperatorOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value.toString()}>
-                            {opt.label}
-                          </SelectItem>
-                        ))
-                      : condition.aggregateFieldId === AggregateFieldId.RiskStatus
-                        ? RiskStatusOperatorOptions.map((opt) => (
+                    {(() => {
+                      // Custom field logic
+                      if (condition.customFieldId !== null && condition.customFieldType !== null) {
+                        if (condition.customFieldType === FieldType.Dropdown ||
+                            condition.customFieldType === FieldType.Radio ||
+                            condition.customFieldType === FieldType.Checkbox ||
+                            condition.customFieldType === FieldType.Lookup) {
+                          // For list-based fields, use In/Not In operators
+                          return StatusOperatorOptions.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value.toString()}>
                               {opt.label}
                             </SelectItem>
-                          ))
-                        : condition.aggregateFieldId === AggregateFieldId.Amount ||
-                            condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
-                            condition.aggregateFieldId === AggregateFieldId.TransactionTime ||
-                            condition.aggregateFieldId === AggregateFieldId.CurrencyAmount
-                          ? ComparisonOperatorOptions.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value.toString()}>
-                                {opt.label}
-                              </SelectItem>
-                            ))
-                          : null}
+                          ));
+                        } else if (condition.customFieldType === FieldType.Number) {
+                          // For number fields, use comparison operators
+                          return ComparisonOperatorOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value.toString()}>
+                              {opt.label}
+                            </SelectItem>
+                          ));
+                        }
+                        return null;
+                      }
+                      
+                      // Static field logic (existing)
+                      if (condition.aggregateFieldId === AggregateFieldId.TransactionStatus) {
+                        return StatusOperatorOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value.toString()}>
+                            {opt.label}
+                          </SelectItem>
+                        ));
+                      } else if (condition.aggregateFieldId === AggregateFieldId.RiskStatus) {
+                        return RiskStatusOperatorOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value.toString()}>
+                            {opt.label}
+                          </SelectItem>
+                        ));
+                      } else if (condition.aggregateFieldId === AggregateFieldId.Amount ||
+                                condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
+                                condition.aggregateFieldId === AggregateFieldId.TransactionTime ||
+                                condition.aggregateFieldId === AggregateFieldId.CurrencyAmount) {
+                        return ComparisonOperatorOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value.toString()}>
+                            {opt.label}
+                          </SelectItem>
+                        ));
+                      }
+                      return null;
+                    })()}
                   </SelectContent>
                 </Select>
               </div>
@@ -576,6 +819,78 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
               <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
                 {condition.jsonValue}
               </div>
+            ) : condition.customFieldId !== null ? (
+              // Custom field value handling
+              (() => {
+                if (loadingCustomFieldOptions) {
+                  return (
+                    <div className="flex items-center justify-center h-10 text-sm text-gray-500">
+                      Loading options...
+                    </div>
+                  );
+                }
+                
+                if (condition.customFieldType === FieldType.Dropdown ||
+                    condition.customFieldType === FieldType.Radio ||
+                    condition.customFieldType === FieldType.Checkbox) {
+                  // Multi-select for dropdown/radio/checkbox
+                  return (
+                    <MultiSelect
+                      options={customFieldOptions.map(opt => ({ label: opt.label, value: opt.id }))}
+                      value={(() => {
+                        try {
+                          return JSON.parse(condition.jsonValue || '[]').map(String);
+                        } catch {
+                          return [];
+                        }
+                      })()}
+                      onChange={(selected) => {
+                        handleFieldChange('jsonValue', JSON.stringify(selected.map(Number)));
+                      }}
+                      placeholder="Select option(s)"
+                    />
+                  );
+                } else if (condition.customFieldType === FieldType.Lookup) {
+                  // Multi-select for lookup fields
+                  return (
+                    <MultiSelect
+                      options={customFieldLookupValues.map(val => ({ label: val.value, value: val.id }))}
+                      value={(() => {
+                        try {
+                          return JSON.parse(condition.jsonValue || '[]').map(String);
+                        } catch {
+                          return [];
+                        }
+                      })()}
+                      onChange={(selected) => {
+                        handleFieldChange('jsonValue', JSON.stringify(selected.map(Number)));
+                      }}
+                      placeholder="Select lookup value(s)"
+                    />
+                  );
+                } else if (condition.customFieldType === FieldType.Number) {
+                  // Number input (hide custom values option)
+                  return (
+                    <Input
+                      value={condition.jsonValue}
+                      onChange={(e) => handleFieldChange('jsonValue', e.target.value)}
+                      placeholder="Enter number"
+                      className="w-full"
+                      type="number"
+                      step="any"
+                    />
+                  );
+                }
+                
+                return (
+                  <Input
+                    value={condition.jsonValue}
+                    onChange={(e) => handleFieldChange('jsonValue', e.target.value)}
+                    placeholder="Value"
+                    className="w-full"
+                  />
+                );
+              })()
             ) : condition.aggregateFieldId === AggregateFieldId.TransactionStatus ? (
               <MultiSelect
                 options={TransactionStatusOptions}

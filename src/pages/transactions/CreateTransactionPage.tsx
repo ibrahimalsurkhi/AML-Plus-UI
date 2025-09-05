@@ -34,7 +34,7 @@ import {
   DialogBody,
   DialogFooter
 } from '@/components/ui/dialog';
-import { recordService, accountService, transactionService, fieldResponseService, type FieldResponseDetail } from '@/services/api';
+import { recordService, accountService, transactionService, fieldResponseService, type FieldResponseDetail, type FieldResponseCreate } from '@/services/api';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
@@ -109,12 +109,12 @@ const CreateTransactionPage = () => {
   // Template fields state
   const [templateFields, setTemplateFields] = useState<ExtendedTemplateField[]>([]);
   const [templateFieldsLoading, setTemplateFieldsLoading] = useState(false);
-  const [fieldResponses, setFieldResponses] = useState<any[]>([]);
+  const [fieldResponses, setFieldResponses] = useState<FieldResponseCreate[]>([]);
   // Account template fields state
   const [accountTemplateFields, setAccountTemplateFields] = useState<ExtendedTemplateField[]>([]);
   const [accountTemplateFieldsLoading, setAccountTemplateFieldsLoading] = useState(false);
-  const [senderAccountFieldResponses, setSenderAccountFieldResponses] = useState<any[]>([]);
-  const [recipientAccountFieldResponses, setRecipientAccountFieldResponses] = useState<any[]>([]);
+  const [senderAccountFieldResponses, setSenderAccountFieldResponses] = useState<FieldResponseCreate[]>([]);
+  const [recipientAccountFieldResponses, setRecipientAccountFieldResponses] = useState<FieldResponseCreate[]>([]);
   const [senderAccountErrors, setSenderAccountErrors] = useState<Record<string, string>>({});
   const [recipientAccountErrors, setRecipientAccountErrors] = useState<Record<string, string>>({});
   // Account field responses display state
@@ -633,13 +633,7 @@ const CreateTransactionPage = () => {
           transactionStatus: Number(form.transactionStatus),
           senderId: senderId ? Number(senderId) : undefined,
           recipientId: recipientId ? Number(recipientId) : undefined,
-          fieldResponses: fieldResponses.map(fr => ({
-            id: fr.id || 0,
-            fieldId: fr.fieldId,
-            valueText: fr.valueText,
-            valueNumber: fr.valueNumber,
-            valueDate: fr.valueDate
-          }))
+          fieldResponses: fieldResponses
         };
 
         console.log('Creating transaction with field responses included:', transactionDataWithFields);
@@ -875,8 +869,7 @@ const CreateTransactionPage = () => {
     
     setFieldResponses((prev) => {
       const existingIndex = prev.findIndex((fr) => fr.fieldId === fieldId);
-      let response: any = {
-        id: 0,
+      let response: FieldResponseCreate = {
         fieldId: fieldId
       };
 
@@ -884,8 +877,6 @@ const CreateTransactionPage = () => {
         case FieldType.Text:
         case FieldType.TextArea:
           response.valueText = String(value);
-          response.valueNumber = null;
-          response.valueDate = null;
           break;
         case FieldType.Number:
           const numericValue = value !== undefined && value !== '' ? Number(value) : null;
@@ -901,14 +892,10 @@ const CreateTransactionPage = () => {
           );
 
           response.templateFieldScoreCriteriaId = matchingRange
-            ? matchingRange.id.toString()
+            ? parseInt(matchingRange.id.toString())
             : null;
-          response.valueDate = null;
-          response.valueText = null;
           break;
         case FieldType.Date:
-          response.valueText = null;
-          response.valueNumber = null;
           response.valueDate = value ? new Date(String(value)).toISOString() : null;
           break;
         case FieldType.Dropdown:
@@ -931,9 +918,7 @@ const CreateTransactionPage = () => {
             );
           }
 
-          response.optionId = selectedOption?.id ? selectedOption.id.toString() : null;
-          response.valueNumber = null;
-          response.valueDate = null;
+          response.optionId = selectedOption?.id ? parseInt(selectedOption.id.toString()) : null;
           break;
       }
 
@@ -951,8 +936,7 @@ const CreateTransactionPage = () => {
   const handleFieldChange = (fieldId: number, value: any, fieldType: FieldType) => {
     setFieldResponses((prev) => {
       const existingIndex = prev.findIndex((fr) => fr.fieldId === fieldId);
-      let response: any = {
-        id: 0,
+      let response: FieldResponseCreate = {
         fieldId: fieldId
       };
 
@@ -960,8 +944,6 @@ const CreateTransactionPage = () => {
         case FieldType.Text:
         case FieldType.TextArea:
           response.valueText = String(value);
-          response.valueNumber = null;
-          response.valueDate = null;
           break;
         case FieldType.Number:
           const numericValue = value !== undefined && value !== '' ? Number(value) : null;
@@ -976,16 +958,12 @@ const CreateTransactionPage = () => {
               numericValue <= range.maxValue
           );
 
-          // Set the range ID in valueText if a matching range is found
+          // Set the range ID for number fields
           response.templateFieldScoreCriteriaId = matchingRange
-            ? matchingRange.id.toString()
+            ? parseInt(matchingRange.id.toString())
             : null;
-          response.valueDate = null;
-          response.valueText = null;
           break;
         case FieldType.Date:
-          response.valueText = null;
-          response.valueNumber = null;
           response.valueDate = value ? new Date(String(value)).toISOString() : null;
           break;
         case FieldType.Dropdown:
@@ -1012,10 +990,8 @@ const CreateTransactionPage = () => {
             );
           }
 
-          // Set the option ID in valueText if an option is found and has an ID
-          response.optionId = selectedOption?.id ? selectedOption.id.toString() : null;
-          response.valueNumber = null;
-          response.valueDate = null;
+          // Set the option ID for option-based fields
+          response.optionId = selectedOption?.id ? parseInt(selectedOption.id.toString()) : null;
           break;
       }
 

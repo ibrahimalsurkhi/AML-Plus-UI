@@ -372,6 +372,15 @@ export interface FieldResponse {
   valueDate: string | null;
 }
 
+export interface FieldResponseCreate {
+  fieldId: number;
+  optionId?: number | null;
+  templateFieldScoreCriteriaId?: number | null;
+  valueText?: string | null;
+  valueNumber?: number | null;
+  valueDate?: string | null;
+}
+
 export interface Record {
   id: number;
   templateId: number;
@@ -746,7 +755,7 @@ export interface TransactionCreate {
   transactionStatus: number;
   senderId?: number;
   recipientId?: number;
-  fieldResponses?: FieldResponse[];
+  fieldResponses?: FieldResponseCreate[];
 }
 
 export enum TransactionProcessingStatus {

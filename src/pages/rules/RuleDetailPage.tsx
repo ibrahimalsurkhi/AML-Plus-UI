@@ -20,6 +20,7 @@ const RuleDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const [rule, setRule] = useState<Rule | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rulePreview, setRulePreview] = useState<string>('');
 
   useEffect(() => {
     const fetchRule = async () => {
@@ -36,6 +37,23 @@ const RuleDetailPage: React.FC = () => {
     };
     fetchRule();
   }, [id]);
+
+  useEffect(() => {
+    const loadRulePreview = async () => {
+      if (rule?.root) {
+        try {
+          const preview = await getRulePreview(rule.root);
+          setRulePreview(preview);
+        } catch (error) {
+          console.error('Failed to generate rule preview:', error);
+          setRulePreview('[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]');
+        }
+      } else {
+        setRulePreview('[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]');
+      }
+    };
+    loadRulePreview();
+  }, [rule]);
 
   if (loading) {
     return (
@@ -135,9 +153,7 @@ const RuleDetailPage: React.FC = () => {
         <div>
           <label className="block font-medium mb-2">Rule Preview</label>
           <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm font-mono text-gray-800">
-            {rule.root
-              ? getRulePreview(rule.root)
-              : '[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]'}
+            {rulePreview}
           </div>
         </div>
         <Card className="shadow-sm border-primary/10">

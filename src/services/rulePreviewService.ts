@@ -9,13 +9,36 @@ import {
   StatusOperatorOptions,
   TransactionStatusOptions,
   AggregateFieldId,
-  FilterByOptions
+  FilterByOptions,
+  isCustomField,
+  getCustomFieldId
 } from '../pages/rules/enums';
-import { customValueService } from './api';
+import { customValueService, templateService, FieldType } from './api';
 
 // Cache for custom values to avoid multiple API calls
 let customValuesCache: { id: number; title: string }[] = [];
 let customValuesCacheLoaded = false;
+
+// Cache for custom fields
+let customFieldsCache: { id: number; label: string; fieldType: number; lookupId?: number }[] = [];
+let customFieldsCacheLoaded = false;
+
+// Cache for custom field options (dropdown/radio/checkbox)
+let customFieldOptionsCache: { [fieldId: number]: { id: number; label: string }[] } = {};
+
+// Cache for lookup values
+let lookupValuesCache: { [lookupId: number]: { id: number; value: string }[] } = {};
+
+// Function to reset caches (useful for development/testing)
+export function resetRulePreviewCaches() {
+  customValuesCacheLoaded = false;
+  customFieldsCacheLoaded = false;
+  customValuesCache = [];
+  customFieldsCache = [];
+  customFieldOptionsCache = {};
+  lookupValuesCache = {};
+  console.log('Rule preview caches reset');
+}
 
 // Load custom values once
 async function loadCustomValues() {
@@ -31,9 +54,73 @@ async function loadCustomValues() {
   }
 }
 
+// Load custom fields once and pre-load their options
+async function loadCustomFields() {
+  if (!customFieldsCacheLoaded) {
+    try {
+      console.log('Debug - Loading custom fields...');
+      const fieldsResponse = await templateService.getTemplateFields('15');
+      // Get all fields from sections and fields without section
+      const allFields = [
+        ...fieldsResponse.sections.flatMap((section) => section.fields),
+        ...fieldsResponse.fieldsWithoutSection
+      ];
+      
+      // Filter fields by allowed types and cache them
+      const allowedFields = allFields.filter(field => 
+        field.fieldType === FieldType.Dropdown ||
+        field.fieldType === FieldType.Lookup ||
+        field.fieldType === FieldType.Radio ||
+        field.fieldType === FieldType.Checkbox ||
+        field.fieldType === FieldType.Number
+      );
+      
+      customFieldsCache = allowedFields.map(field => ({
+        id: field.id!,
+        label: field.label,
+        fieldType: field.fieldType,
+        lookupId: field.lookupId || undefined
+      }));
+      
+      // Pre-load field options for dropdown/radio/checkbox fields
+      for (const field of allowedFields) {
+        try {
+          if (field.fieldType === FieldType.Dropdown ||
+              field.fieldType === FieldType.Radio ||
+              field.fieldType === FieldType.Checkbox) {
+            const options = await templateService.getFieldOptions('15', field.id!);
+            customFieldOptionsCache[field.id!] = options.map(opt => ({
+              id: opt.id!,
+              label: opt.label
+            }));
+          } else if (field.fieldType === FieldType.Lookup && field.lookupId) {
+            const { lookupService } = await import('./api');
+            const lookupValues = await lookupService.getLookupValues(field.lookupId, {
+              pageNumber: 1,
+              pageSize: 100
+            });
+            lookupValuesCache[field.lookupId] = lookupValues.items.map((val: any) => ({
+              id: val.id,
+              value: val.value
+            }));
+          }
+        } catch (error) {
+          console.error(`Failed to load options for field ${field.id}:`, error);
+        }
+      }
+        
+      console.log('Debug - Loaded custom fields:', customFieldsCache);
+      console.log('Debug - Loaded field options cache:', customFieldOptionsCache);
+      console.log('Debug - Loaded lookup values cache:', lookupValuesCache);
+      customFieldsCacheLoaded = true;
+    } catch (error) {
+      console.error('Failed to load custom fields for preview:', error);
+    }
+  }
+}
+
 // Helper to get custom value title
 function getCustomValueTitle(customValueId: number): string {
-  debugger;
   console.log('Debug - getCustomValueTitle called with ID:', customValueId, 'type:', typeof customValueId);
   console.log('Debug - customValuesCache:', customValuesCache);
   console.log('Debug - customValuesCacheLoaded:', customValuesCacheLoaded);
@@ -45,6 +132,52 @@ function getCustomValueTitle(customValueId: number): string {
   console.log('Debug - found customValue:', customValue);
   
   return customValue ? `"${customValue.title}"` : `Custom Value #${customValueId}`;
+}
+
+// Helper to get custom field name
+function getCustomFieldLabel(customFieldId: number): string {
+  const customField = customFieldsCache.find(cf => cf.id === customFieldId);
+  return customField ? customField.label : `Custom Field #${customFieldId}`;
+}
+
+// Helper to get custom field options labels (synchronous using cache)
+function getCustomFieldValueLabels(customFieldId: number, jsonValue: string): string {
+  try {
+    const customField = customFieldsCache.find(cf => cf.id === customFieldId);
+    if (!customField) return jsonValue;
+    
+    const parsedValues = JSON.parse(jsonValue);
+    if (!Array.isArray(parsedValues)) return jsonValue;
+    
+    if (customField.fieldType === FieldType.Dropdown ||
+        customField.fieldType === FieldType.Radio ||
+        customField.fieldType === FieldType.Checkbox) {
+      // Use cached field options
+      const options = customFieldOptionsCache[customField.id] || [];
+      const labels = parsedValues
+        .map((id: number) => {
+          const option = options.find(opt => opt.id === id);
+          return option ? option.label : id.toString();
+        })
+        .join(', ');
+      return labels || jsonValue;
+    } else if (customField.fieldType === FieldType.Lookup && customField.lookupId) {
+      // Use cached lookup values
+      const lookupValues = lookupValuesCache[customField.lookupId] || [];
+      const labels = parsedValues
+        .map((id: number) => {
+          const value = lookupValues.find(val => val.id === id);
+          return value ? value.value : id.toString();
+        })
+        .join(', ');
+      return labels || jsonValue;
+    }
+    
+    return parsedValues.join(', ');
+  } catch (error) {
+    console.error('Error getting custom field value labels:', error);
+    return jsonValue;
+  }
 }
 
 // Helper to get label from options
@@ -103,8 +236,9 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
   if (!group) return '';
   if (!group.children || group.children.length === 0) return '';
   
-  // Load custom values if not already loaded
+  // Load custom values and fields if not already loaded
   await loadCustomValues();
+  await loadCustomFields();
   
   const op = group.operator === OperatorId.And ? 'AND' : 'OR';
   return group.children
@@ -115,6 +249,9 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
         // Debug logging to see what data we're working with
         console.log('Condition data:', {
           aggregateFieldId: cond.aggregateFieldId,
+          customFieldId: cond.customFieldId,
+          selectedFieldId: cond.selectedFieldId,
+          isAggregatedCustomField: cond.isAggregatedCustomField,
           ComparisonOperator: cond.ComparisonOperator,
           operator: cond.operator,
           logicalOperator: cond.logicalOperator,
@@ -123,7 +260,16 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
           jsonValue: cond.jsonValue
         });
 
-        const metric = getLabel(AggregateFieldIdOptions, cond.aggregateFieldId) || '[Metric]';
+        // Determine the field name - custom field or static field
+        let metric = '[Metric]';
+        if (cond.customFieldId) {
+          metric = getCustomFieldLabel(cond.customFieldId);
+        } else if (cond.selectedFieldId && isCustomField(cond.selectedFieldId)) {
+          const customFieldId = getCustomFieldId(cond.selectedFieldId);
+          metric = getCustomFieldLabel(customFieldId);
+        } else if (cond.aggregateFieldId) {
+          metric = getLabel(AggregateFieldIdOptions, cond.aggregateFieldId) || '[Metric]';
+        }
 
         // Check multiple possible field names for the operator
         const operatorValue =
@@ -133,12 +279,34 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
           cond.logicalOperator;
 
         // Use the operator value if available, otherwise fallback to aggregateFunction
-        const operator =
-          operatorValue !== undefined && operatorValue !== null
+        let operator = '[Operator]';
+        if (cond.customFieldId || (cond.selectedFieldId && isCustomField(cond.selectedFieldId))) {
+          // For custom fields, use ComparisonOperator
+          if (operatorValue !== undefined && operatorValue !== null) {
+            const customField = customFieldsCache.find(cf => 
+              cf.id === cond.customFieldId || 
+              cf.id === (cond.selectedFieldId && isCustomField(cond.selectedFieldId) ? getCustomFieldId(cond.selectedFieldId) : null)
+            );
+            
+            if (customField) {
+              if (customField.fieldType === FieldType.Dropdown ||
+                  customField.fieldType === FieldType.Radio ||
+                  customField.fieldType === FieldType.Checkbox ||
+                  customField.fieldType === FieldType.Lookup) {
+                operator = getLabel(StatusOperatorOptions, operatorValue) || '[Operator]';
+              } else if (customField.fieldType === FieldType.Number) {
+                operator = getLabel(ComparisonOperatorOptions, operatorValue) || '[Operator]';
+              }
+            }
+          }
+        } else {
+          // For static fields, use existing logic
+          operator = operatorValue !== undefined && operatorValue !== null
             ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId, operatorValue)
             : cond.aggregateFunction && !cond.isAggregated
               ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId)
               : '[Operator]';
+        }
 
         console.log('Operator result:', operator);
 
@@ -155,13 +323,26 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
           aggregateFieldId: cond.aggregateFieldId,
           isAmount: cond.aggregateFieldId === AggregateFieldId.Amount,
           customValueId: cond.customValueId,
-          hasCustomValueId: !!cond.customValueId
+          hasCustomValueId: !!cond.customValueId,
+          customFieldId: cond.customFieldId,
+          selectedFieldId: cond.selectedFieldId
         });
         
         if (cond.aggregateFieldId === AggregateFieldId.Amount && cond.customValueId) {
           console.log('Debug - Getting custom value title for ID:', cond.customValueId);
           value = getCustomValueTitle(cond.customValueId);
           console.log('Debug - Got custom value title:', value);
+        } else if (cond.customFieldId && cond.jsonValue) {
+          // Handle custom field values using pre-loaded cache
+          console.log('Debug - Resolving custom field values for customFieldId:', cond.customFieldId);
+          value = getCustomFieldValueLabels(cond.customFieldId, cond.jsonValue);
+          console.log('Debug - Resolved value:', value);
+        } else if (cond.selectedFieldId && isCustomField(cond.selectedFieldId) && cond.jsonValue) {
+          // Handle custom field values using selectedFieldId with pre-loaded cache
+          console.log('Debug - Resolving custom field values for selectedFieldId:', cond.selectedFieldId);
+          const customFieldId = getCustomFieldId(cond.selectedFieldId);
+          value = getCustomFieldValueLabels(customFieldId, cond.jsonValue);
+          console.log('Debug - Resolved value:', value);
         } else if (cond.jsonValue) {
           try {
             if (cond.aggregateFieldId === AggregateFieldId.TransactionTime) {

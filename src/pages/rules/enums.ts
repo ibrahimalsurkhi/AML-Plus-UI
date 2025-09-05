@@ -18,6 +18,7 @@ export enum AggregateFieldId {
   RiskStatus = 6
 }
 
+// Static field options - will be combined with dynamic fields
 export const AggregateFieldIdOptions = [
   { label: 'Transaction Status', value: AggregateFieldId.TransactionStatus },
   { label: 'Amount', value: AggregateFieldId.Amount },
@@ -26,6 +27,28 @@ export const AggregateFieldIdOptions = [
   { label: 'Transaction Time', value: AggregateFieldId.TransactionTime },
   { label: 'Currency Amount', value: AggregateFieldId.CurrencyAmount }*/
 ];
+
+// For creating the divider in dropdown
+export const FIELD_DIVIDER = { label: '--- Custom Fields ---', value: 'divider', isDivider: true };
+
+// Custom field identifier prefix
+export const CUSTOM_FIELD_PREFIX = 'custom_';
+
+// Helper to check if a field is custom
+export const isCustomField = (fieldId: string | number): boolean => {
+  return String(fieldId).startsWith(CUSTOM_FIELD_PREFIX);
+};
+
+// Helper to extract custom field ID
+export const getCustomFieldId = (fieldId: string | number): number => {
+  const id = String(fieldId).replace(CUSTOM_FIELD_PREFIX, '');
+  return parseInt(id, 10);
+};
+
+// Helper to create custom field ID
+export const createCustomFieldId = (fieldId: number): string => {
+  return `${CUSTOM_FIELD_PREFIX}${fieldId}`;
+};
 
 export const AggregateCustomValueFieldIdOptions = [
   { label: 'Amount', value: AggregateFieldId.Amount },
