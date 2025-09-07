@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Settings, Trash2, Plus, Calculator, Layers } from 'lucide-react';
+import { Trash2, Plus, Calculator, Layers } from 'lucide-react';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
@@ -306,7 +306,6 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
   readOnly
 }) => {
   const navigate = useNavigate();
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [showAggError, setShowAggError] = useState(false);
   const [customValues, setCustomValues] = useState<CustomValueOption[]>([]);
@@ -451,16 +450,6 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
         <span className="font-semibold text-gray-700">Condition {conditionIndex + 1}</span>
         {!readOnly && (
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hover:bg-gray-200"
-              onClick={() => setShowAdvanced((v) => !v)}
-              aria-label="Show advanced settings"
-              type="button"
-            >
-              <Settings className={showAdvanced ? 'text-blue-600' : 'text-gray-500'} size={20} />
-            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -663,7 +652,14 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                         aggregateFieldId: null, // clear static field
                         jsonValue: '',
                         aggregateFunction: null,
-                        ComparisonOperator: undefined
+                        ComparisonOperator: undefined,
+                        isAggregated: false, // Reset aggregation when field changes
+                        // Also reset aggregation-related fields
+                        accountType: null,
+                        filterBy: null,
+                        duration: null,
+                        durationType: null,
+                        lastTransactionCount: null
                       });
                     } else {
                       // Handle static field selection
@@ -677,7 +673,14 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                         isAggregatedCustomField: false, // Set to false for static fields
                         jsonValue: '',
                         aggregateFunction: null,
-                        ComparisonOperator: undefined
+                        ComparisonOperator: undefined,
+                        isAggregated: false, // Reset aggregation when field changes
+                        // Also reset aggregation-related fields
+                        accountType: null,
+                        filterBy: null,
+                        duration: null,
+                        durationType: null,
+                        lastTransactionCount: null
                       });
                     }
                   }}
@@ -1055,215 +1058,206 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
           </div>
         </div>
       )}
-      {/* Advanced Fields (collapsible) */}
-      {!readOnly && (
-        <div
-          className={`transition-all duration-300 overflow-hidden ${showAdvanced ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'} bg-gray-50 border-t rounded-b-xl`}
-        >
-          <div className="p-0">
-            <div className="border rounded-lg bg-gray-50 p-6 mt-4">
-              <div className="flex items-center mb-6 gap-2">
-                {condition.aggregateFieldId !== AggregateFieldId.TransactionStatus && 
-                 condition.aggregateFieldId !== AggregateFieldId.RiskStatus && (
-                  <>
-                    <Switch
-                      checked={!!condition.isAggregated}
-                      onCheckedChange={(v) => handleFieldChange('isAggregated', v)}
-                      id="use-aggregation"
-                    />
-                    <label htmlFor="use-aggregation" className="font-semibold text-gray-800">
-                      Use aggregation
-                    </label>
-                    <span
-                      className="text-gray-400 text-xs ml-2"
-                      title="Enable to use advanced aggregation options."
-                    >
-                      <KeenIcon icon="info" />
-                    </span>
-                  </>
-                )}
+
+      {/* Use Aggregation Toggle - Always visible for eligible fields */}
+      {!readOnly && 
+       condition.aggregateFieldId !== AggregateFieldId.TransactionStatus && 
+       condition.aggregateFieldId !== AggregateFieldId.RiskStatus && (
+        <div className="p-4 border-t bg-blue-50/30 border-blue-200">
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={!!condition.isAggregated}
+              onCheckedChange={(v) => handleFieldChange('isAggregated', v)}
+              id="use-aggregation-main"
+            />
+            <label htmlFor="use-aggregation-main" className="font-semibold text-gray-800 cursor-pointer">
+              Use aggregation
+            </label>
+            <span
+              className="text-gray-500 text-xs"
+              title="Enable to use advanced aggregation options like Account Type, Filter By, Duration, etc."
+            >
+              <KeenIcon icon="info" />
+            </span>
+            {condition.isAggregated && (
+              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                Aggregation enabled
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Aggregation Fields - Show when aggregation is enabled */}
+      {!readOnly && condition.isAggregated && (
+        <div className="border-t bg-gray-50/50 border-gray-200">
+          <div className="p-4">
+            {/* Aggregate Function */}
+            {condition.aggregateFieldId !== AggregateFieldId.TransactionStatus &&
+              condition.aggregateFieldId !== AggregateFieldId.RiskStatus && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1 text-gray-700">
+                    Aggregate Function <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={condition.aggregateFunction?.toString() ?? ''}
+                    onValueChange={handleAggregateFunctionChange}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select aggregate function" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AggregateFunctionOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value.toString()}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {showAggError && (
+                    <div className="text-xs text-red-500 mt-1">
+                      Aggregate function is required.
+                    </div>
+                  )}
+                </div>
+              )}
+
+            {/* Account Type and Filter By */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Account Type
+                </label>
+                <Select
+                  value={
+                    condition.accountType !== null && condition.accountType !== undefined
+                      ? condition.accountType.toString()
+                      : ''
+                  }
+                  onValueChange={(v) => handleFieldChange('accountType', v ? Number(v) : null)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Account type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AccountTypeOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value.toString()}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              {condition.aggregateFieldId !== AggregateFieldId.TransactionStatus &&
-                condition.aggregateFieldId !== AggregateFieldId.RiskStatus &&
-                condition.isAggregated && (
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium mb-1 text-gray-700">
-                      Aggregate Function <span className="text-red-500">*</span>
-                    </label>
-                    <Select
-                      value={condition.aggregateFunction?.toString() ?? ''}
-                      onValueChange={handleAggregateFunctionChange}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select aggregate function" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {AggregateFunctionOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value.toString()}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {showAggError && (
-                      <div className="text-xs text-red-500 mt-1">
-                        Aggregate function is required.
-                      </div>
-                    )}
-                  </div>
-                )}
-              {/* Only show Account Type and Filter By if Use aggregation is enabled */}
-              {condition.isAggregated && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-gray-700">
-                      Account Type
-                    </label>
-                    <Select
-                      value={
-                        condition.accountType !== null && condition.accountType !== undefined
-                          ? condition.accountType.toString()
-                          : ''
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Filter By</label>
+                <Select
+                  value={
+                    condition.filterBy !== null && condition.filterBy !== undefined
+                      ? condition.filterBy.toString()
+                      : ''
+                  }
+                  onValueChange={(v) => handleFieldChange('filterBy', v ? Number(v) : null)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filter by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FilterByOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value.toString()}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Duration & Type and Last Transaction Count */}
+            <div className="flex gap-4 w-full">
+              {/* Duration & Type */}
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Duration & Type
+                </label>
+                <div className="flex gap-2 w-full">
+                  <Input
+                    type="number"
+                    value={condition.duration ?? ''}
+                    onChange={(e) => {
+                      const durationVal = e.target.value ? Number(e.target.value) : null;
+                      
+                      if (durationVal) {
+                        // If Duration is entered, reset Last Transaction Count and auto-set durationType if not set
+                        onChange({
+                          ...condition,
+                          duration: durationVal,
+                          durationType: condition.durationType || 1,
+                          lastTransactionCount: null
+                        });
+                      } else {
+                        handleFieldChange('duration', durationVal);
                       }
-                      onValueChange={(v) => handleFieldChange('accountType', v ? Number(v) : null)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Account type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {AccountTypeOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value.toString()}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-gray-700">Filter By</label>
-                    <Select
-                      value={
-                        condition.filterBy !== null && condition.filterBy !== undefined
-                          ? condition.filterBy.toString()
-                          : ''
-                      }
-                      onValueChange={(v) => handleFieldChange('filterBy', v ? Number(v) : null)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Filter by" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FilterByOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value.toString()}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    }}
+                    placeholder="Duration"
+                    className="flex-1"
+                    min={1}
+                  />
+                  <Select
+                    value={condition.durationType?.toString() ?? ''}
+                    onValueChange={(v) => handleFieldChange('durationType', v ? Number(v) : null)}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DurationTypeOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value.toString()}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-              {/* Only show Duration & Type and Last Transaction Count if Use aggregation is enabled */}
-              {condition.isAggregated && (
-                <div className="md:col-span-2 flex gap-6 w-full">
-                    {/* Duration & Type */}
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium mb-1 text-gray-700">
-                        Duration & Type
-                      </label>
-                      <div className="flex gap-3 w-full">
-                        <Input
-                          type="number"
-                          value={condition.duration ?? ''}
-                          onChange={(e) => {
-                            const durationVal = e.target.value ? Number(e.target.value) : null;
-                            
-                            if (durationVal) {
-                              // If Duration is entered, reset Last Transaction Count and auto-set durationType if not set
-                              onChange({
-                                ...condition,
-                                duration: durationVal,
-                                durationType: condition.durationType || 1,
-                                lastTransactionCount: null
-                              });
-                            } else {
-                              // If Duration is cleared, also clear durationType
-                              onChange({
-                                ...condition,
-                                duration: null,
-                                durationType: null
-                              });
-                            }
-                          }}
-                          placeholder="Duration"
-                          className="w-1/2"
-                          min={1}
-                          disabled={!!condition.lastTransactionCount}
-                        />
-                        <Select
-                          value={
-                            condition.durationType !== null && condition.durationType !== undefined
-                              ? condition.durationType.toString()
-                              : ''
-                          }
-                          onValueChange={(v) =>
-                            handleFieldChange('durationType', v ? Number(v) : null)
-                          }
-                          disabled={!!condition.lastTransactionCount}
-                        >
-                          <SelectTrigger className="w-1/2">
-                            <SelectValue placeholder="Type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {DurationTypeOptions.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value.toString()}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Set both duration and type, or use transaction count below.
-                      </p>
-                    </div>
-                    {/* Last Transaction Count */}
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium mb-1 text-gray-700">
-                        Last Transaction Count
-                      </label>
-                      <Input
-                        type="number"
-                        value={condition.lastTransactionCount ?? ''}
-                        onChange={(e) => {
-                          const lastTransactionCountVal = e.target.value ? Number(e.target.value) : null;
-                          
-                          // If Last Transaction Count is entered, reset Duration & Type
-                          if (lastTransactionCountVal) {
-                            onChange({
-                              ...condition,
-                              lastTransactionCount: lastTransactionCountVal,
-                              duration: null,
-                              durationType: null
-                            });
-                          } else {
-                            handleFieldChange('lastTransactionCount', lastTransactionCountVal);
-                          }
-                        }}
-                        placeholder="Count"
-                        className="w-full"
-                        min={1}
-                      />
-                      <p className="text-xs text-gray-400 mt-1">
-                        Or specify the number of last transactions to aggregate.
-                      </p>
-                    </div>
-                </div>
-              )}
+                <p className="text-xs text-gray-400 mt-1">
+                  Set both duration and type, or use transaction count below.
+                </p>
+              </div>
+              {/* Last Transaction Count */}
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Last Transaction Count
+                </label>
+                <Input
+                  type="number"
+                  value={condition.lastTransactionCount ?? ''}
+                  onChange={(e) => {
+                    const lastTransactionCountVal = e.target.value ? Number(e.target.value) : null;
+                    
+                    if (lastTransactionCountVal) {
+                      // If Last Transaction Count is entered, reset Duration fields
+                      onChange({
+                        ...condition,
+                        lastTransactionCount: lastTransactionCountVal,
+                        duration: null,
+                        durationType: null
+                      });
+                    } else {
+                      handleFieldChange('lastTransactionCount', lastTransactionCountVal);
+                    }
+                  }}
+                  placeholder="Count"
+                  className="w-full"
+                  min={1}
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Or specify the number of last transactions to aggregate.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 };
