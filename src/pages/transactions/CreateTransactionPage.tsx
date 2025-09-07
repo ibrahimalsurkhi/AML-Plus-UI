@@ -1507,11 +1507,11 @@ const CreateTransactionPage = () => {
           case FieldType.Dropdown:
           case FieldType.Radio:
           case FieldType.Lookup:
-            hasValue = fieldResponse.optionId && fieldResponse.optionId.trim() !== '';
+            hasValue = fieldResponse.optionId !== null && fieldResponse.optionId !== undefined;
             break;
           case FieldType.Checkbox:
             // Checkbox is considered valid if it has an optionId (checked or unchecked)
-            hasValue = fieldResponse.optionId && fieldResponse.optionId.trim() !== '';
+            hasValue = fieldResponse.optionId !== null && fieldResponse.optionId !== undefined;
             break;
         }
 
