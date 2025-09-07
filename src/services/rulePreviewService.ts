@@ -20,7 +20,7 @@ let customValuesCache: { id: number; title: string }[] = [];
 let customValuesCacheLoaded = false;
 
 // Cache for custom fields
-let customFieldsCache: { id: number; label: string; fieldType: number; lookupId?: number }[] = [];
+let customFieldsCache: { id: number; label: string; fieldType: number; lookupId?: number; templateId?: string }[] = [];
 let customFieldsCacheLoaded = false;
 
 // Cache for custom field options (dropdown/radio/checkbox)
@@ -40,6 +40,9 @@ export function resetRulePreviewCaches() {
   console.log('Rule preview caches reset');
 }
 
+// Auto-reset caches on load for development
+resetRulePreviewCaches();
+
 // Load custom values once
 async function loadCustomValues() {
   if (!customValuesCacheLoaded) {
@@ -58,13 +61,38 @@ async function loadCustomValues() {
 async function loadCustomFields() {
   if (!customFieldsCacheLoaded) {
     try {
-      console.log('Debug - Loading custom fields...');
-      const fieldsResponse = await templateService.getTemplateFields('15');
-      // Get all fields from sections and fields without section
-      const allFields = [
-        ...fieldsResponse.sections.flatMap((section) => section.fields),
-        ...fieldsResponse.fieldsWithoutSection
-      ];
+      console.log('Debug - Loading custom fields from all templates...');
+      
+      // Template IDs to load
+      const TRANSACTION_TEMPLATE_ID = '15'; // Old custom fields
+      const INDIVIDUAL_TEMPLATE_ID = '17';
+      const ORGANIZATION_TEMPLATE_ID = '18';
+      
+      const allFields: any[] = [];
+      
+      // Load fields from all three templates
+      for (const templateId of [TRANSACTION_TEMPLATE_ID, INDIVIDUAL_TEMPLATE_ID, ORGANIZATION_TEMPLATE_ID]) {
+        try {
+          console.log(`Debug - Loading fields from template ${templateId}...`);
+          const fieldsResponse = await templateService.getTemplateFields(templateId);
+          
+          // Get all fields from sections and fields without section
+          const templateFields = [
+            ...fieldsResponse.sections.flatMap((section) => section.fields),
+            ...fieldsResponse.fieldsWithoutSection
+          ];
+          
+          // Add template info to each field for context
+          templateFields.forEach((field: any) => {
+            field.templateId = templateId;
+          });
+          
+          allFields.push(...templateFields);
+          console.log(`Debug - Loaded ${templateFields.length} fields from template ${templateId}`);
+        } catch (error) {
+          console.error(`Failed to load fields from template ${templateId}:`, error);
+        }
+      }
       
       // Filter fields by allowed types and cache them
       const allowedFields = allFields.filter(field => 
@@ -79,7 +107,8 @@ async function loadCustomFields() {
         id: field.id!,
         label: field.label,
         fieldType: field.fieldType,
-        lookupId: field.lookupId || undefined
+        lookupId: field.lookupId || undefined,
+        templateId: field.templateId // Store template ID for context
       }));
       
       // Pre-load field options for dropdown/radio/checkbox fields
@@ -88,7 +117,7 @@ async function loadCustomFields() {
           if (field.fieldType === FieldType.Dropdown ||
               field.fieldType === FieldType.Radio ||
               field.fieldType === FieldType.Checkbox) {
-            const options = await templateService.getFieldOptions('15', field.id!);
+            const options = await templateService.getFieldOptions(field.templateId, field.id!);
             customFieldOptionsCache[field.id!] = options.map(opt => ({
               id: opt.id!,
               label: opt.label
@@ -105,11 +134,11 @@ async function loadCustomFields() {
             }));
           }
         } catch (error) {
-          console.error(`Failed to load options for field ${field.id}:`, error);
+          console.error(`Failed to load options for field ${field.id} from template ${field.templateId}:`, error);
         }
       }
         
-      console.log('Debug - Loaded custom fields:', customFieldsCache);
+      console.log('Debug - Loaded custom fields from all templates:', customFieldsCache);
       console.log('Debug - Loaded field options cache:', customFieldOptionsCache);
       console.log('Debug - Loaded lookup values cache:', lookupValuesCache);
       customFieldsCacheLoaded = true;

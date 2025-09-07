@@ -22,15 +22,15 @@ import {
   RiskStatusOptions,
   RiskStatusOperatorOptions
 } from './enums';
-import { 
-  customValueService, 
-  CustomValueOption, 
-  templateService, 
-  lookupService, 
-  FieldType, 
-  TemplateField, 
-  FieldOption, 
-  LookupValue 
+import {
+  customValueService,
+  CustomValueOption,
+  templateService,
+  lookupService,
+  FieldType,
+  TemplateField,
+  FieldOption,
+  LookupValue
 } from '@/services/api';
 import { Input } from '@/components/ui/input';
 import {
@@ -313,16 +313,16 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
     // Initialize based on existing condition data
     return condition.customValueId ? 'custom' : 'manual';
   }); // Track if user wants manual entry or custom value
-  
+
   // New state for custom fields with entity types
   const [customFields, setCustomFields] = useState<{
     transaction: TemplateField[]; // Old custom fields from transaction template
     individual: TemplateField[];
     organization: TemplateField[];
   }>({ transaction: [], individual: [], organization: [] });
-  const [combinedFieldOptions, setCombinedFieldOptions] = useState<Array<{ 
-    label: string; 
-    value: string | number; 
+  const [combinedFieldOptions, setCombinedFieldOptions] = useState<Array<{
+    label: string;
+    value: string | number;
     isDivider?: boolean;
     isEntityHeader?: boolean;
     entityType?: 'transaction' | 'individual' | 'organization';
@@ -330,19 +330,17 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
   const [customFieldOptions, setCustomFieldOptions] = useState<Array<{ id: number; label: string; value?: string }>>([]);
   const [customFieldLookupValues, setCustomFieldLookupValues] = useState<LookupValue[]>([]);
   const [loadingCustomFieldOptions, setLoadingCustomFieldOptions] = useState(false);
-  
+
   // Search functionality for field dropdown
   const [fieldSearchTerm, setFieldSearchTerm] = useState('');
   const [isFieldDropdownOpen, setIsFieldDropdownOpen] = useState(false);
   const fieldDropdownRef = useRef<HTMLDivElement>(null);
-  
+
   // Template IDs
   const TRANSACTION_TEMPLATE_ID = 15; // Old custom fields
   const INDIVIDUAL_TEMPLATE_ID = 17;
   const ORGANIZATION_TEMPLATE_ID = 18;
-  
-  // Debug: Let's also try some other template IDs to see what's available
-  const POSSIBLE_ORG_TEMPLATE_IDS = [16, 18, 19, 20];
+
 
   // Load custom values and custom fields when component mounts
   useEffect(() => {
@@ -354,7 +352,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
         console.error('Failed to load custom values:', error);
       }
     };
-    
+
     const loadCustomFields = async () => {
       try {
         // Debug: List all available templates
@@ -368,10 +366,10 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
         } catch (error) {
           console.error('Failed to fetch templates list:', error);
         }
-        
+
         // Fetch custom fields for all template types with individual error handling
         let transactionFieldsResponse, individualFieldsResponse, organizationFieldsResponse;
-        
+
         try {
           transactionFieldsResponse = await templateService.getTemplateFields(TRANSACTION_TEMPLATE_ID.toString());
           console.log('Transaction template loaded successfully');
@@ -379,7 +377,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
           console.error('Failed to load transaction template:', error);
           transactionFieldsResponse = { sections: [], fieldsWithoutSection: [] };
         }
-        
+
         try {
           individualFieldsResponse = await templateService.getTemplateFields(INDIVIDUAL_TEMPLATE_ID.toString());
           console.log('Individual template loaded successfully');
@@ -387,91 +385,88 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
           console.error('Failed to load individual template:', error);
           individualFieldsResponse = { sections: [], fieldsWithoutSection: [] };
         }
-        
+
         // Try to find organization template by trying multiple IDs
         organizationFieldsResponse = { sections: [], fieldsWithoutSection: [] }; // Initialize with default
         let organizationTemplateFound = false;
-        for (const templateId of POSSIBLE_ORG_TEMPLATE_IDS) {
-          try {
-            organizationFieldsResponse = await templateService.getTemplateFields(templateId.toString());
-            console.log(`Organization template found with ID ${templateId}`);
-            organizationTemplateFound = true;
-            break;
-          } catch (error) {
-            console.log(`Template ID ${templateId} not found`);
-          }
+        try {
+          organizationFieldsResponse = await templateService.getTemplateFields(ORGANIZATION_TEMPLATE_ID.toString());
+        } catch (error) {
+          console.error('Failed to load organization template:', error);
+          organizationFieldsResponse = { sections: [], fieldsWithoutSection: [] };
         }
-        
+
+
         if (!organizationTemplateFound) {
           console.error('No organization template found, using empty response');
         }
-        
+
         // Process transaction fields (old custom fields)
         const allTransactionFields = [
           ...transactionFieldsResponse.sections.flatMap((section) => section.fields),
           ...transactionFieldsResponse.fieldsWithoutSection
         ];
-        const allowedTransactionFields = allTransactionFields.filter(field => 
+        const allowedTransactionFields = allTransactionFields.filter(field =>
           field.fieldType === FieldType.Dropdown ||
           field.fieldType === FieldType.Lookup ||
           field.fieldType === FieldType.Radio ||
           field.fieldType === FieldType.Checkbox ||
           field.fieldType === FieldType.Number
         );
-        
+
         // Process individual fields
         const allIndividualFields = [
           ...individualFieldsResponse.sections.flatMap((section) => section.fields),
           ...individualFieldsResponse.fieldsWithoutSection
         ];
-        const allowedIndividualFields = allIndividualFields.filter(field => 
+        const allowedIndividualFields = allIndividualFields.filter(field =>
           field.fieldType === FieldType.Dropdown ||
           field.fieldType === FieldType.Lookup ||
           field.fieldType === FieldType.Radio ||
           field.fieldType === FieldType.Checkbox ||
           field.fieldType === FieldType.Number
         );
-        
+
         // Process organization fields
         const allOrganizationFields = [
           ...organizationFieldsResponse.sections.flatMap((section) => section.fields),
           ...organizationFieldsResponse.fieldsWithoutSection
         ];
-        const allowedOrganizationFields = allOrganizationFields.filter(field => 
+        const allowedOrganizationFields = allOrganizationFields.filter(field =>
           field.fieldType === FieldType.Dropdown ||
           field.fieldType === FieldType.Lookup ||
           field.fieldType === FieldType.Radio ||
           field.fieldType === FieldType.Checkbox ||
           field.fieldType === FieldType.Number
         );
-        
+
         // Debug logging
         console.log('Transaction fields:', allowedTransactionFields.length);
         console.log('Individual fields:', allowedIndividualFields.length);
         console.log('Organization fields:', allowedOrganizationFields.length);
         console.log('Organization fields data:', allowedOrganizationFields);
-        
+
         setCustomFields({
           transaction: allowedTransactionFields,
           individual: allowedIndividualFields,
           organization: allowedOrganizationFields
         });
-        
+
         // Create combined field options with static fields + entity type sub-menus
         const combined = [
           // Static hardcoded fields
           ...AggregateFieldIdOptions.map(opt => ({ label: opt.label, value: opt.value })),
-          
+
           // Custom fields divider
           { label: '--- Custom Fields ---', value: 'divider', isDivider: true },
-          
+
           // Old transaction custom fields (show first)
           ...allowedTransactionFields.map(field => ({
             label: field.label,
             value: createCustomFieldId(field.id!),
             entityType: 'transaction' as const
           })),
-          
+
           // Individual entity type header (only show if has fields)
           ...(allowedIndividualFields.length > 0 ? [
             { label: 'Individual', value: 'individual_header', isEntityHeader: true, entityType: 'individual' as const }
@@ -481,7 +476,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
             value: createCustomFieldId(field.id!),
             entityType: 'individual' as const
           })),
-          
+
           // Organization entity type header (always show for debugging)
           { label: 'Organization', value: 'organization_header', isEntityHeader: true, entityType: 'organization' as const },
           ...allowedOrganizationFields.map(field => ({
@@ -495,12 +490,12 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
           ] : [])
         ];
         setCombinedFieldOptions(combined);
-        
+
       } catch (error) {
         console.error('Failed to load custom fields:', error);
       }
     };
-    
+
     loadCustomValues();
     loadCustomFields();
   }, []);
@@ -526,7 +521,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
   useEffect(() => {
     setValueType(condition.customValueId ? 'custom' : 'manual');
   }, [condition.customValueId]);
-  
+
   // Load custom field options when a custom field is selected
   useEffect(() => {
     const loadCustomFieldOptions = async () => {
@@ -535,25 +530,25 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
         setCustomFieldLookupValues([]);
         return;
       }
-      
+
       const customFieldId = getCustomFieldId(condition.selectedFieldId);
       const field = [...customFields.transaction, ...customFields.individual, ...customFields.organization].find(f => f.id === customFieldId);
-      
+
       if (!field) return;
-      
+
       setLoadingCustomFieldOptions(true);
-      
+
       try {
-        if (field.fieldType === FieldType.Dropdown || 
-            field.fieldType === FieldType.Radio || 
-            field.fieldType === FieldType.Checkbox) {
+        if (field.fieldType === FieldType.Dropdown ||
+          field.fieldType === FieldType.Radio ||
+          field.fieldType === FieldType.Checkbox) {
           // Load field options - determine template ID based on which entity type contains this field
-          const templateId = customFields.transaction.some(f => f.id === customFieldId) 
+          const templateId = customFields.transaction.some(f => f.id === customFieldId)
             ? TRANSACTION_TEMPLATE_ID.toString()
-            : customFields.individual.some(f => f.id === customFieldId) 
-            ? INDIVIDUAL_TEMPLATE_ID.toString() 
-            : ORGANIZATION_TEMPLATE_ID.toString();
-            
+            : customFields.individual.some(f => f.id === customFieldId)
+              ? INDIVIDUAL_TEMPLATE_ID.toString()
+              : ORGANIZATION_TEMPLATE_ID.toString();
+
           const options = await templateService.getFieldOptions(templateId, field.id!);
           setCustomFieldOptions(options.map(opt => ({
             id: opt.id!,
@@ -562,12 +557,12 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
           })));
         } else if (field.fieldType === FieldType.Lookup && field.lookupId) {
           // Load lookup values - determine template ID based on which entity type contains this field
-          const templateId = customFields.transaction.some(f => f.id === customFieldId) 
+          const templateId = customFields.transaction.some(f => f.id === customFieldId)
             ? TRANSACTION_TEMPLATE_ID.toString()
-            : customFields.individual.some(f => f.id === customFieldId) 
-            ? INDIVIDUAL_TEMPLATE_ID.toString() 
-            : ORGANIZATION_TEMPLATE_ID.toString();
-            
+            : customFields.individual.some(f => f.id === customFieldId)
+              ? INDIVIDUAL_TEMPLATE_ID.toString()
+              : ORGANIZATION_TEMPLATE_ID.toString();
+
           const lookupValues = await lookupService.getLookupValues(field.lookupId, {
             pageNumber: 1,
             pageSize: 100
@@ -580,7 +575,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
         setLoadingCustomFieldOptions(false);
       }
     };
-    
+
     loadCustomFieldOptions();
   }, [condition.selectedFieldId, customFields.transaction, customFields.individual, customFields.organization, TRANSACTION_TEMPLATE_ID, INDIVIDUAL_TEMPLATE_ID, ORGANIZATION_TEMPLATE_ID]);
 
@@ -631,7 +626,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
             <div>
               <div className="text-xs text-muted-foreground mb-1">Field</div>
               <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
-                {condition.customFieldId ? 
+                {condition.customFieldId ?
                   [...customFields.transaction, ...customFields.individual, ...customFields.organization].find(f => f.id === condition.customFieldId)?.label || '[Custom Field]' :
                   getLabel(AggregateFieldIdOptions, condition.aggregateFieldId)
                 }
@@ -644,16 +639,16 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                   // Custom field logic
                   if (condition.customFieldId !== null && condition.customFieldType !== null) {
                     if (condition.customFieldType === FieldType.Dropdown ||
-                        condition.customFieldType === FieldType.Radio ||
-                        condition.customFieldType === FieldType.Checkbox ||
-                        condition.customFieldType === FieldType.Lookup) {
+                      condition.customFieldType === FieldType.Radio ||
+                      condition.customFieldType === FieldType.Checkbox ||
+                      condition.customFieldType === FieldType.Lookup) {
                       return getLabel(StatusOperatorOptions, condition.ComparisonOperator) || '[Operator]';
                     } else if (condition.customFieldType === FieldType.Number) {
                       return getLabel(ComparisonOperatorOptions, condition.ComparisonOperator) || '[Operator]';
                     }
                     return '[Operator]';
                   }
-                  
+
                   // Static field logic (existing)
                   return getOperatorLabel(
                     condition.aggregateFunction,
@@ -676,15 +671,15 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
               <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
                 {(() => {
                   if (!condition.jsonValue) return '[Value]';
-                  
+
                   // Handle custom fields
                   if (condition.customFieldId !== null && condition.customFieldType !== null) {
                     try {
                       const parsed = JSON.parse(condition.jsonValue);
                       if (Array.isArray(parsed)) {
                         if (condition.customFieldType === FieldType.Dropdown ||
-                            condition.customFieldType === FieldType.Radio ||
-                            condition.customFieldType === FieldType.Checkbox) {
+                          condition.customFieldType === FieldType.Radio ||
+                          condition.customFieldType === FieldType.Checkbox) {
                           // Show option labels if available
                           const labels = parsed
                             .map((id: number) => {
@@ -712,7 +707,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                       return condition.jsonValue;
                     }
                   }
-                  
+
                   // Handle static fields (existing logic)
                   try {
                     if (condition.aggregateFieldId === AggregateFieldId.TransactionTime) {
@@ -819,7 +814,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                       {(() => {
                         const selectedValue = condition.selectedFieldId?.toString() || condition.aggregateFieldId?.toString() || '';
                         if (!selectedValue) return 'Select Field';
-                        
+
                         const selectedField = combinedFieldOptions.find(opt => opt.value.toString() === selectedValue);
                         return selectedField ? selectedField.label : 'Select Field';
                       })()}
@@ -834,7 +829,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                       />
                     </div>
                   </div>
-                  
+
                   {isFieldDropdownOpen && !readOnly && (
                     <div className="absolute z-50 w-full mt-1 min-w-[400px]">
                       <div className="bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
@@ -848,7 +843,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                             autoFocus
                           />
                         </div>
-                        
+
                         {/* Options List */}
                         <div className="max-h-[300px] overflow-y-auto">
                           {filteredFieldOptions.map((opt, index) => {
@@ -872,19 +867,19 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                                 className={clsx(
                                   'flex items-center px-3 py-2.5 cursor-pointer transition-colors',
                                   'hover:bg-gray-50 hover:text-gray-900',
-                                  (condition.selectedFieldId?.toString() || condition.aggregateFieldId?.toString()) === opt.value.toString() 
-                                    ? 'bg-blue-50 text-blue-700 font-medium' 
+                                  (condition.selectedFieldId?.toString() || condition.aggregateFieldId?.toString()) === opt.value.toString()
+                                    ? 'bg-blue-50 text-blue-700 font-medium'
                                     : 'text-gray-700'
                                 )}
                                 onClick={() => {
                                   const v = opt.value.toString();
                                   const isCustom = isCustomField(v);
-                                  
+
                                   if (isCustom) {
                                     // Handle custom field selection
                                     const customFieldId = getCustomFieldId(v);
                                     const field = [...customFields.transaction, ...customFields.individual, ...customFields.organization].find(f => f.id === customFieldId);
-                                    
+
                                     onChange({
                                       ...condition,
                                       selectedFieldId: v,
@@ -926,7 +921,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                                       lastTransactionCount: null
                                     });
                                   }
-                                  
+
                                   setIsFieldDropdownOpen(false);
                                   setFieldSearchTerm('');
                                 }}
@@ -935,7 +930,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                               </div>
                             );
                           })}
-                          
+
                           {filteredFieldOptions.filter(opt => !opt.isDivider && !opt.isEntityHeader).length === 0 && (
                             <div className="px-3 py-2 text-sm text-gray-500 text-center">
                               No fields found
@@ -954,7 +949,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                   onValueChange={(v) => {
                     // Determine if we're dealing with a custom field
                     const isCustom = condition.customFieldId !== null;
-                    
+
                     if (isCustom) {
                       // For custom fields, always use ComparisonOperator
                       onChange({
@@ -1006,9 +1001,9 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                       // Custom field logic
                       if (condition.customFieldId !== null && condition.customFieldType !== null) {
                         if (condition.customFieldType === FieldType.Dropdown ||
-                            condition.customFieldType === FieldType.Radio ||
-                            condition.customFieldType === FieldType.Checkbox ||
-                            condition.customFieldType === FieldType.Lookup) {
+                          condition.customFieldType === FieldType.Radio ||
+                          condition.customFieldType === FieldType.Checkbox ||
+                          condition.customFieldType === FieldType.Lookup) {
                           // For list-based fields, use In/Not In operators
                           return StatusOperatorOptions.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value.toString()}>
@@ -1025,7 +1020,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                         }
                         return null;
                       }
-                      
+
                       // Static field logic (existing)
                       if (condition.aggregateFieldId === AggregateFieldId.TransactionStatus) {
                         return StatusOperatorOptions.map((opt) => (
@@ -1040,9 +1035,9 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                           </SelectItem>
                         ));
                       } else if (condition.aggregateFieldId === AggregateFieldId.Amount ||
-                                condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
-                                condition.aggregateFieldId === AggregateFieldId.TransactionTime ||
-                                condition.aggregateFieldId === AggregateFieldId.CurrencyAmount) {
+                        condition.aggregateFieldId === AggregateFieldId.TransactionCount ||
+                        condition.aggregateFieldId === AggregateFieldId.TransactionTime ||
+                        condition.aggregateFieldId === AggregateFieldId.CurrencyAmount) {
                         return ComparisonOperatorOptions.map((opt) => (
                           <SelectItem key={opt.value} value={opt.value.toString()}>
                             {opt.label}
@@ -1072,10 +1067,10 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                     </div>
                   );
                 }
-                
+
                 if (condition.customFieldType === FieldType.Dropdown ||
-                    condition.customFieldType === FieldType.Radio ||
-                    condition.customFieldType === FieldType.Checkbox) {
+                  condition.customFieldType === FieldType.Radio ||
+                  condition.customFieldType === FieldType.Checkbox) {
                   // Multi-select for dropdown/radio/checkbox
                   return (
                     <MultiSelect
@@ -1124,7 +1119,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                     />
                   );
                 }
-                
+
                 return (
                   <Input
                     value={condition.jsonValue}
@@ -1235,7 +1230,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                       Custom
                     </button>
                   </div>
-                  
+
                   {/* Value Input - Inline */}
                   {valueType === 'manual' ? (
                     <div className="relative flex-1">
@@ -1273,7 +1268,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                           ))}
                         </SelectContent>
                       </Select>
-                      
+
                       {/* Create Button - Icon Only */}
                       <button
                         type="button"
@@ -1300,33 +1295,33 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
       )}
 
       {/* Use Aggregation Toggle - Always visible for eligible fields */}
-      {!readOnly && 
-       condition.aggregateFieldId !== AggregateFieldId.TransactionStatus && 
-       condition.aggregateFieldId !== AggregateFieldId.RiskStatus && (
-        <div className="p-4 border-t bg-blue-50/30 border-blue-200">
-          <div className="flex items-center gap-3">
-            <Switch
-              checked={!!condition.isAggregated}
-              onCheckedChange={(v) => handleFieldChange('isAggregated', v)}
-              id="use-aggregation-main"
-            />
-            <label htmlFor="use-aggregation-main" className="font-semibold text-gray-800 cursor-pointer">
-              Use aggregation
-            </label>
-            <span
-              className="text-gray-500 text-xs"
-              title="Enable to use advanced aggregation options like Account Type, Filter By, Duration, etc."
-            >
-              <KeenIcon icon="info" />
-            </span>
-            {condition.isAggregated && (
-              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                Aggregation enabled
+      {!readOnly &&
+        condition.aggregateFieldId !== AggregateFieldId.TransactionStatus &&
+        condition.aggregateFieldId !== AggregateFieldId.RiskStatus && (
+          <div className="p-4 border-t bg-blue-50/30 border-blue-200">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={!!condition.isAggregated}
+                onCheckedChange={(v) => handleFieldChange('isAggregated', v)}
+                id="use-aggregation-main"
+              />
+              <label htmlFor="use-aggregation-main" className="font-semibold text-gray-800 cursor-pointer">
+                Use aggregation
+              </label>
+              <span
+                className="text-gray-500 text-xs"
+                title="Enable to use advanced aggregation options like Account Type, Filter By, Duration, etc."
+              >
+                <KeenIcon icon="info" />
               </span>
-            )}
+              {condition.isAggregated && (
+                <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                  Aggregation enabled
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Aggregation Fields - Show when aggregation is enabled */}
       {!readOnly && condition.isAggregated && (
@@ -1425,7 +1420,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                     value={condition.duration ?? ''}
                     onChange={(e) => {
                       const durationVal = e.target.value ? Number(e.target.value) : null;
-                      
+
                       if (durationVal) {
                         // If Duration is entered, reset Last Transaction Count and auto-set durationType if not set
                         onChange({
@@ -1472,7 +1467,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                   value={condition.lastTransactionCount ?? ''}
                   onChange={(e) => {
                     const lastTransactionCountVal = e.target.value ? Number(e.target.value) : null;
-                    
+
                     if (lastTransactionCountVal) {
                       // If Last Transaction Count is entered, reset Duration fields
                       onChange({
