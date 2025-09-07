@@ -738,9 +738,18 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
             </div>
             {condition.filterBy && (
               <div>
-                <div className="text-xs text-muted-foreground mb-1">Filter By</div>
+                <div className="text-xs text-muted-foreground mb-1">
+                  {condition.customFieldId && 
+                   (customFields.individual.some(f => f.id === condition.customFieldId) ||
+                    customFields.organization.some(f => f.id === condition.customFieldId)) 
+                    ? 'Apply To' : 'Filter By'}
+                </div>
                 <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
-                  {getFilterByLabel(condition.filterBy)}
+                  {condition.customFieldId && 
+                   (customFields.individual.some(f => f.id === condition.customFieldId) ||
+                    customFields.organization.some(f => f.id === condition.customFieldId))
+                    ? (condition.filterBy === 1 ? 'Sender' : condition.filterBy === 2 ? 'Receiver' : 'Unknown')
+                    : getFilterByLabel(condition.filterBy)}
                 </div>
               </div>
             )}
@@ -1294,10 +1303,43 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
         </div>
       )}
 
-      {/* Use Aggregation Toggle - Always visible for eligible fields */}
-      {!readOnly &&
-        condition.aggregateFieldId !== AggregateFieldId.TransactionStatus &&
-        condition.aggregateFieldId !== AggregateFieldId.RiskStatus && (
+      {/* Filter By for Individual/Organization custom fields - Show even without aggregation */}
+      {!readOnly && condition.customFieldId && 
+       (customFields.individual.some(f => f.id === condition.customFieldId) ||
+        customFields.organization.some(f => f.id === condition.customFieldId)) && (
+        <div className="p-4 border-t bg-orange-50/30 border-orange-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">
+                Apply To <span className="text-red-500">*</span>
+              </label>
+              <Select
+                value={condition.filterBy?.toString() || ''}
+                onValueChange={(v) => handleFieldChange('filterBy', v ? Number(v) : null)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select sender or receiver" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Sender</SelectItem>
+                  <SelectItem value="2">Receiver</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                Specify whether this field applies to the sender or receiver
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+       {/* Use Aggregation Toggle - Hide for Individual/Organization custom fields */}
+       {!readOnly &&
+         condition.aggregateFieldId !== AggregateFieldId.TransactionStatus &&
+         condition.aggregateFieldId !== AggregateFieldId.RiskStatus &&
+         !(condition.customFieldId && 
+           (customFields.individual.some(f => f.id === condition.customFieldId) ||
+            customFields.organization.some(f => f.id === condition.customFieldId))) && (
           <div className="p-4 border-t bg-blue-50/30 border-blue-200">
             <div className="flex items-center gap-3">
               <Switch
