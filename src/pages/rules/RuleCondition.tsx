@@ -314,12 +314,35 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
     return condition.customValueId ? 'custom' : 'manual';
   }); // Track if user wants manual entry or custom value
   
-  // New state for custom fields
-  const [customFields, setCustomFields] = useState<TemplateField[]>([]);
-  const [combinedFieldOptions, setCombinedFieldOptions] = useState<Array<{ label: string; value: string | number; isDivider?: boolean }>>([]);
+  // New state for custom fields with entity types
+  const [customFields, setCustomFields] = useState<{
+    transaction: TemplateField[]; // Old custom fields from transaction template
+    individual: TemplateField[];
+    organization: TemplateField[];
+  }>({ transaction: [], individual: [], organization: [] });
+  const [combinedFieldOptions, setCombinedFieldOptions] = useState<Array<{ 
+    label: string; 
+    value: string | number; 
+    isDivider?: boolean;
+    isEntityHeader?: boolean;
+    entityType?: 'transaction' | 'individual' | 'organization';
+  }>>([]);
   const [customFieldOptions, setCustomFieldOptions] = useState<Array<{ id: number; label: string; value?: string }>>([]);
   const [customFieldLookupValues, setCustomFieldLookupValues] = useState<LookupValue[]>([]);
   const [loadingCustomFieldOptions, setLoadingCustomFieldOptions] = useState(false);
+  
+  // Search functionality for field dropdown
+  const [fieldSearchTerm, setFieldSearchTerm] = useState('');
+  const [isFieldDropdownOpen, setIsFieldDropdownOpen] = useState(false);
+  const fieldDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Template IDs
+  const TRANSACTION_TEMPLATE_ID = 15; // Old custom fields
+  const INDIVIDUAL_TEMPLATE_ID = 17;
+  const ORGANIZATION_TEMPLATE_ID = 18;
+  
+  // Debug: Let's also try some other template IDs to see what's available
+  const POSSIBLE_ORG_TEMPLATE_IDS = [16, 18, 19, 20];
 
   // Load custom values and custom fields when component mounts
   useEffect(() => {
@@ -334,16 +357,61 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
     
     const loadCustomFields = async () => {
       try {
-        // Fetch template fields for template ID 15 (transaction template)
-        const fieldsResponse = await templateService.getTemplateFields('15');
-        // Get all fields from sections and fields without section
-        const allFields = [
-          ...fieldsResponse.sections.flatMap((section) => section.fields),
-          ...fieldsResponse.fieldsWithoutSection
-        ];
+        // Debug: List all available templates
+        try {
+          const allTemplates = await templateService.getTemplates({
+            pageNumber: 1,
+            pageSize: 100,
+            templateType: 1 // Record type
+          });
+          console.log('Available templates:', allTemplates.items.map(t => ({ id: t.id, name: t.name, status: t.status })));
+        } catch (error) {
+          console.error('Failed to fetch templates list:', error);
+        }
         
-        // Filter fields by allowed types: dropdown, lookup, radio, checkbox, number
-        const allowedFields = allFields.filter(field => 
+        // Fetch custom fields for all template types with individual error handling
+        let transactionFieldsResponse, individualFieldsResponse, organizationFieldsResponse;
+        
+        try {
+          transactionFieldsResponse = await templateService.getTemplateFields(TRANSACTION_TEMPLATE_ID.toString());
+          console.log('Transaction template loaded successfully');
+        } catch (error) {
+          console.error('Failed to load transaction template:', error);
+          transactionFieldsResponse = { sections: [], fieldsWithoutSection: [] };
+        }
+        
+        try {
+          individualFieldsResponse = await templateService.getTemplateFields(INDIVIDUAL_TEMPLATE_ID.toString());
+          console.log('Individual template loaded successfully');
+        } catch (error) {
+          console.error('Failed to load individual template:', error);
+          individualFieldsResponse = { sections: [], fieldsWithoutSection: [] };
+        }
+        
+        // Try to find organization template by trying multiple IDs
+        organizationFieldsResponse = { sections: [], fieldsWithoutSection: [] }; // Initialize with default
+        let organizationTemplateFound = false;
+        for (const templateId of POSSIBLE_ORG_TEMPLATE_IDS) {
+          try {
+            organizationFieldsResponse = await templateService.getTemplateFields(templateId.toString());
+            console.log(`Organization template found with ID ${templateId}`);
+            organizationTemplateFound = true;
+            break;
+          } catch (error) {
+            console.log(`Template ID ${templateId} not found`);
+          }
+        }
+        
+        if (!organizationTemplateFound) {
+          console.error('No organization template found, using empty response');
+        }
+        
+        // Process transaction fields (old custom fields)
+        const allTransactionFields = [
+          ...transactionFieldsResponse.sections.flatMap((section) => section.fields),
+          ...transactionFieldsResponse.fieldsWithoutSection
+        ];
+        const allowedTransactionFields = allTransactionFields.filter(field => 
           field.fieldType === FieldType.Dropdown ||
           field.fieldType === FieldType.Lookup ||
           field.fieldType === FieldType.Radio ||
@@ -351,16 +419,80 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
           field.fieldType === FieldType.Number
         );
         
-        setCustomFields(allowedFields);
+        // Process individual fields
+        const allIndividualFields = [
+          ...individualFieldsResponse.sections.flatMap((section) => section.fields),
+          ...individualFieldsResponse.fieldsWithoutSection
+        ];
+        const allowedIndividualFields = allIndividualFields.filter(field => 
+          field.fieldType === FieldType.Dropdown ||
+          field.fieldType === FieldType.Lookup ||
+          field.fieldType === FieldType.Radio ||
+          field.fieldType === FieldType.Checkbox ||
+          field.fieldType === FieldType.Number
+        );
         
-        // Create combined field options with static fields + divider + custom fields
+        // Process organization fields
+        const allOrganizationFields = [
+          ...organizationFieldsResponse.sections.flatMap((section) => section.fields),
+          ...organizationFieldsResponse.fieldsWithoutSection
+        ];
+        const allowedOrganizationFields = allOrganizationFields.filter(field => 
+          field.fieldType === FieldType.Dropdown ||
+          field.fieldType === FieldType.Lookup ||
+          field.fieldType === FieldType.Radio ||
+          field.fieldType === FieldType.Checkbox ||
+          field.fieldType === FieldType.Number
+        );
+        
+        // Debug logging
+        console.log('Transaction fields:', allowedTransactionFields.length);
+        console.log('Individual fields:', allowedIndividualFields.length);
+        console.log('Organization fields:', allowedOrganizationFields.length);
+        console.log('Organization fields data:', allowedOrganizationFields);
+        
+        setCustomFields({
+          transaction: allowedTransactionFields,
+          individual: allowedIndividualFields,
+          organization: allowedOrganizationFields
+        });
+        
+        // Create combined field options with static fields + entity type sub-menus
         const combined = [
+          // Static hardcoded fields
           ...AggregateFieldIdOptions.map(opt => ({ label: opt.label, value: opt.value })),
-          FIELD_DIVIDER,
-          ...allowedFields.map(field => ({
+          
+          // Custom fields divider
+          { label: '--- Custom Fields ---', value: 'divider', isDivider: true },
+          
+          // Old transaction custom fields (show first)
+          ...allowedTransactionFields.map(field => ({
             label: field.label,
-            value: createCustomFieldId(field.id!)
-          }))
+            value: createCustomFieldId(field.id!),
+            entityType: 'transaction' as const
+          })),
+          
+          // Individual entity type header (only show if has fields)
+          ...(allowedIndividualFields.length > 0 ? [
+            { label: 'Individual', value: 'individual_header', isEntityHeader: true, entityType: 'individual' as const }
+          ] : []),
+          ...allowedIndividualFields.map(field => ({
+            label: `  ${field.label}`, // Indent to show it's under Individual
+            value: createCustomFieldId(field.id!),
+            entityType: 'individual' as const
+          })),
+          
+          // Organization entity type header (always show for debugging)
+          { label: 'Organization', value: 'organization_header', isEntityHeader: true, entityType: 'organization' as const },
+          ...allowedOrganizationFields.map(field => ({
+            label: `  ${field.label}`, // Indent to show it's under Organization
+            value: createCustomFieldId(field.id!),
+            entityType: 'organization' as const
+          })),
+          // Debug: Add test organization field
+          ...(allowedOrganizationFields.length === 0 ? [
+            { label: '  [No organization fields found]', value: 'debug_org', entityType: 'organization' as const }
+          ] : [])
         ];
         setCombinedFieldOptions(combined);
         
@@ -372,6 +504,23 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
     loadCustomValues();
     loadCustomFields();
   }, []);
+
+  // Close field dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (fieldDropdownRef.current && !fieldDropdownRef.current.contains(event.target as Node)) {
+        setIsFieldDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter field options based on search term
+  const filteredFieldOptions = combinedFieldOptions.filter(opt => {
+    if (opt.isDivider || opt.isEntityHeader) return true;
+    return opt.label.toLowerCase().includes(fieldSearchTerm.toLowerCase());
+  });
 
   // Sync valueType when condition changes (e.g., when switching between conditions)
   useEffect(() => {
@@ -388,7 +537,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
       }
       
       const customFieldId = getCustomFieldId(condition.selectedFieldId);
-      const field = customFields.find(f => f.id === customFieldId);
+      const field = [...customFields.transaction, ...customFields.individual, ...customFields.organization].find(f => f.id === customFieldId);
       
       if (!field) return;
       
@@ -398,15 +547,27 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
         if (field.fieldType === FieldType.Dropdown || 
             field.fieldType === FieldType.Radio || 
             field.fieldType === FieldType.Checkbox) {
-          // Load field options
-          const options = await templateService.getFieldOptions('15', field.id!);
+          // Load field options - determine template ID based on which entity type contains this field
+          const templateId = customFields.transaction.some(f => f.id === customFieldId) 
+            ? TRANSACTION_TEMPLATE_ID.toString()
+            : customFields.individual.some(f => f.id === customFieldId) 
+            ? INDIVIDUAL_TEMPLATE_ID.toString() 
+            : ORGANIZATION_TEMPLATE_ID.toString();
+            
+          const options = await templateService.getFieldOptions(templateId, field.id!);
           setCustomFieldOptions(options.map(opt => ({
             id: opt.id!,
             label: opt.label,
             value: opt.label
           })));
         } else if (field.fieldType === FieldType.Lookup && field.lookupId) {
-          // Load lookup values
+          // Load lookup values - determine template ID based on which entity type contains this field
+          const templateId = customFields.transaction.some(f => f.id === customFieldId) 
+            ? TRANSACTION_TEMPLATE_ID.toString()
+            : customFields.individual.some(f => f.id === customFieldId) 
+            ? INDIVIDUAL_TEMPLATE_ID.toString() 
+            : ORGANIZATION_TEMPLATE_ID.toString();
+            
           const lookupValues = await lookupService.getLookupValues(field.lookupId, {
             pageNumber: 1,
             pageSize: 100
@@ -421,7 +582,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
     };
     
     loadCustomFieldOptions();
-  }, [condition.selectedFieldId, customFields]);
+  }, [condition.selectedFieldId, customFields.transaction, customFields.individual, customFields.organization, TRANSACTION_TEMPLATE_ID, INDIVIDUAL_TEMPLATE_ID, ORGANIZATION_TEMPLATE_ID]);
 
   const handleFieldChange = (field: keyof Condition, value: any) => {
     if (readOnly) return;
@@ -471,7 +632,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
               <div className="text-xs text-muted-foreground mb-1">Field</div>
               <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
                 {condition.customFieldId ? 
-                  customFields.find(f => f.id === condition.customFieldId)?.label || '[Custom Field]' :
+                  [...customFields.transaction, ...customFields.individual, ...customFields.organization].find(f => f.id === condition.customFieldId)?.label || '[Custom Field]' :
                   getLabel(AggregateFieldIdOptions, condition.aggregateFieldId)
                 }
               </div>
@@ -623,8 +784,8 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
           </div>
         </div>
       ) : (
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-          <div>
+        <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4 items-end">
+          <div className="min-w-0">
             <label className="block text-sm font-medium mb-1 text-gray-700">Field</label>
             {readOnly ? (
               <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
@@ -632,80 +793,159 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
               </div>
             ) : (
               <div className="flex gap-2">
-                <Select
-                  value={condition.selectedFieldId?.toString() || condition.aggregateFieldId?.toString() || ''}
-                  onValueChange={(v) => {
-                    const isCustom = isCustomField(v);
-                    
-                    if (isCustom) {
-                      // Handle custom field selection
-                      const customFieldId = getCustomFieldId(v);
-                      const field = customFields.find(f => f.id === customFieldId);
-                      
-                      onChange({
-                        ...condition,
-                        selectedFieldId: v,
-                        customFieldId: customFieldId,
-                        customFieldType: field?.fieldType || null,
-                        customFieldLookupId: field?.lookupId || null,
-                        isAggregatedCustomField: true, // Set to true for custom fields
-                        aggregateFieldId: null, // clear static field
-                        jsonValue: '',
-                        aggregateFunction: null,
-                        ComparisonOperator: undefined,
-                        isAggregated: false, // Reset aggregation when field changes
-                        // Also reset aggregation-related fields
-                        accountType: null,
-                        filterBy: null,
-                        duration: null,
-                        durationType: null,
-                        lastTransactionCount: null
-                      });
-                    } else {
-                      // Handle static field selection
-                      onChange({
-                        ...condition,
-                        selectedFieldId: v,
-                        aggregateFieldId: v ? Number(v) : null,
-                        customFieldId: null, // clear custom field
-                        customFieldType: null,
-                        customFieldLookupId: null,
-                        isAggregatedCustomField: false, // Set to false for static fields
-                        jsonValue: '',
-                        aggregateFunction: null,
-                        ComparisonOperator: undefined,
-                        isAggregated: false, // Reset aggregation when field changes
-                        // Also reset aggregation-related fields
-                        accountType: null,
-                        filterBy: null,
-                        duration: null,
-                        durationType: null,
-                        lastTransactionCount: null
-                      });
-                    }
-                  }}
-                  disabled={readOnly}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Field" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {combinedFieldOptions.map((opt, index) => {
-                      if (opt.isDivider) {
-                        return (
-                          <div key={index} className="px-2 py-1 text-xs text-gray-500 bg-gray-50 font-medium">
-                            {opt.label}
-                          </div>
-                        );
+                {/* Custom Searchable Field Dropdown */}
+                <div className="relative w-full" ref={fieldDropdownRef}>
+                  <div
+                    className={clsx(
+                      'w-full h-[42px] bg-white px-3 cursor-pointer',
+                      'flex items-center justify-between text-left',
+                      'border border-gray-300 rounded-lg',
+                      'transition-all duration-200',
+                      'hover:border-primary/50 hover:shadow-sm',
+                      'focus:border-primary focus:ring-1 focus:ring-primary focus:ring-opacity-20',
+                      isFieldDropdownOpen && 'border-primary ring-1 ring-primary ring-opacity-20 shadow-sm',
+                      readOnly && 'opacity-50 cursor-not-allowed'
+                    )}
+                    onClick={() => !readOnly && setIsFieldDropdownOpen(!isFieldDropdownOpen)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if ((e.key === 'Enter' || e.key === ' ') && !readOnly) {
+                        setIsFieldDropdownOpen(!isFieldDropdownOpen);
                       }
-                      return (
-                        <SelectItem key={opt.value} value={opt.value.toString()}>
-                          {opt.label}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                    }}
+                  >
+                    <span className="truncate text-sm text-gray-900 flex-1">
+                      {(() => {
+                        const selectedValue = condition.selectedFieldId?.toString() || condition.aggregateFieldId?.toString() || '';
+                        if (!selectedValue) return 'Select Field';
+                        
+                        const selectedField = combinedFieldOptions.find(opt => opt.value.toString() === selectedValue);
+                        return selectedField ? selectedField.label : 'Select Field';
+                      })()}
+                    </span>
+                    <div className="flex items-center ml-2">
+                      <KeenIcon
+                        icon={isFieldDropdownOpen ? 'arrow-up' : 'arrow-down'}
+                        className={clsx(
+                          'w-4 h-4 transition-transform duration-200',
+                          isFieldDropdownOpen ? 'text-primary' : 'text-gray-500'
+                        )}
+                      />
+                    </div>
+                  </div>
+                  
+                  {isFieldDropdownOpen && !readOnly && (
+                    <div className="absolute z-50 w-full mt-1 min-w-[400px]">
+                      <div className="bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                        {/* Search Input */}
+                        <div className="p-2 border-b border-gray-100">
+                          <Input
+                            value={fieldSearchTerm}
+                            onChange={(e) => setFieldSearchTerm(e.target.value)}
+                            placeholder="Search fields..."
+                            className="w-full h-8 text-sm"
+                            autoFocus
+                          />
+                        </div>
+                        
+                        {/* Options List */}
+                        <div className="max-h-[300px] overflow-y-auto">
+                          {filteredFieldOptions.map((opt, index) => {
+                            if (opt.isDivider) {
+                              return (
+                                <div key={index} className="px-3 py-2 text-xs text-gray-500 bg-gray-50 font-medium border-b border-gray-100">
+                                  {opt.label}
+                                </div>
+                              );
+                            }
+                            if (opt.isEntityHeader) {
+                              return (
+                                <div key={index} className="px-3 py-2 text-sm text-gray-700 bg-blue-50 font-semibold">
+                                  {opt.label}
+                                </div>
+                              );
+                            }
+                            return (
+                              <div
+                                key={opt.value}
+                                className={clsx(
+                                  'flex items-center px-3 py-2.5 cursor-pointer transition-colors',
+                                  'hover:bg-gray-50 hover:text-gray-900',
+                                  (condition.selectedFieldId?.toString() || condition.aggregateFieldId?.toString()) === opt.value.toString() 
+                                    ? 'bg-blue-50 text-blue-700 font-medium' 
+                                    : 'text-gray-700'
+                                )}
+                                onClick={() => {
+                                  const v = opt.value.toString();
+                                  const isCustom = isCustomField(v);
+                                  
+                                  if (isCustom) {
+                                    // Handle custom field selection
+                                    const customFieldId = getCustomFieldId(v);
+                                    const field = [...customFields.transaction, ...customFields.individual, ...customFields.organization].find(f => f.id === customFieldId);
+                                    
+                                    onChange({
+                                      ...condition,
+                                      selectedFieldId: v,
+                                      customFieldId: customFieldId,
+                                      customFieldType: field?.fieldType || null,
+                                      customFieldLookupId: field?.lookupId || null,
+                                      isAggregatedCustomField: true, // Set to true for custom fields
+                                      aggregateFieldId: null, // clear static field
+                                      jsonValue: '',
+                                      aggregateFunction: null,
+                                      ComparisonOperator: undefined,
+                                      isAggregated: false, // Reset aggregation when field changes
+                                      // Also reset aggregation-related fields
+                                      accountType: null,
+                                      filterBy: null,
+                                      duration: null,
+                                      durationType: null,
+                                      lastTransactionCount: null
+                                    });
+                                  } else {
+                                    // Handle static field selection
+                                    onChange({
+                                      ...condition,
+                                      selectedFieldId: v,
+                                      aggregateFieldId: v ? Number(v) : null,
+                                      customFieldId: null, // clear custom field
+                                      customFieldType: null,
+                                      customFieldLookupId: null,
+                                      isAggregatedCustomField: false, // Set to false for static fields
+                                      jsonValue: '',
+                                      aggregateFunction: null,
+                                      ComparisonOperator: undefined,
+                                      isAggregated: false, // Reset aggregation when field changes
+                                      // Also reset aggregation-related fields
+                                      accountType: null,
+                                      filterBy: null,
+                                      duration: null,
+                                      durationType: null,
+                                      lastTransactionCount: null
+                                    });
+                                  }
+                                  
+                                  setIsFieldDropdownOpen(false);
+                                  setFieldSearchTerm('');
+                                }}
+                              >
+                                <span className="text-sm">{opt.label}</span>
+                              </div>
+                            );
+                          })}
+                          
+                          {filteredFieldOptions.filter(opt => !opt.isDivider && !opt.isEntityHeader).length === 0 && (
+                            <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                              No fields found
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {/* Operator dropdown, depends on field */}
                 <Select
                   value={
