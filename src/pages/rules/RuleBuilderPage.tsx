@@ -16,6 +16,15 @@ import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
 import { ruleService } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
 import { getRulePreview } from '@/services/rulePreviewService';
+import { 
+  saveRuleDraft, 
+  loadRuleDraft, 
+  deleteRuleDraft, 
+  hasDraft, 
+  getDraftAge 
+} from '@/utils/ruleDraftStorage';
+import DraftConfirmationDialog from '@/components/rule-builder/DraftConfirmationDialog';
+import { Save } from 'lucide-react';
 
 const defaultRootGroup: RuleGroupType = {
   operator: OperatorId.And,
@@ -32,7 +41,16 @@ const initialRule = {
 const RuleBuilderPage = () => {
   const [rule, setRule] = useState(initialRule);
   const [rulePreview, setRulePreview] = useState<string>('');
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [isDraftSaved, setIsDraftSaved] = useState(false);
   const navigate = useNavigate();
+
+  // Check for existing draft on component mount
+  useEffect(() => {
+    if (hasDraft()) {
+      setShowDraftDialog(true);
+    }
+  }, []);
 
   // Update rule preview when rule changes
   useEffect(() => {
@@ -48,7 +66,50 @@ const RuleBuilderPage = () => {
     updatePreview();
   }, [rule.root]);
 
+  // Save draft whenever rule changes (debounced)
+  useEffect(() => {
+    const isEmptyRule = !rule.name && 
+                      rule.ruleType === 'simple' && 
+                      rule.applyTo === ApplyTo.Sender && 
+                      rule.root.children.length === 0;
+    
+    if (!isEmptyRule) {
+      const timeoutId = setTimeout(() => {
+        saveRuleDraft({
+          name: rule.name,
+          ruleType: rule.ruleType,
+          applyTo: rule.applyTo,
+          root: rule.root
+        });
+        setIsDraftSaved(true);
+        
+        // Clear the saved indicator after 2 seconds
+        setTimeout(() => setIsDraftSaved(false), 2000);
+      }, 1000); // 1 second debounce
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [rule]);
+
   const handleResetRule = () => {
+    setRule(initialRule);
+    deleteRuleDraft();
+  };
+
+  const handleLoadDraft = () => {
+    const draft = loadRuleDraft();
+    if (draft) {
+      setRule({
+        name: draft.name,
+        ruleType: draft.ruleType,
+        applyTo: draft.applyTo,
+        root: draft.root
+      });
+    }
+  };
+
+  const handleDeleteDraft = () => {
+    deleteRuleDraft();
     setRule(initialRule);
   };
 
@@ -68,7 +129,6 @@ const RuleBuilderPage = () => {
     setRule((prev) => ({ ...prev, applyTo: Number(value) }));
   };
 
-  // TODO: Implement save handler to POST rule to backend
   const [saving, setSaving] = useState(false);
   const handleSaveRule = async () => {
     setSaving(true);
@@ -82,6 +142,10 @@ const RuleBuilderPage = () => {
         tenantId: 1 // default tenant, adjust as needed
       };
       await ruleService.createRule(ruleToSend);
+      
+      // Delete draft after successful save
+      deleteRuleDraft();
+      
       navigate('/rules'); // Redirect to rule list page
     } catch (err) {
       console.error('Failed to save rule:', err);
@@ -113,7 +177,15 @@ const RuleBuilderPage = () => {
 
         {/* Rule Preview */}
         <div>
-          <label className="block font-medium mb-2">Rule Preview</label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block font-medium">Rule Preview</label>
+            {isDraftSaved && (
+              <div className="flex items-center gap-1 text-sm text-green-600">
+                <Save className="h-4 w-4" />
+                <span>Draft saved</span>
+              </div>
+            )}
+          </div>
           <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm font-mono text-gray-800">
             {rulePreview ||
               '[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]'}
@@ -190,6 +262,15 @@ const RuleBuilderPage = () => {
             </div>
           </CardContent>
         </Card>
+        
+        {/* Draft Confirmation Dialog */}
+        <DraftConfirmationDialog
+          isOpen={showDraftDialog}
+          onClose={() => setShowDraftDialog(false)}
+          onLoadDraft={handleLoadDraft}
+          onDeleteDraft={handleDeleteDraft}
+          draftAge={getDraftAge()}
+        />
       </div>
     </Container>
   );

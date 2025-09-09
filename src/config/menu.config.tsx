@@ -31,14 +31,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
         title: 'Transaction Cases',
         icon: 'shield-tick',
         path: '/transaction-cases'
-      }
-      
-    ]
-  },
-  {
-    title: 'Case Management',
-    icon: 'devices-2',
-    children: [
+      },
       {
         title: 'Records',
         icon: 'simcard-2',

@@ -1050,11 +1050,15 @@ export const transactionService = {
   getTransactions: async (params: {
     pageNumber: number;
     pageSize: number;
+    sortBy?: string;
+    sortDirection?: string;
   }): Promise<PaginatedResponse<Transaction>> => {
     const response = await api.get<PaginatedResponse<Transaction>>('/Transactions', {
       params: {
         Page: params.pageNumber,
-        PageSize: params.pageSize
+        PageSize: params.pageSize,
+        SortBy: params.sortBy || 'id',
+        SortDirection: params.sortDirection || 'desc'
       }
     });
     return response.data;

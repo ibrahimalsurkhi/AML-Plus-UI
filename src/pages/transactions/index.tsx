@@ -36,7 +36,12 @@ const TransactionsPage = () => {
     async (page = 1) => {
       try {
         setLoading(true);
-        const data = await transactionService.getTransactions({ pageNumber: page, pageSize });
+        const data = await transactionService.getTransactions({ 
+          pageNumber: page, 
+          pageSize,
+          sortBy: 'id',
+          sortDirection: 'desc'
+        });
         setTransactions(data);
         setError(null);
       } catch (err) {
@@ -178,7 +183,7 @@ const TransactionsPage = () => {
                   <TableBody>
                     {transactions.items.map((transaction) => (
                       <TableRow key={transaction.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">{transaction.transactionID}</TableCell>
+                        <TableCell className="font-medium">{transaction.id}</TableCell>
                         <TableCell>
                           {transaction.transactionTypeName ||
                             `Type ${transaction.transactionTypeId}`}
