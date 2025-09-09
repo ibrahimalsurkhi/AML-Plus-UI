@@ -59,7 +59,7 @@ interface ExtendedTemplateSection {
   fields: ExtendedTemplateField[];
 }
 
-// Extended field response to handle optionId field, score, and templateScoreCriteriaId
+// Extended field response to handle optionId field
 interface ExtendedFieldResponse {
   id: number;
   fieldId: number;
@@ -67,16 +67,6 @@ interface ExtendedFieldResponse {
   valueNumber: number | null;
   valueDate: string | null;
   optionId?: string | null;
-  templateScoreCriteriaId?: number | null;
-  score?: number | null;
-  templateScoreCriteria?: {
-    id: number;
-    templateId: number;
-    key: string;
-    bgColor: string;
-    color: string;
-    score: number;
-  } | null;
 }
 
 // Extended Record interface to include lookup value objects
@@ -393,67 +383,6 @@ const RecordDetailsPage = () => {
     }
   };
 
-  // Helper to render field value with score and templateScoreCriteria if available
-  const renderFieldValue = (
-    fieldId: number,
-    fieldType: FieldType,
-    options?: ExtendedTemplateField['options']
-  ) => {
-    if (!record) return null;
-    
-    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId) as ExtendedFieldResponse | undefined;
-    if (!response) return <span className="text-muted-foreground">-</span>;
-
-    const basicValue = getFieldValue(fieldId, fieldType, options);
-    
-    // Check if we have score and templateScoreCriteria information
-    const hasScore = response.score !== null && response.score !== undefined;
-    const hasTemplateCriteria = response.templateScoreCriteria !== null && response.templateScoreCriteria !== undefined;
-    
-    if (!hasScore && !hasTemplateCriteria) {
-      return basicValue !== null ? basicValue : <span className="text-muted-foreground">-</span>;
-    }
-
-    return (
-      <div className="space-y-2">
-        {basicValue !== null && (
-          <div className="text-base font-medium">{basicValue}</div>
-        )}
-        
-        {hasTemplateCriteria && response.templateScoreCriteria && (
-          <div className="flex items-center gap-2">
-            <span
-              className="px-2 py-1 rounded-md text-sm font-medium"
-              style={{ 
-                backgroundColor: response.templateScoreCriteria.bgColor,
-                color: response.templateScoreCriteria.color 
-              }}
-            >
-              {response.templateScoreCriteria.key}
-            </span>
-            {hasScore && (
-              <span className="text-sm text-muted-foreground">
-                Score: {response.score}
-              </span>
-            )}
-          </div>
-        )}
-        
-        {hasScore && !hasTemplateCriteria && (
-          <div className="text-sm text-muted-foreground">
-            Score: {response.score}
-          </div>
-        )}
-        
-        {response.templateScoreCriteriaId && !hasTemplateCriteria && (
-          <div className="text-xs text-muted-foreground">
-            Template Criteria ID: {response.templateScoreCriteriaId}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   // Function to toggle account expansion and fetch field responses
   const toggleAccountExpansion = async (accountId: number) => {
     const isCurrentlyExpanded = expandedAccounts[accountId];
@@ -487,57 +416,13 @@ const RecordDetailsPage = () => {
     }
   };
 
-  // Function to render field response value with score and templateScoreCriteria
+  // Function to render field response value
   const renderFieldResponseValue = (response: FieldResponseDetail) => {
-    let basicValue = '-';
-    if (response.valueText) basicValue = response.valueText;
-    else if (response.valueNumber !== null) basicValue = response.valueNumber.toString();
-    else if (response.valueDate) basicValue = new Date(response.valueDate).toLocaleDateString();
-    else if (response.optionValue) basicValue = response.optionValue;
-
-    const hasScore = response.score !== null && response.score !== undefined;
-    const hasTemplateCriteria = response.templateScoreCriteria !== null && response.templateScoreCriteria !== undefined;
-    
-    if (!hasScore && !hasTemplateCriteria) {
-      return basicValue;
-    }
-
-    return (
-      <div className="space-y-1">
-        <div className="text-sm text-gray-900">{basicValue}</div>
-        
-        {hasTemplateCriteria && response.templateScoreCriteria && (
-          <div className="flex items-center gap-2">
-            <span
-              className="px-2 py-0.5 rounded text-xs font-medium"
-              style={{ 
-                backgroundColor: response.templateScoreCriteria.bgColor,
-                color: response.templateScoreCriteria.color 
-              }}
-            >
-              {response.templateScoreCriteria.key}
-            </span>
-            {hasScore && (
-              <span className="text-xs text-gray-500">
-                Score: {response.score}
-              </span>
-            )}
-          </div>
-        )}
-        
-        {hasScore && !hasTemplateCriteria && (
-          <div className="text-xs text-gray-500">
-            Score: {response.score}
-          </div>
-        )}
-        
-        {response.templateScoreCriteriaId && !hasTemplateCriteria && (
-          <div className="text-xs text-gray-400">
-            Criteria ID: {response.templateScoreCriteriaId}
-          </div>
-        )}
-      </div>
-    );
+    if (response.valueText) return response.valueText;
+    if (response.valueNumber !== null) return response.valueNumber.toString();
+    if (response.valueDate) return new Date(response.valueDate).toLocaleDateString();
+    if (response.optionValue) return response.optionValue;
+    return '-';
   };
 
   // Helper function to get bank country display value from CountryOfBirth lookup
@@ -721,6 +606,7 @@ const RecordDetailsPage = () => {
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {section.fields.map((field) => {
+                  const value = getFieldValue(field.id!, field.fieldType, field.options);
                   return (
                     <div
                       key={field.id}
@@ -730,8 +616,8 @@ const RecordDetailsPage = () => {
                         {getFieldIcon(field.fieldType)}
                         {field.label}
                       </div>
-                      <div>
-                        {renderFieldValue(field.id!, field.fieldType, field.options)}
+                      <div className="text-base font-medium">
+                        {value !== null ? value : <span className="text-muted-foreground">-</span>}
                       </div>
                     </div>
                   );
@@ -756,6 +642,7 @@ const RecordDetailsPage = () => {
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {fieldsWithoutSection.map((field) => {
+                  const value = getFieldValue(field.id!, field.fieldType, field.options);
                   return (
                     <div
                       key={field.id}
@@ -765,8 +652,8 @@ const RecordDetailsPage = () => {
                         {getFieldIcon(field.fieldType)}
                         {field.label}
                       </div>
-                      <div>
-                        {renderFieldValue(field.id!, field.fieldType, field.options)}
+                      <div className="text-base font-medium">
+                        {value !== null ? value : <span className="text-muted-foreground">-</span>}
                       </div>
                     </div>
                   );
@@ -880,7 +767,7 @@ const RecordDetailsPage = () => {
                                       <div className="text-sm font-medium text-gray-700 mb-1">
                                         {response.fieldName}
                                       </div>
-                                      <div>
+                                      <div className="text-sm text-gray-900">
                                         {renderFieldResponseValue(response)}
                                       </div>
                                       {response.created && (
@@ -940,7 +827,10 @@ const RecordDetailsPage = () => {
                         <td className="border px-3 py-2">
                           <span
                             className="px-2 w-16 text-center py-1 rounded-md inline-block"
-                            style={{ backgroundColor: c.scoreBGColor }}
+                            style={{ 
+                              backgroundColor: c.riskLevelBGColor || c.scoreBGColor,
+                              color: c.riskLevelColor 
+                            }}
                           >
                             {c.score}
                           </span>

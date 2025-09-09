@@ -46,28 +46,7 @@ interface ActivityLog {
   createdBy: string;
 }
 
-interface CaseItem {
-  id: number;
-  recordId: number;
-  fullName: string;
-  score: number;
-  scoreBGColor: string;
-  mediumThreshold: number;
-  exceedsMediumThreshold: boolean;
-  status: string;
-  source: string;
-  screeningHistories: ScreeningHistory[];
-  activityLogs: ActivityLog[];
-}
-
-interface PaginatedCases {
-  items: CaseItem[];
-  totalCount: number;
-  pageNumber: number;
-  totalPages: number;
-  hasPreviousPage: boolean;
-  hasNextPage: boolean;
-}
+// Using Case interface from API service instead of local CaseItem interface
 
 const CaseStatusMap: Record<number, string> = {
   1: 'New',
@@ -182,7 +161,10 @@ const CasesPage = () => {
                         <TableCell>
                           <div
                             className="px-2 w-16 text-center py-1 rounded-md inline-block"
-                            style={{ backgroundColor: item.scoreBGColor }}
+                            style={{ 
+                              backgroundColor: item.riskLevelBGColor || item.scoreBGColor,
+                              color: item.riskLevelColor 
+                            }}
                           >
                             {item.score}
                           </div>

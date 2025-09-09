@@ -459,6 +459,11 @@ export interface Case {
   status: string;
   source: string;
   created?: string;
+  noCaseNeed?: boolean;
+  templateScoreCriteriaId?: number;
+  riskLevel?: string;
+  riskLevelBGColor?: string;
+  riskLevelColor?: string;
   screeningHistories?: ScreeningHistory[];
   activityLogs?: ActivityLog[];
 }

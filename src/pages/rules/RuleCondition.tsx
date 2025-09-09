@@ -1304,9 +1304,9 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
       )}
 
       {/* Filter By for Individual/Organization custom fields - Show even without aggregation */}
-      {!readOnly && condition.customFieldId && 
+      {!readOnly && (condition.aggregateFieldId === AggregateFieldId.RiskStatus ||(condition.customFieldId && 
        (customFields.individual.some(f => f.id === condition.customFieldId) ||
-        customFields.organization.some(f => f.id === condition.customFieldId)) && (
+        customFields.organization.some(f => f.id === condition.customFieldId)))) && (
         <div className="p-4 border-t bg-orange-50/30 border-orange-200">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>

@@ -617,7 +617,10 @@ const CaseDetailsPage = () => {
                 <div className="text-base font-medium">
                   <span
                     className="px-2 w-16 text-center py-1 rounded-md inline-block"
-                    style={{ backgroundColor: caseData.scoreBGColor }}
+                    style={{ 
+                      backgroundColor: caseData.riskLevelBGColor || caseData.scoreBGColor,
+                      color: caseData.riskLevelColor 
+                    }}
                   >
                     {caseData.score}
                   </span>
