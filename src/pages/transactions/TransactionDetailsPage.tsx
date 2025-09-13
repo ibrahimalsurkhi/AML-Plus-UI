@@ -125,7 +125,7 @@ const TransactionDetailsPage = () => {
 
       try {
         setLoading(true);
-        const data = await transactionService.getTransactionById(Number(id));
+        const data = await transactionService.getTransactionById(id);
         setTransaction(data as TransactionDetails);
 
         // Fetch template fields for template ID 15 (transaction template)

@@ -60,8 +60,12 @@ const TransactionsPage = () => {
     navigate('/transactions/new');
   };
 
-  const handleView = (id: number) => {
-    navigate(`/transactions/${id}`);
+  const handleView = (transaction: Transaction) => {
+    // Use UUID if available, otherwise fall back to ID
+    const identifier = transaction.uuid || transaction.id;
+    if (identifier) {
+      navigate(`/transactions/${identifier}`);
+    }
   };
 
 
@@ -268,7 +272,7 @@ const TransactionsPage = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleView(transaction.id!)}
+                            onClick={() => handleView(transaction)}
                             className="h-8 px-2"
                           >
                             <KeenIcon icon="eye" style="outline" className="h-4 w-4" />

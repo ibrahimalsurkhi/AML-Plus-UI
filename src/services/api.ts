@@ -1073,7 +1073,7 @@ export const transactionService = {
     });
     return response.data;
   },
-  getTransactionById: async (id: number): Promise<Transaction> => {
+  getTransactionById: async (id: string): Promise<Transaction> => {
     const response = await api.get<Transaction>(`/Transactions/${id}`);
     return response.data;
   },
