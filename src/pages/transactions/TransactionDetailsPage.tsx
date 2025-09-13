@@ -594,7 +594,6 @@ const TransactionDetailsPage = () => {
                             </div>
                             <div>
                               <h4 className="font-semibold text-gray-900">{fieldResponse.fieldLabel}</h4>
-                              <p className="text-xs text-gray-500">Field ID: {fieldResponse.fieldId}</p>
                             </div>
                           </div>
                           {fieldScore && fieldScore.score !== null && (
