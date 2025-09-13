@@ -752,6 +752,46 @@ export interface Transaction {
   recipientUuid?: string;
   created?: string;
   createdBy?: string;
+  processingStatus?: number;
+  sender?: TransactionParticipant | null;
+  recipient?: TransactionParticipant | null;
+  fieldResponses?: TransactionFieldResponse[];
+}
+
+// New interfaces for the updated API response
+export interface TransactionParticipant {
+  id: number;
+  name: string;
+  number: string;
+  bankOfCountryName: string;
+  bankOfCity: string;
+  accountStatus: number;
+  record?: {
+    id: number;
+    templateName: string;
+    recordName: string;
+    dateOfBirth: string;
+    identification: string;
+    countryOfBirth: string;
+    nationality: string;
+    customerReferenceId: string;
+  };
+}
+
+export interface TransactionFieldResponse {
+  id: number;
+  fieldId: number;
+  fieldName: string;
+  fieldLabel: string;
+  optionId: number | null;
+  optionValue: string | null;
+  valueText: string | null;
+  valueNumber: number | null;
+  valueDate: string | null;
+  score: number | null;
+  scoreCriteriaKey: string | null;
+  scoreCriteriaBGColor: string | null;
+  scoreCriteriaColor: string | null;
 }
 
 export interface TransactionCreate {
@@ -1074,7 +1114,7 @@ export const transactionService = {
     return response.data;
   },
   getTransactionById: async (id: string): Promise<Transaction> => {
-    const response = await api.get<Transaction>(`/Transactions/${id}`);
+    const response = await api.get<Transaction>(`/Transactions/${id}/details`);
     return response.data;
   },
   getTransactionProcessingStatus: async (
