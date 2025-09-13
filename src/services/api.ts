@@ -728,10 +728,13 @@ export const accountService = {
 // Transaction interfaces
 export interface Transaction {
   id?: number;
+  uuid?: string;
   transactionTypeId: number;
   transactionTypeName?: string;
   tenantId?: number;
   transactionStatus: number;
+  transactionStatusId?: number;
+  transactionStatusText?: string;
   transactionID: string;
   transactionTime: string;
   transactionAmount: number;
@@ -742,9 +745,11 @@ export interface Transaction {
   senderId?: number;
   senderName?: string;
   senderNumber?: string;
+  senderUuid?: string;
   recipientId?: number;
   recipientName?: string;
   recipientNumber?: string;
+  recipientUuid?: string;
   created?: string;
   createdBy?: string;
 }

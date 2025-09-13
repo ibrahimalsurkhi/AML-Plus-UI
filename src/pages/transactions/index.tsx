@@ -16,6 +16,7 @@ import { DataPagination, extractPaginationData } from '@/components/common/DataP
 import { transactionService, type Transaction, type PaginatedResponse } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
+import { KeenIcon } from '@/components/keenicons';
 
 const TransactionsPage = () => {
   const navigate = useNavigate();
@@ -63,23 +64,35 @@ const TransactionsPage = () => {
     navigate(`/transactions/${id}`);
   };
 
-  const getStatusLabel = (status: number) => {
-    switch (status) {
-      case 1:
-        return 'Active';
-      case 2:
-        return 'Inactive';
-      case 3:
-        return 'Blocked';
-      case 4:
-        return 'Suspended';
-      default:
-        return 'Unknown';
+
+  const formatAmount = (amount: number, currencyName?: string) => {
+    // Use the currency name if available, otherwise default to USD
+    const currency = currencyName || 'USD';
+    
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'MMM dd, yyyy HH:mm');
+    } catch {
+      return dateString;
     }
   };
 
-  const getStatusColor = (status: number) => {
-    switch (status) {
+  const formatUuid = (uuid: string) => {
+    if (!uuid) return 'N/A';
+    return uuid.substring(0, 8) + '...' + uuid.substring(uuid.length - 4);
+  };
+
+  const getStatusColor = (transaction: Transaction) => {
+    // Use transactionStatusId for color determination (primary method)
+    const statusId = transaction.transactionStatusId || transaction.transactionStatus;
+    
+    switch (statusId) {
       case 1:
         return 'text-green-600 bg-green-100';
       case 2:
@@ -90,21 +103,6 @@ const TransactionsPage = () => {
         return 'text-yellow-600 bg-yellow-100';
       default:
         return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'MMM dd, yyyy HH:mm');
-    } catch {
-      return dateString;
     }
   };
 
@@ -138,9 +136,17 @@ const TransactionsPage = () => {
   return (
     <Container>
       <Toolbar>
-        <ToolbarHeading>Transactions</ToolbarHeading>
+        <ToolbarHeading>
+          <div className="flex items-center gap-2">
+            <KeenIcon icon="credit-card" style="duotone" className="text-primary" />
+            Transactions
+          </div>
+        </ToolbarHeading>
         <ToolbarActions>
-          <Button onClick={handleCreate}>Create Transaction</Button>
+          <Button onClick={handleCreate}>
+            <KeenIcon icon="plus" style="duotone" className="mr-2" />
+            Create Transaction
+          </Button>
         </ToolbarActions>
       </Toolbar>
 
@@ -163,6 +169,7 @@ const TransactionsPage = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Transaction ID</TableHead>
+                      <TableHead>UUID</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Currency</TableHead>
@@ -175,50 +182,97 @@ const TransactionsPage = () => {
                   </TableHeader>
                   <TableBody>
                     {transactions.items.map((transaction) => (
-                      <TableRow key={transaction.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">{transaction.id}</TableCell>
+                      <TableRow key={transaction.id || transaction.uuid} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <KeenIcon icon="credit-card" style="outline" className="text-primary" />
+                            {transaction.transactionID || transaction.id}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {transaction.uuid ? (
+                            <div className="flex items-center gap-2">
+                              <KeenIcon icon="key" style="outline" className="text-muted-foreground" />
+                              {formatUuid(transaction.uuid)}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground italic">N/A</span>
+                          )}
+                        </TableCell>
                         <TableCell>
-                          {transaction.transactionTypeName ||
-                            `Type ${transaction.transactionTypeId}`}
+                          <div className="flex items-center gap-2">
+                            <KeenIcon icon="sort" style="outline" className="text-muted-foreground" />
+                            {transaction.transactionTypeName ||
+                              `Type ${transaction.transactionTypeId}`}
+                          </div>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatAmount(transaction.transactionAmount)}
+                          <div className="flex items-center gap-2">
+                            <KeenIcon icon="dollar" style="outline" className="text-green-600" />
+                            {formatAmount(transaction.transactionAmount, transaction.transactionCurrencyName)}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          {transaction.transactionCurrencyName ||
-                            `Currency ${transaction.transactionCurrencyId}`}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{transaction.senderName || 'N/A'}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {transaction.senderNumber || 'No account'}
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <KeenIcon icon="flag" style="outline" className="text-muted-foreground" />
+                            {transaction.transactionCurrencyName || 'N/A'}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{transaction.recipientName || 'N/A'}</div>
+                            <div className="font-medium flex items-center gap-2">
+                              <KeenIcon icon="user" style="outline" className="text-muted-foreground" />
+                              {transaction.senderName || 'N/A'}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {transaction.senderNumber || 'No account'}
+                            </div>
+                            {transaction.senderUuid && (
+                              <div className="text-xs text-muted-foreground font-mono">
+                                UUID: {formatUuid(transaction.senderUuid)}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium flex items-center gap-2">
+                              <KeenIcon icon="user" style="outline" className="text-muted-foreground" />
+                              {transaction.recipientName || 'N/A'}
+                            </div>
                             <div className="text-xs text-muted-foreground">
                               {transaction.recipientNumber || 'No account'}
                             </div>
+                            {transaction.recipientUuid && (
+                              <div className="text-xs text-muted-foreground font-mono">
+                                UUID: {formatUuid(transaction.recipientUuid)}
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(transaction.transactionStatus)}`}
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(transaction)}`}
                           >
-                            {getStatusLabel(transaction.transactionStatus)}
+                            <KeenIcon icon="shield-tick" style="outline" className="mr-1" />
+                            {transaction.transactionStatusText}
                           </span>
                         </TableCell>
-                        <TableCell>{formatDate(transaction.transactionTime)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <KeenIcon icon="calendar" style="outline" className="text-muted-foreground" />
+                            {formatDate(transaction.transactionTime)}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Button
-                            size="sm"
                             variant="ghost"
+                            size="sm"
                             onClick={() => handleView(transaction.id!)}
+                            className="h-8 px-2"
                           >
-                            View
+                            <KeenIcon icon="eye" style="outline" className="h-4 w-4" />
+                            <span className="sr-only">View</span>
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -235,15 +289,20 @@ const TransactionsPage = () => {
               </div>
             </>
           ) : (
-            <div className="text-center py-16">
-              <div className="text-muted-foreground mb-4">
-                <div className="text-4xl mb-4">📊</div>
-                <h3 className="text-lg font-semibold mb-2">No transactions found</h3>
-                <p className="text-muted-foreground">
-                  There are no transactions in the system yet.
-                </p>
-              </div>
-              <Button onClick={handleCreate}>Create Your First Transaction</Button>
+            <div className="text-center py-12">
+              <KeenIcon
+                icon="credit-card"
+                style="duotone"
+                className="text-muted-foreground text-4xl mx-auto mb-4"
+              />
+              <h3 className="text-lg font-semibold mb-2">No Transactions Found</h3>
+              <p className="text-muted-foreground mb-4">
+                There are no transactions in the system yet. Create your first transaction to get started.
+              </p>
+              <Button onClick={handleCreate}>
+                <KeenIcon icon="plus" style="duotone" className="mr-2" />
+                Create Your First Transaction
+              </Button>
             </div>
           )}
         </CardContent>
