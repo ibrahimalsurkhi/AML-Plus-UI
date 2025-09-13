@@ -12,14 +12,7 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious
-} from '@/components/ui/pagination';
+import { DataPagination, extractPaginationData } from '@/components/common/DataPagination';
 import { transactionService, type Transaction, type PaginatedResponse } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
@@ -233,40 +226,13 @@ const TransactionsPage = () => {
                   </TableBody>
                 </Table>
               </div>
-              {transactions.totalPages > 1 && (
-                <div className="mt-6">
-                  <Pagination>
-                    <PaginationContent>
-                      {transactions.hasPreviousPage && (
-                        <PaginationItem>
-                          <PaginationPrevious
-                            onClick={() => setPageNumber((prev) => Math.max(prev - 1, 1))}
-                          />
-                        </PaginationItem>
-                      )}
-                      {[...Array(transactions.totalPages)].map((_, idx) => (
-                        <PaginationItem key={idx}>
-                          <PaginationLink
-                            isActive={pageNumber === idx + 1}
-                            onClick={() => setPageNumber(idx + 1)}
-                          >
-                            {idx + 1}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ))}
-                      {transactions.hasNextPage && (
-                        <PaginationItem>
-                          <PaginationNext
-                            onClick={() =>
-                              setPageNumber((prev) => Math.min(prev + 1, transactions.totalPages))
-                            }
-                          />
-                        </PaginationItem>
-                      )}
-                    </PaginationContent>
-                  </Pagination>
-                </div>
-              )}
+              <div className="mt-6">
+                <DataPagination
+                  paginationData={extractPaginationData(transactions)}
+                  onPageChange={setPageNumber}
+                  showPageInfo={true}
+                />
+              </div>
             </>
           ) : (
             <div className="text-center py-16">

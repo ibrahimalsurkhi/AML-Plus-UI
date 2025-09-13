@@ -945,7 +945,7 @@ export const fieldResponseService = {
     if (params.masterResponseId) queryParams.append('MasterResponseId', params.masterResponseId.toString());
     if (params.transactionId) queryParams.append('TransactionId', params.transactionId.toString());
     if (params.accountId) queryParams.append('AccountId', params.accountId.toString());
-    
+
     const response = await api.get<FieldResponseDetail[]>(`/FieldResponses?${queryParams.toString()}`);
     return response.data;
   }
@@ -1058,13 +1058,13 @@ export const transactionService = {
     sortBy?: string;
     sortDirection?: string;
   }): Promise<PaginatedResponse<Transaction>> => {
-    const response = await api.get<PaginatedResponse<Transaction>>('/Transactions', {
-      params: {
-        Page: params.pageNumber,
-        PageSize: params.pageSize,
-        SortBy: params.sortBy || 'id',
-        SortDirection: params.sortDirection || 'desc'
-      }
+    const response = await api.post<PaginatedResponse<Transaction>>('/Transactions/search', {
+
+      Page: params.pageNumber,
+      PageSize: params.pageSize,
+      SortBy: params.sortBy || 'id',
+      SortDirection: params.sortDirection || 'desc'
+
     });
     return response.data;
   },
