@@ -426,7 +426,7 @@ export const recordService = {
     const response = await api.post<PaginatedResponse<Record>>(endpoint, requestBody);
     return response.data;
   },
-  getRecordById: async (recordId: number): Promise<Record> => {
+  getRecordById: async (recordId: string): Promise<Record> => {
     const response = await api.get<Record>(
       `${API_CONFIG.endpoints.templates.list}/records/${recordId}`
     );
@@ -726,6 +726,7 @@ export const ruleService = {
 
 export interface AccountQueryParams {
   recordId?: number;
+  recordUUID?: string;
   number?: string;
   pageNumber: number;
   pageSize: number;
@@ -763,10 +764,12 @@ export interface Transaction {
   senderName?: string;
   senderNumber?: string;
   senderUuid?: string;
+  senderRecordUuid?: string;
   recipientId?: number;
   recipientName?: string;
   recipientNumber?: string;
   recipientUuid?: string;
+  recipientRecordUuid?: string;
   created?: string;
   createdBy?: string;
   processingStatus?: number;

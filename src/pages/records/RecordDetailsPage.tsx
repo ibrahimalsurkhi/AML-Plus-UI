@@ -98,13 +98,10 @@ const RecordDetailsPage = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const recordId = Number(id);
-        if (!id || isNaN(recordId)) {
-          throw new Error('Invalid record ID');
-        }
+        
 
         // Now get the full record details using the template ID
-        const fullRecord = await recordService.getRecordById(recordId);
+        const fullRecord = await recordService.getRecordById(id!);
         setRecord(fullRecord as ExtendedRecord);
 
         // Get the template name
@@ -228,7 +225,7 @@ const RecordDetailsPage = () => {
         // Fetch accounts by recordId
         setAccountsLoading(true);
         accountService
-          .getAccountsByRecordId(fullRecord.id)
+          .getAccountsByRecordId({ recordUUID: fullRecord.uuid, pageNumber: 1, pageSize: 100 })
           .then((accountsData) => {
             console.log('Fetched accounts data:', accountsData);
             if (accountsData && accountsData.length > 0) {

@@ -69,6 +69,34 @@ const TransactionsPage = () => {
     }
   };
 
+  const handleSenderClick = (transaction: Transaction) => {
+    // Use the senderRecordUuid for navigation
+    const recordUuid = transaction.senderRecordUuid;
+    if (recordUuid) {
+      navigate(`/records/${recordUuid}`);
+    } else {
+      toast({
+        title: 'Information',
+        description: 'No record information available for this sender',
+        variant: 'default'
+      });
+    }
+  };
+
+  const handleRecipientClick = (transaction: Transaction) => {
+    // Use the recipientRecordUuid for navigation
+    const recordUuid = transaction.recipientRecordUuid;
+    if (recordUuid) {
+      navigate(`/records/${recordUuid}`);
+    } else {
+      toast({
+        title: 'Information',
+        description: 'No record information available for this recipient',
+        variant: 'default'
+      });
+    }
+  };
+
 
   const formatAmount = (amount: number, currencyName?: string) => {
     return formatCurrency(amount, currencyName);
@@ -168,10 +196,8 @@ const TransactionsPage = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Transaction ID</TableHead>
-                      <TableHead>UUID</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Amount</TableHead>
-                      <TableHead>Currency</TableHead>
                       <TableHead>Sender</TableHead>
                       <TableHead>Recipient</TableHead>
                       <TableHead>Status</TableHead>
@@ -188,16 +214,6 @@ const TransactionsPage = () => {
                             {transaction.transactionID || transaction.id}
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {transaction.uuid ? (
-                            <div className="flex items-center gap-2">
-                              <KeenIcon icon="key" style="outline" className="text-muted-foreground" />
-                              {formatUuid(transaction.uuid)}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground italic">N/A</span>
-                          )}
-                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <KeenIcon icon="sort" style="outline" className="text-muted-foreground" />
@@ -211,42 +227,58 @@ const TransactionsPage = () => {
                             {formatAmount(transaction.transactionAmount, transaction.transactionCurrencyName)}
                           </div>
                         </TableCell>
+                        
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <KeenIcon icon="flag" style="outline" className="text-muted-foreground" />
-                            {transaction.transactionCurrencyName || 'N/A'}
+                          <div>
+                            <div 
+                              className={`font-medium flex items-center gap-2 ${
+                                transaction.senderRecordUuid 
+                                  ? 'text-primary hover:text-primary-dark cursor-pointer transition-colors' 
+                                  : 'text-muted-foreground'
+                              }`}
+                              onClick={() => transaction.senderRecordUuid && handleSenderClick(transaction)}
+                            >
+                              <KeenIcon 
+                                icon={transaction.senderRecordUuid ? "link" : "user"} 
+                                style="outline" 
+                                className={transaction.senderRecordUuid ? "text-primary" : "text-muted-foreground"} 
+                              />
+                              {transaction.senderName || transaction.sender?.name || 'N/A'}
+                              {transaction.senderRecordUuid && (
+                                <KeenIcon 
+                                  icon="external-link" 
+                                  style="outline" 
+                                  className="h-3 w-3 text-primary ml-1" 
+                                />
+                              )}
+                            </div>
+                            
                           </div>
                         </TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium flex items-center gap-2">
-                              <KeenIcon icon="user" style="outline" className="text-muted-foreground" />
-                              {transaction.senderName || 'N/A'}
+                            <div 
+                              className={`font-medium flex items-center gap-2 ${
+                                transaction.recipientRecordUuid 
+                                  ? 'text-primary hover:text-primary-dark cursor-pointer transition-colors' 
+                                  : 'text-muted-foreground'
+                              }`}
+                              onClick={() => transaction.recipientRecordUuid && handleRecipientClick(transaction)}
+                            >
+                              <KeenIcon 
+                                icon={transaction.recipientRecordUuid ? "link" : "user"} 
+                                style="outline" 
+                                className={transaction.recipientRecordUuid ? "text-primary" : "text-muted-foreground"} 
+                              />
+                              {transaction.recipientName || transaction.recipient?.name || 'N/A'}
+                              {transaction.recipientRecordUuid && (
+                                <KeenIcon 
+                                  icon="external-link" 
+                                  style="outline" 
+                                  className="h-3 w-3 text-primary ml-1" 
+                                />
+                              )}
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {transaction.senderNumber || 'No account'}
-                            </div>
-                            {transaction.senderUuid && (
-                              <div className="text-xs text-muted-foreground font-mono">
-                                UUID: {formatUuid(transaction.senderUuid)}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium flex items-center gap-2">
-                              <KeenIcon icon="user" style="outline" className="text-muted-foreground" />
-                              {transaction.recipientName || 'N/A'}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {transaction.recipientNumber || 'No account'}
-                            </div>
-                            {transaction.recipientUuid && (
-                              <div className="text-xs text-muted-foreground font-mono">
-                                UUID: {formatUuid(transaction.recipientUuid)}
-                              </div>
-                            )}
                           </div>
                         </TableCell>
                         <TableCell>
