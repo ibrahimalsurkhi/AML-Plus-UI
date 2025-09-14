@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  caseService, 
-  Case, 
-  ScreeningHistory, 
-  ActivityLog, 
+import {
+  caseService,
+  Case,
+  ScreeningHistory,
+  ActivityLog,
   CaseScreening,
   recordService,
   type Record as RecordType,
@@ -21,12 +21,12 @@ import {
   type FieldResponseDetail
 } from '@/services/api';
 import { Container } from '@/components/container';
-import { 
-  Loader2, 
-  ArrowLeft, 
-  Hash, 
-  User, 
-  FileText, 
+import {
+  Loader2,
+  ArrowLeft,
+  Hash,
+  User,
+  FileText,
   Calendar,
   IdCard,
   FileType,
@@ -109,7 +109,7 @@ const CaseDetailsPage = () => {
   const [caseData, setCaseData] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<{ [id: number]: boolean }>({});
-  
+
   // Record details state
   const [record, setRecord] = useState<ExtendedRecord | null>(null);
   const [templateName, setTemplateName] = useState<string>('');
@@ -120,8 +120,12 @@ const CaseDetailsPage = () => {
   const [bankCountries, setBankCountries] = useState<any[]>([]);
   const [bankCountriesLoading, setBankCountriesLoading] = useState(false);
   const [expandedAccounts, setExpandedAccounts] = useState<{ [key: number]: boolean }>({});
-  const [accountFieldResponses, setAccountFieldResponses] = useState<{ [key: number]: FieldResponseDetail[] }>({});
-  const [loadingAccountResponses, setLoadingAccountResponses] = useState<{ [key: number]: boolean }>({});
+  const [accountFieldResponses, setAccountFieldResponses] = useState<{
+    [key: number]: FieldResponseDetail[];
+  }>({});
+  const [loadingAccountResponses, setLoadingAccountResponses] = useState<{
+    [key: number]: boolean;
+  }>({});
 
   const toggleExpand = (id: number) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -132,35 +136,35 @@ const CaseDetailsPage = () => {
       try {
         setLoading(true);
         if (!id) throw new Error('Invalid case ID');
-        
+
         // Fetch case data
         const caseData = await caseService.getCaseById(Number(id));
         setCaseData(caseData);
-        
+
         // Fetch record details if recordId exists
         if (caseData.recordId) {
           try {
-            const recordData = await recordService.getRecordById(caseData.recordId);
+            const recordData = await recordService.getRecordById(caseData.recordId.toString());
             setRecord(recordData as ExtendedRecord);
-            
+
             // Get the template name
             const templateDetails = await templateService.getTemplateById(
               recordData.templateId.toString()
             );
             setTemplateName(templateDetails.name);
-            
+
             // Get the template fields and their options
             const fieldsResponse = await templateService.getTemplateFields(
               recordData.templateId.toString()
             );
-            
+
             // Process sections with their fields
             const processedSections = await Promise.all(
               fieldsResponse.sections.map(async (section) => {
                 const fieldsWithOptions = await Promise.all(
                   section.fields.map(async (field) => {
                     const extendedField: ExtendedTemplateField = { ...field };
-                    
+
                     // Fetch options for option-based fields
                     if (
                       field.fieldType === FieldType.Dropdown ||
@@ -173,7 +177,7 @@ const CaseDetailsPage = () => {
                       );
                       extendedField.options = options;
                     }
-                    
+
                     // Fetch lookup values for Lookup fields
                     if (field.fieldType === FieldType.Lookup && field.lookupId) {
                       try {
@@ -195,23 +199,23 @@ const CaseDetailsPage = () => {
                         extendedField.options = [];
                       }
                     }
-                    
+
                     return extendedField;
                   })
                 );
-                
+
                 return {
                   ...section,
                   fields: fieldsWithOptions
                 };
               })
             );
-            
+
             // Process fields without section
             const processedFieldsWithoutSection = await Promise.all(
               fieldsResponse.fieldsWithoutSection.map(async (field) => {
                 const extendedField: ExtendedTemplateField = { ...field };
-                
+
                 // Fetch options for option-based fields
                 if (
                   field.fieldType === FieldType.Dropdown ||
@@ -224,7 +228,7 @@ const CaseDetailsPage = () => {
                   );
                   extendedField.options = options;
                 }
-                
+
                 // Fetch lookup values for Lookup fields
                 if (field.fieldType === FieldType.Lookup && field.lookupId) {
                   try {
@@ -246,18 +250,22 @@ const CaseDetailsPage = () => {
                     extendedField.options = [];
                   }
                 }
-                
+
                 return extendedField;
               })
             );
-            
+
             setSections(processedSections);
             setFieldsWithoutSection(processedFieldsWithoutSection);
-            
+
             // Fetch accounts by recordId
             setAccountsLoading(true);
             accountService
-              .getAccountsByRecordId(recordData.id)
+              .getAccountsByRecordId({
+                recordId: recordData.id,
+                pageNumber: 1,
+                pageSize: 100
+              })
               .then((accountsData) => {
                 setAccounts(accountsData);
               })
@@ -265,13 +273,11 @@ const CaseDetailsPage = () => {
                 console.error('Error fetching accounts:', error);
               })
               .finally(() => setAccountsLoading(false));
-              
           } catch (recordError) {
             console.error('Error fetching record details:', recordError);
             // Don't show error toast for record details as case data is more important
           }
         }
-        
       } catch (error) {
         toast({
           title: 'Error',
@@ -290,7 +296,10 @@ const CaseDetailsPage = () => {
     const fetchBankCountries = async () => {
       setBankCountriesLoading(true);
       try {
-        const values = await lookupService.getLookupValuesByKey('CountryOfBirth', { pageNumber: 1, pageSize: 100 });
+        const values = await lookupService.getLookupValuesByKey('CountryOfBirth', {
+          pageNumber: 1,
+          pageSize: 100
+        });
         setBankCountries(values.items);
       } catch (err) {
         console.error('Error fetching bank countries from CountryOfBirth lookup:', err);
@@ -308,8 +317,10 @@ const CaseDetailsPage = () => {
     options?: ExtendedTemplateField['options']
   ) => {
     if (!record) return null;
-    
-    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId) as ExtendedFieldResponse | undefined;
+
+    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId) as
+      | ExtendedFieldResponse
+      | undefined;
     if (!response) return null;
 
     switch (fieldType) {
@@ -326,13 +337,13 @@ const CaseDetailsPage = () => {
       case FieldType.Lookup:
         // Try to get the value from optionId first, then valueText
         const valueToMatch = response.optionId || response.valueText;
-        
+
         if (valueToMatch) {
           // Try multiple matching strategies:
           const optionById = options?.find((opt) => opt.id?.toString() === valueToMatch);
           const optionByNumericId = options?.find((opt) => opt.id === parseInt(valueToMatch));
           const optionByLabel = options?.find((opt) => opt.label === valueToMatch);
-          
+
           const option = optionById || optionByNumericId || optionByLabel;
           return option?.label || valueToMatch;
         }
@@ -349,51 +360,48 @@ const CaseDetailsPage = () => {
     options?: ExtendedTemplateField['options']
   ) => {
     if (!record) return null;
-    
-    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId) as ExtendedFieldResponse | undefined;
+
+    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId) as
+      | ExtendedFieldResponse
+      | undefined;
     if (!response) return <span className="text-muted-foreground">-</span>;
 
     const basicValue = getFieldValue(fieldId, fieldType, options);
-    
+
     // Check if we have score and templateScoreCriteria information
     const hasScore = response.score !== null && response.score !== undefined;
-    const hasTemplateCriteria = response.templateScoreCriteria !== null && response.templateScoreCriteria !== undefined;
-    
+    const hasTemplateCriteria =
+      response.templateScoreCriteria !== null && response.templateScoreCriteria !== undefined;
+
     if (!hasScore && !hasTemplateCriteria) {
       return basicValue !== null ? basicValue : <span className="text-muted-foreground">-</span>;
     }
 
     return (
       <div className="space-y-2">
-        {basicValue !== null && (
-          <div className="text-base font-medium">{basicValue}</div>
-        )}
-        
+        {basicValue !== null && <div className="text-base font-medium">{basicValue}</div>}
+
         {hasTemplateCriteria && response.templateScoreCriteria && (
           <div className="flex items-center gap-2">
             <span
               className="px-2 py-1 rounded-md text-sm font-medium"
-              style={{ 
+              style={{
                 backgroundColor: response.templateScoreCriteria.bgColor,
-                color: response.templateScoreCriteria.color 
+                color: response.templateScoreCriteria.color
               }}
             >
               {response.templateScoreCriteria.key}
             </span>
             {hasScore && (
-              <span className="text-sm text-muted-foreground">
-                Score: {response.score}
-              </span>
+              <span className="text-sm text-muted-foreground">Score: {response.score}</span>
             )}
           </div>
         )}
-        
+
         {hasScore && !hasTemplateCriteria && (
-          <div className="text-sm text-muted-foreground">
-            Score: {response.score}
-          </div>
+          <div className="text-sm text-muted-foreground">Score: {response.score}</div>
         )}
-        
+
         {response.templateScoreCriteriaId && !hasTemplateCriteria && (
           <div className="text-xs text-muted-foreground">
             Template Criteria ID: {response.templateScoreCriteriaId}
@@ -426,15 +434,18 @@ const CaseDetailsPage = () => {
   // Function to toggle account expansion and fetch field responses
   const toggleAccountExpansion = async (accountId: number) => {
     const isCurrentlyExpanded = expandedAccounts[accountId];
-    
+
     setExpandedAccounts((prev: { [key: number]: boolean }) => ({
       ...prev,
       [accountId]: !isCurrentlyExpanded
     }));
 
     if (!isCurrentlyExpanded && !accountFieldResponses[accountId]) {
-      setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({ ...prev, [accountId]: true }));
-      
+      setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({
+        ...prev,
+        [accountId]: true
+      }));
+
       try {
         const responses = await fieldResponseService.getFieldResponses({ accountId });
         setAccountFieldResponses((prev: { [key: number]: FieldResponseDetail[] }) => ({
@@ -449,7 +460,10 @@ const CaseDetailsPage = () => {
           variant: 'destructive'
         });
       } finally {
-        setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({ ...prev, [accountId]: false }));
+        setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({
+          ...prev,
+          [accountId]: false
+        }));
       }
     }
   };
@@ -463,8 +477,9 @@ const CaseDetailsPage = () => {
     else if (response.optionValue) basicValue = response.optionValue;
 
     const hasScore = response.score !== null && response.score !== undefined;
-    const hasTemplateCriteria = response.templateScoreCriteria !== null && response.templateScoreCriteria !== undefined;
-    
+    const hasTemplateCriteria =
+      response.templateScoreCriteria !== null && response.templateScoreCriteria !== undefined;
+
     if (!hasScore && !hasTemplateCriteria) {
       return basicValue;
     }
@@ -472,32 +487,26 @@ const CaseDetailsPage = () => {
     return (
       <div className="space-y-1">
         <div className="text-sm text-gray-900">{basicValue}</div>
-        
+
         {hasTemplateCriteria && response.templateScoreCriteria && (
           <div className="flex items-center gap-2">
             <span
               className="px-2 py-0.5 rounded text-xs font-medium"
-              style={{ 
+              style={{
                 backgroundColor: response.templateScoreCriteria.bgColor,
-                color: response.templateScoreCriteria.color 
+                color: response.templateScoreCriteria.color
               }}
             >
               {response.templateScoreCriteria.key}
             </span>
-            {hasScore && (
-              <span className="text-xs text-gray-500">
-                Score: {response.score}
-              </span>
-            )}
+            {hasScore && <span className="text-xs text-gray-500">Score: {response.score}</span>}
           </div>
         )}
-        
+
         {hasScore && !hasTemplateCriteria && (
-          <div className="text-xs text-gray-500">
-            Score: {response.score}
-          </div>
+          <div className="text-xs text-gray-500">Score: {response.score}</div>
         )}
-        
+
         {response.templateScoreCriteriaId && !hasTemplateCriteria && (
           <div className="text-xs text-gray-400">
             Criteria ID: {response.templateScoreCriteriaId}
@@ -512,17 +521,23 @@ const CaseDetailsPage = () => {
     if (account.bankOfCountryName && account.bankOfCountryName.trim() !== '') {
       return account.bankOfCountryName;
     }
-    
+
     if (account.bankOfCountryId && bankCountries.length > 0) {
-      const country = bankCountries.find(c => c.id === account.bankOfCountryId || c.id === parseInt(account.bankOfCountryId));
+      const country = bankCountries.find(
+        (c) => c.id === account.bankOfCountryId || c.id === parseInt(account.bankOfCountryId)
+      );
       if (country) return country.value;
     }
-    
+
     if (account.bankOfCountryLookupValueId && bankCountries.length > 0) {
-      const country = bankCountries.find(c => c.id === account.bankOfCountryLookupValueId || c.id === parseInt(account.bankOfCountryLookupValueId));
+      const country = bankCountries.find(
+        (c) =>
+          c.id === account.bankOfCountryLookupValueId ||
+          c.id === parseInt(account.bankOfCountryLookupValueId)
+      );
       if (country) return country.value;
     }
-    
+
     return '-';
   };
 
@@ -617,9 +632,9 @@ const CaseDetailsPage = () => {
                 <div className="text-base font-medium">
                   <span
                     className="px-2 w-16 text-center py-1 rounded-md inline-block"
-                    style={{ 
+                    style={{
                       backgroundColor: caseData.riskLevelBGColor || caseData.scoreBGColor,
-                      color: caseData.riskLevelColor 
+                      color: caseData.riskLevelColor
                     }}
                   >
                     {caseData.score}
@@ -666,12 +681,12 @@ const CaseDetailsPage = () => {
                     Record ID
                   </div>
                   <div className="text-base font-medium">
-                  <button
-                    onClick={() => navigate(`/records/${caseData.recordId}`)}
-                    className="text-primary hover:text-primary/80 hover:underline font-medium transition-colors"
-                  >
-                    {caseData.recordId}
-                  </button>
+                    <button
+                      onClick={() => navigate(`/records/${caseData.recordId}`)}
+                      className="text-primary hover:text-primary/80 hover:underline font-medium transition-colors"
+                    >
+                      {caseData.recordId}
+                    </button>
                   </div>
                 </div>
                 <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
@@ -753,39 +768,38 @@ const CaseDetailsPage = () => {
         )}
 
         {/* Template Fields organized by Sections */}
-        {record && sections.map((section) => (
-          <Card key={section.id} className="shadow-sm border-primary/10">
-            <CardHeader className="bg-primary/5 border-b">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                {section.title}
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Fields organized under the {section.title} section.
-              </p>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {section.fields.map((field) => {
-                  return (
-                    <div
-                      key={field.id}
-                      className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                        {getFieldIcon(field.fieldType)}
-                        {field.label}
+        {record &&
+          sections.map((section) => (
+            <Card key={section.id} className="shadow-sm border-primary/10">
+              <CardHeader className="bg-primary/5 border-b">
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  {section.title}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Fields organized under the {section.title} section.
+                </p>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {section.fields.map((field) => {
+                    return (
+                      <div
+                        key={field.id}
+                        className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                          {getFieldIcon(field.fieldType)}
+                          {field.label}
+                        </div>
+                        <div>{renderFieldValue(field.id!, field.fieldType, field.options)}</div>
                       </div>
-                      <div>
-                        {renderFieldValue(field.id!, field.fieldType, field.options)}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
 
         {/* Fields without Section */}
         {record && fieldsWithoutSection.length > 0 && (
@@ -811,9 +825,7 @@ const CaseDetailsPage = () => {
                         {getFieldIcon(field.fieldType)}
                         {field.label}
                       </div>
-                      <div>
-                        {renderFieldValue(field.id!, field.fieldType, field.options)}
-                      </div>
+                      <div>{renderFieldValue(field.id!, field.fieldType, field.options)}</div>
                     </div>
                   );
                 })}
@@ -843,54 +855,85 @@ const CaseDetailsPage = () => {
               ) : (
                 <div className="grid grid-cols-1 gap-4">
                   {accounts.map((account) => (
-                    <Card key={account.id} className="border bg-card hover:bg-accent/5 transition-colors">
+                    <Card
+                      key={account.id}
+                      className="border bg-card hover:bg-accent/5 transition-colors"
+                    >
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Account Name</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Account Name
+                                </div>
                                 <div className="text-base font-semibold">{account.name}</div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Account Number</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Account Number
+                                </div>
                                 <div className="text-base font-mono">{account.number}</div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Bank Country</div>
-                                <div className="text-base">{getBankCountryDisplayValue(account)}</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Bank Country
+                                </div>
+                                <div className="text-base">
+                                  {getBankCountryDisplayValue(account)}
+                                </div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Bank City</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Bank City
+                                </div>
                                 <div className="text-base">{account.bankOfCity || '-'}</div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Status</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Status
+                                </div>
                                 <div className="text-base">
-                                  <span className={cn(
-                                    "px-2 py-1 rounded-full text-xs font-medium",
-                                    account.accountStatus === 1 ? "bg-green-100 text-green-800" :
-                                    account.accountStatus === 2 ? "bg-yellow-100 text-yellow-800" :
-                                    account.accountStatus === 3 ? "bg-red-100 text-red-800" :
-                                    account.accountStatus === 4 ? "bg-orange-100 text-orange-800" :
-                                    "bg-gray-100 text-gray-800"
-                                  )}>
-                                    {account.accountStatus === 1 ? 'Active' :
-                                     account.accountStatus === 2 ? 'Inactive' :
-                                     account.accountStatus === 3 ? 'Closed' :
-                                     account.accountStatus === 4 ? 'Suspended' :
-                                     'Unknown'}
+                                  <span
+                                    className={cn(
+                                      'px-2 py-1 rounded-full text-xs font-medium',
+                                      account.accountStatus === 1
+                                        ? 'bg-green-100 text-green-800'
+                                        : account.accountStatus === 2
+                                          ? 'bg-yellow-100 text-yellow-800'
+                                          : account.accountStatus === 3
+                                            ? 'bg-red-100 text-red-800'
+                                            : account.accountStatus === 4
+                                              ? 'bg-orange-100 text-orange-800'
+                                              : 'bg-gray-100 text-gray-800'
+                                    )}
+                                  >
+                                    {account.accountStatus === 1
+                                      ? 'Active'
+                                      : account.accountStatus === 2
+                                        ? 'Inactive'
+                                        : account.accountStatus === 3
+                                          ? 'Closed'
+                                          : account.accountStatus === 4
+                                            ? 'Suspended'
+                                            : 'Unknown'}
                                   </span>
                                 </div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Created</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Created
+                                </div>
                                 <div className="text-base">
-                                  {account.creationDate ? new Date(account.creationDate).toLocaleDateString() : '-'}
+                                  {account.creationDate
+                                    ? new Date(account.creationDate).toLocaleDateString()
+                                    : '-'}
                                 </div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Account ID</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Account ID
+                                </div>
                                 <div className="text-base font-mono">{account.id}</div>
                               </div>
                             </div>
@@ -899,7 +942,9 @@ const CaseDetailsPage = () => {
                             type="button"
                             onClick={() => toggleAccountExpansion(account.id)}
                             className="ml-4 p-2 hover:bg-gray-100 rounded transition-colors"
-                            aria-label={expandedAccounts[account.id] ? 'Collapse details' : 'Expand details'}
+                            aria-label={
+                              expandedAccounts[account.id] ? 'Collapse details' : 'Expand details'
+                            }
                           >
                             {expandedAccounts[account.id] ? (
                               <ChevronDown className="h-4 w-4" />
@@ -908,34 +953,43 @@ const CaseDetailsPage = () => {
                             )}
                           </button>
                         </div>
-                        
+
                         {/* Expandable Field Responses Section */}
                         {expandedAccounts[account.id] && (
                           <div className="mt-4 pt-4 border-t">
                             {loadingAccountResponses[account.id] ? (
                               <div className="flex items-center justify-center py-4">
                                 <Loader2 className="animate-spin w-6 h-6 text-primary" />
-                                <span className="ml-2 text-sm text-muted-foreground">Loading field responses...</span>
+                                <span className="ml-2 text-sm text-muted-foreground">
+                                  Loading field responses...
+                                </span>
                               </div>
-                            ) : accountFieldResponses[account.id] && accountFieldResponses[account.id].length > 0 ? (
+                            ) : accountFieldResponses[account.id] &&
+                              accountFieldResponses[account.id].length > 0 ? (
                               <div className="space-y-3">
-                                <h4 className="font-medium text-sm text-muted-foreground">Additional Account Information:</h4>
+                                <h4 className="font-medium text-sm text-muted-foreground">
+                                  Additional Account Information:
+                                </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {accountFieldResponses[account.id].map((response: FieldResponseDetail) => (
-                                    <div key={response.id} className="p-3 rounded border bg-gray-50/50">
-                                      <div className="text-sm font-medium text-gray-700 mb-1">
-                                        {response.fieldName}
-                                      </div>
-                                      <div>
-                                        {renderFieldResponseValue(response)}
-                                      </div>
-                                      {response.created && (
-                                        <div className="text-xs text-gray-500 mt-1">
-                                          Created: {new Date(response.created).toLocaleDateString()}
+                                  {accountFieldResponses[account.id].map(
+                                    (response: FieldResponseDetail) => (
+                                      <div
+                                        key={response.id}
+                                        className="p-3 rounded border bg-gray-50/50"
+                                      >
+                                        <div className="text-sm font-medium text-gray-700 mb-1">
+                                          {response.fieldName}
                                         </div>
-                                      )}
-                                    </div>
-                                  ))}
+                                        <div>{renderFieldResponseValue(response)}</div>
+                                        {response.created && (
+                                          <div className="text-xs text-gray-500 mt-1">
+                                            Created:{' '}
+                                            {new Date(response.created).toLocaleDateString()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  )}
                                 </div>
                               </div>
                             ) : (

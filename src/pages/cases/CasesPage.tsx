@@ -161,9 +161,9 @@ const CasesPage = () => {
                         <TableCell>
                           <div
                             className="px-2 w-16 text-center py-1 rounded-md inline-block"
-                            style={{ 
+                            style={{
                               backgroundColor: item.riskLevelBGColor || item.scoreBGColor,
-                              color: item.riskLevelColor 
+                              color: item.riskLevelColor
                             }}
                           >
                             {item.score}

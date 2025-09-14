@@ -162,7 +162,7 @@ const Sidebar = () => {
                   alt=""
                 />
               </MenuToggle>
-              {DropdownUser({ menuItemRef: itemUserRef })}
+              {DropdownUser()}
             </MenuItem>
           </Menu>
         </div>

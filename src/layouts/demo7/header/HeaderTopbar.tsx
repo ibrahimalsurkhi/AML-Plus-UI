@@ -63,7 +63,7 @@ const HeaderTopbar = () => {
               />
             </svg>
           </MenuToggle>
-          {DropdownUser({ menuItemRef: itemUserRef })}
+          {DropdownUser()}
         </MenuItem>
       </Menu>
     </div>

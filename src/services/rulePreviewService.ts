@@ -20,7 +20,13 @@ let customValuesCache: { id: number; title: string }[] = [];
 let customValuesCacheLoaded = false;
 
 // Cache for custom fields
-let customFieldsCache: { id: number; label: string; fieldType: number; lookupId?: number; templateId?: string }[] = [];
+let customFieldsCache: {
+  id: number;
+  label: string;
+  fieldType: number;
+  lookupId?: number;
+  templateId?: string;
+}[] = [];
 let customFieldsCacheLoaded = false;
 
 // Cache for custom field options (dropdown/radio/checkbox)
@@ -62,63 +68,70 @@ async function loadCustomFields() {
   if (!customFieldsCacheLoaded) {
     try {
       console.log('Debug - Loading custom fields from all templates...');
-      
+
       // Template IDs to load
       const TRANSACTION_TEMPLATE_ID = '15'; // Old custom fields
       const INDIVIDUAL_TEMPLATE_ID = '17';
       const ORGANIZATION_TEMPLATE_ID = '18';
-      
+
       const allFields: any[] = [];
-      
+
       // Load fields from all three templates
-      for (const templateId of [TRANSACTION_TEMPLATE_ID, INDIVIDUAL_TEMPLATE_ID, ORGANIZATION_TEMPLATE_ID]) {
+      for (const templateId of [
+        TRANSACTION_TEMPLATE_ID,
+        INDIVIDUAL_TEMPLATE_ID,
+        ORGANIZATION_TEMPLATE_ID
+      ]) {
         try {
           console.log(`Debug - Loading fields from template ${templateId}...`);
           const fieldsResponse = await templateService.getTemplateFields(templateId);
-          
+
           // Get all fields from sections and fields without section
           const templateFields = [
             ...fieldsResponse.sections.flatMap((section) => section.fields),
             ...fieldsResponse.fieldsWithoutSection
           ];
-          
+
           // Add template info to each field for context
           templateFields.forEach((field: any) => {
             field.templateId = templateId;
           });
-          
+
           allFields.push(...templateFields);
           console.log(`Debug - Loaded ${templateFields.length} fields from template ${templateId}`);
         } catch (error) {
           console.error(`Failed to load fields from template ${templateId}:`, error);
         }
       }
-      
+
       // Filter fields by allowed types and cache them
-      const allowedFields = allFields.filter(field => 
-        field.fieldType === FieldType.Dropdown ||
-        field.fieldType === FieldType.Lookup ||
-        field.fieldType === FieldType.Radio ||
-        field.fieldType === FieldType.Checkbox ||
-        field.fieldType === FieldType.Number
+      const allowedFields = allFields.filter(
+        (field) =>
+          field.fieldType === FieldType.Dropdown ||
+          field.fieldType === FieldType.Lookup ||
+          field.fieldType === FieldType.Radio ||
+          field.fieldType === FieldType.Checkbox ||
+          field.fieldType === FieldType.Number
       );
-      
-      customFieldsCache = allowedFields.map(field => ({
+
+      customFieldsCache = allowedFields.map((field) => ({
         id: field.id!,
         label: field.label,
         fieldType: field.fieldType,
         lookupId: field.lookupId || undefined,
         templateId: field.templateId // Store template ID for context
       }));
-      
+
       // Pre-load field options for dropdown/radio/checkbox fields
       for (const field of allowedFields) {
         try {
-          if (field.fieldType === FieldType.Dropdown ||
-              field.fieldType === FieldType.Radio ||
-              field.fieldType === FieldType.Checkbox) {
+          if (
+            field.fieldType === FieldType.Dropdown ||
+            field.fieldType === FieldType.Radio ||
+            field.fieldType === FieldType.Checkbox
+          ) {
             const options = await templateService.getFieldOptions(field.templateId, field.id!);
-            customFieldOptionsCache[field.id!] = options.map(opt => ({
+            customFieldOptionsCache[field.id!] = options.map((opt) => ({
               id: opt.id!,
               label: opt.label
             }));
@@ -134,10 +147,13 @@ async function loadCustomFields() {
             }));
           }
         } catch (error) {
-          console.error(`Failed to load options for field ${field.id} from template ${field.templateId}:`, error);
+          console.error(
+            `Failed to load options for field ${field.id} from template ${field.templateId}:`,
+            error
+          );
         }
       }
-        
+
       console.log('Debug - Loaded custom fields from all templates:', customFieldsCache);
       console.log('Debug - Loaded field options cache:', customFieldOptionsCache);
       console.log('Debug - Loaded lookup values cache:', lookupValuesCache);
@@ -150,42 +166,49 @@ async function loadCustomFields() {
 
 // Helper to get custom value title
 function getCustomValueTitle(customValueId: number): string {
-  console.log('Debug - getCustomValueTitle called with ID:', customValueId, 'type:', typeof customValueId);
+  console.log(
+    'Debug - getCustomValueTitle called with ID:',
+    customValueId,
+    'type:',
+    typeof customValueId
+  );
   console.log('Debug - customValuesCache:', customValuesCache);
   console.log('Debug - customValuesCacheLoaded:', customValuesCacheLoaded);
-  
+
   // Try both exact match and loose match in case of type mismatch
-  const customValue = customValuesCache.find(cv => 
-    cv.id === customValueId || cv.id == customValueId
+  const customValue = customValuesCache.find(
+    (cv) => cv.id === customValueId || cv.id == customValueId
   );
   console.log('Debug - found customValue:', customValue);
-  
+
   return customValue ? `"${customValue.title}"` : `Custom Value #${customValueId}`;
 }
 
 // Helper to get custom field name
 function getCustomFieldLabel(customFieldId: number): string {
-  const customField = customFieldsCache.find(cf => cf.id === customFieldId);
+  const customField = customFieldsCache.find((cf) => cf.id === customFieldId);
   return customField ? customField.label : `Custom Field #${customFieldId}`;
 }
 
 // Helper to get custom field options labels (synchronous using cache)
 function getCustomFieldValueLabels(customFieldId: number, jsonValue: string): string {
   try {
-    const customField = customFieldsCache.find(cf => cf.id === customFieldId);
+    const customField = customFieldsCache.find((cf) => cf.id === customFieldId);
     if (!customField) return jsonValue;
-    
+
     const parsedValues = JSON.parse(jsonValue);
     if (!Array.isArray(parsedValues)) return jsonValue;
-    
-    if (customField.fieldType === FieldType.Dropdown ||
-        customField.fieldType === FieldType.Radio ||
-        customField.fieldType === FieldType.Checkbox) {
+
+    if (
+      customField.fieldType === FieldType.Dropdown ||
+      customField.fieldType === FieldType.Radio ||
+      customField.fieldType === FieldType.Checkbox
+    ) {
       // Use cached field options
       const options = customFieldOptionsCache[customField.id] || [];
       const labels = parsedValues
         .map((id: number) => {
-          const option = options.find(opt => opt.id === id);
+          const option = options.find((opt) => opt.id === id);
           return option ? option.label : id.toString();
         })
         .join(', ');
@@ -195,13 +218,13 @@ function getCustomFieldValueLabels(customFieldId: number, jsonValue: string): st
       const lookupValues = lookupValuesCache[customField.lookupId] || [];
       const labels = parsedValues
         .map((id: number) => {
-          const value = lookupValues.find(val => val.id === id);
+          const value = lookupValues.find((val) => val.id === id);
           return value ? value.value : id.toString();
         })
         .join(', ');
       return labels || jsonValue;
     }
-    
+
     return parsedValues.join(', ');
   } catch (error) {
     console.error('Error getting custom field value labels:', error);
@@ -264,11 +287,11 @@ export interface RuleGroupType {
 export async function getRulePreview(group: RuleGroupType | any): Promise<string> {
   if (!group) return '';
   if (!group.children || group.children.length === 0) return '';
-  
+
   // Load custom values and fields if not already loaded
   await loadCustomValues();
   await loadCustomFields();
-  
+
   const op = group.operator === OperatorId.And ? 'AND' : 'OR';
   return group.children
     .map((child: any) => {
@@ -312,16 +335,22 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
         if (cond.customFieldId || (cond.selectedFieldId && isCustomField(cond.selectedFieldId))) {
           // For custom fields, use ComparisonOperator
           if (operatorValue !== undefined && operatorValue !== null) {
-            const customField = customFieldsCache.find(cf => 
-              cf.id === cond.customFieldId || 
-              cf.id === (cond.selectedFieldId && isCustomField(cond.selectedFieldId) ? getCustomFieldId(cond.selectedFieldId) : null)
+            const customField = customFieldsCache.find(
+              (cf) =>
+                cf.id === cond.customFieldId ||
+                cf.id ===
+                  (cond.selectedFieldId && isCustomField(cond.selectedFieldId)
+                    ? getCustomFieldId(cond.selectedFieldId)
+                    : null)
             );
-            
+
             if (customField) {
-              if (customField.fieldType === FieldType.Dropdown ||
-                  customField.fieldType === FieldType.Radio ||
-                  customField.fieldType === FieldType.Checkbox ||
-                  customField.fieldType === FieldType.Lookup) {
+              if (
+                customField.fieldType === FieldType.Dropdown ||
+                customField.fieldType === FieldType.Radio ||
+                customField.fieldType === FieldType.Checkbox ||
+                customField.fieldType === FieldType.Lookup
+              ) {
                 operator = getLabel(StatusOperatorOptions, operatorValue) || '[Operator]';
               } else if (customField.fieldType === FieldType.Number) {
                 operator = getLabel(ComparisonOperatorOptions, operatorValue) || '[Operator]';
@@ -330,11 +359,12 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
           }
         } else {
           // For static fields, use existing logic
-          operator = operatorValue !== undefined && operatorValue !== null
-            ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId, operatorValue)
-            : cond.aggregateFunction && !cond.isAggregated
-              ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId)
-              : '[Operator]';
+          operator =
+            operatorValue !== undefined && operatorValue !== null
+              ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId, operatorValue)
+              : cond.aggregateFunction && !cond.isAggregated
+                ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId)
+                : '[Operator]';
         }
 
         console.log('Operator result:', operator);
@@ -346,7 +376,7 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
         }
 
         let value = '[Value]';
-        
+
         // Check if custom value is selected for Amount field
         console.log('Debug - Checking condition:', {
           aggregateFieldId: cond.aggregateFieldId,
@@ -356,19 +386,25 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
           customFieldId: cond.customFieldId,
           selectedFieldId: cond.selectedFieldId
         });
-        
+
         if (cond.aggregateFieldId === AggregateFieldId.Amount && cond.customValueId) {
           console.log('Debug - Getting custom value title for ID:', cond.customValueId);
           value = getCustomValueTitle(cond.customValueId);
           console.log('Debug - Got custom value title:', value);
         } else if (cond.customFieldId && cond.jsonValue) {
           // Handle custom field values using pre-loaded cache
-          console.log('Debug - Resolving custom field values for customFieldId:', cond.customFieldId);
+          console.log(
+            'Debug - Resolving custom field values for customFieldId:',
+            cond.customFieldId
+          );
           value = getCustomFieldValueLabels(cond.customFieldId, cond.jsonValue);
           console.log('Debug - Resolved value:', value);
         } else if (cond.selectedFieldId && isCustomField(cond.selectedFieldId) && cond.jsonValue) {
           // Handle custom field values using selectedFieldId with pre-loaded cache
-          console.log('Debug - Resolving custom field values for selectedFieldId:', cond.selectedFieldId);
+          console.log(
+            'Debug - Resolving custom field values for selectedFieldId:',
+            cond.selectedFieldId
+          );
           const customFieldId = getCustomFieldId(cond.selectedFieldId);
           value = getCustomFieldValueLabels(customFieldId, cond.jsonValue);
           console.log('Debug - Resolved value:', value);

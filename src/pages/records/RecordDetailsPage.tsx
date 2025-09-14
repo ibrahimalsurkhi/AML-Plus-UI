@@ -91,14 +91,17 @@ const RecordDetailsPage = () => {
   const [bankCountriesLoading, setBankCountriesLoading] = useState(false);
   // Account field responses display state
   const [expandedAccounts, setExpandedAccounts] = useState<{ [key: number]: boolean }>({});
-  const [accountFieldResponses, setAccountFieldResponses] = useState<{ [key: number]: FieldResponseDetail[] }>({});
-  const [loadingAccountResponses, setLoadingAccountResponses] = useState<{ [key: number]: boolean }>({});
+  const [accountFieldResponses, setAccountFieldResponses] = useState<{
+    [key: number]: FieldResponseDetail[];
+  }>({});
+  const [loadingAccountResponses, setLoadingAccountResponses] = useState<{
+    [key: number]: boolean;
+  }>({});
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
 
         // Now get the full record details using the template ID
         const fullRecord = await recordService.getRecordById(id!);
@@ -152,7 +155,10 @@ const RecordDetailsPage = () => {
                         displayOrder: index + 1
                       })
                     );
-                    console.log(`Loaded ${lookupValues.items.length} lookup values for field ${field.id}:`, extendedField.options);
+                    console.log(
+                      `Loaded ${lookupValues.items.length} lookup values for field ${field.id}:`,
+                      extendedField.options
+                    );
                   } catch (error) {
                     console.error(`Error fetching lookup values for field ${field.id}:`, error);
                     extendedField.options = [];
@@ -205,7 +211,10 @@ const RecordDetailsPage = () => {
                     displayOrder: index + 1
                   })
                 );
-                console.log(`Loaded ${lookupValues.items.length} lookup values for field ${field.id}:`, extendedField.options);
+                console.log(
+                  `Loaded ${lookupValues.items.length} lookup values for field ${field.id}:`,
+                  extendedField.options
+                );
               } catch (error) {
                 console.error(`Error fetching lookup values for field ${field.id}:`, error);
                 extendedField.options = [];
@@ -261,7 +270,10 @@ const RecordDetailsPage = () => {
     const fetchBankCountries = async () => {
       setBankCountriesLoading(true);
       try {
-        const values = await lookupService.getLookupValuesByKey('CountryOfBirth', { pageNumber: 1, pageSize: 100 });
+        const values = await lookupService.getLookupValuesByKey('CountryOfBirth', {
+          pageNumber: 1,
+          pageSize: 100
+        });
         console.log('Fetched bank countries from CountryOfBirth lookup:', values.items);
         setBankCountries(values.items);
       } catch (err) {
@@ -306,7 +318,9 @@ const RecordDetailsPage = () => {
     fieldType: FieldType,
     options?: ExtendedTemplateField['options']
   ) => {
-    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId) as ExtendedFieldResponse | undefined;
+    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId) as
+      | ExtendedFieldResponse
+      | undefined;
     if (!response) return null;
 
     switch (fieldType) {
@@ -326,32 +340,35 @@ const RecordDetailsPage = () => {
           console.log(`Lookup field ${fieldId}:`, {
             valueText: response.valueText,
             optionId: response.optionId,
-            availableOptions: options?.map(opt => ({ id: opt.id, label: opt.label }))
+            availableOptions: options?.map((opt) => ({ id: opt.id, label: opt.label }))
           });
         }
-        
+
         // Try to get the value from optionId first, then valueText
         const valueToMatch = response.optionId || response.valueText;
-        
+
         if (valueToMatch) {
           // Try multiple matching strategies:
           // 1. Match by option ID (string comparison)
           const optionById = options?.find((opt) => opt.id?.toString() === valueToMatch);
-          // 2. Match by option ID (number comparison)  
+          // 2. Match by option ID (number comparison)
           const optionByNumericId = options?.find((opt) => opt.id === parseInt(valueToMatch));
           // 3. Match by label
           const optionByLabel = options?.find((opt) => opt.label === valueToMatch);
-          
+
           const option = optionById || optionByNumericId || optionByLabel;
-          
+
           if (fieldType === FieldType.Lookup && !option) {
-            console.warn(`No matching option found for lookup field ${fieldId} with value: ${valueToMatch}`, {
-              optionId: response.optionId,
-              valueText: response.valueText,
-              availableOptions: options
-            });
+            console.warn(
+              `No matching option found for lookup field ${fieldId} with value: ${valueToMatch}`,
+              {
+                optionId: response.optionId,
+                valueText: response.valueText,
+                availableOptions: options
+              }
+            );
           }
-          
+
           return option?.label || valueToMatch;
         }
         return null;
@@ -383,7 +400,7 @@ const RecordDetailsPage = () => {
   // Function to toggle account expansion and fetch field responses
   const toggleAccountExpansion = async (accountId: number) => {
     const isCurrentlyExpanded = expandedAccounts[accountId];
-    
+
     // Toggle expansion state
     setExpandedAccounts((prev: { [key: number]: boolean }) => ({
       ...prev,
@@ -392,8 +409,11 @@ const RecordDetailsPage = () => {
 
     // If expanding and we don't have data yet, fetch it
     if (!isCurrentlyExpanded && !accountFieldResponses[accountId]) {
-      setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({ ...prev, [accountId]: true }));
-      
+      setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({
+        ...prev,
+        [accountId]: true
+      }));
+
       try {
         const responses = await fieldResponseService.getFieldResponses({ accountId });
         setAccountFieldResponses((prev: { [key: number]: FieldResponseDetail[] }) => ({
@@ -408,7 +428,10 @@ const RecordDetailsPage = () => {
           variant: 'destructive'
         });
       } finally {
-        setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({ ...prev, [accountId]: false }));
+        setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({
+          ...prev,
+          [accountId]: false
+        }));
       }
     }
   };
@@ -430,31 +453,37 @@ const RecordDetailsPage = () => {
       bankOfCountryLookupValueId: account.bankOfCountryLookupValueId,
       bankCountriesAvailable: bankCountries.length
     });
-    
+
     // First, try to use the bankOfCountryName if it exists and is not empty
     if (account.bankOfCountryName && account.bankOfCountryName.trim() !== '') {
       console.log('Using bankOfCountryName:', account.bankOfCountryName);
       return account.bankOfCountryName;
     }
-    
+
     // If we have a bankOfCountryId, try to find it in the lookup values
     if (account.bankOfCountryId && bankCountries.length > 0) {
-      const country = bankCountries.find(c => c.id === account.bankOfCountryId || c.id === parseInt(account.bankOfCountryId));
+      const country = bankCountries.find(
+        (c) => c.id === account.bankOfCountryId || c.id === parseInt(account.bankOfCountryId)
+      );
       if (country) {
         console.log('Found country by bankOfCountryId:', country.value);
         return country.value;
       }
     }
-    
+
     // If we have a bankOfCountryLookupValueId, try to find it in the lookup values
     if (account.bankOfCountryLookupValueId && bankCountries.length > 0) {
-      const country = bankCountries.find(c => c.id === account.bankOfCountryLookupValueId || c.id === parseInt(account.bankOfCountryLookupValueId));
+      const country = bankCountries.find(
+        (c) =>
+          c.id === account.bankOfCountryLookupValueId ||
+          c.id === parseInt(account.bankOfCountryLookupValueId)
+      );
       if (country) {
         console.log('Found country by bankOfCountryLookupValueId:', country.value);
         return country.value;
       }
     }
-    
+
     console.log('No bank country found, returning -');
     return '-';
   };
@@ -681,54 +710,85 @@ const RecordDetailsPage = () => {
               ) : (
                 <div className="grid grid-cols-1 gap-4">
                   {accounts.map((account) => (
-                    <Card key={account.id} className="border bg-card hover:bg-accent/5 transition-colors">
+                    <Card
+                      key={account.id}
+                      className="border bg-card hover:bg-accent/5 transition-colors"
+                    >
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Account Name</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Account Name
+                                </div>
                                 <div className="text-base font-semibold">{account.name}</div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Account Number</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Account Number
+                                </div>
                                 <div className="text-base font-mono">{account.number}</div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Bank Country</div>
-                                <div className="text-base">{getBankCountryDisplayValue(account)}</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Bank Country
+                                </div>
+                                <div className="text-base">
+                                  {getBankCountryDisplayValue(account)}
+                                </div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Bank City</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Bank City
+                                </div>
                                 <div className="text-base">{account.bankOfCity || '-'}</div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Status</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Status
+                                </div>
                                 <div className="text-base">
-                                  <span className={cn(
-                                    "px-2 py-1 rounded-full text-xs font-medium",
-                                    account.accountStatus === 1 ? "bg-green-100 text-green-800" :
-                                    account.accountStatus === 2 ? "bg-yellow-100 text-yellow-800" :
-                                    account.accountStatus === 3 ? "bg-red-100 text-red-800" :
-                                    account.accountStatus === 4 ? "bg-orange-100 text-orange-800" :
-                                    "bg-gray-100 text-gray-800"
-                                  )}>
-                                    {account.accountStatus === 1 ? 'Active' :
-                                     account.accountStatus === 2 ? 'Inactive' :
-                                     account.accountStatus === 3 ? 'Closed' :
-                                     account.accountStatus === 4 ? 'Suspended' :
-                                     'Unknown'}
+                                  <span
+                                    className={cn(
+                                      'px-2 py-1 rounded-full text-xs font-medium',
+                                      account.accountStatus === 1
+                                        ? 'bg-green-100 text-green-800'
+                                        : account.accountStatus === 2
+                                          ? 'bg-yellow-100 text-yellow-800'
+                                          : account.accountStatus === 3
+                                            ? 'bg-red-100 text-red-800'
+                                            : account.accountStatus === 4
+                                              ? 'bg-orange-100 text-orange-800'
+                                              : 'bg-gray-100 text-gray-800'
+                                    )}
+                                  >
+                                    {account.accountStatus === 1
+                                      ? 'Active'
+                                      : account.accountStatus === 2
+                                        ? 'Inactive'
+                                        : account.accountStatus === 3
+                                          ? 'Closed'
+                                          : account.accountStatus === 4
+                                            ? 'Suspended'
+                                            : 'Unknown'}
                                   </span>
                                 </div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Created</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Created
+                                </div>
                                 <div className="text-base">
-                                  {account.creationDate ? new Date(account.creationDate).toLocaleDateString() : '-'}
+                                  {account.creationDate
+                                    ? new Date(account.creationDate).toLocaleDateString()
+                                    : '-'}
                                 </div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">Account ID</div>
+                                <div className="text-sm font-medium text-muted-foreground">
+                                  Account ID
+                                </div>
                                 <div className="text-base font-mono">{account.id}</div>
                               </div>
                             </div>
@@ -737,7 +797,9 @@ const RecordDetailsPage = () => {
                             type="button"
                             onClick={() => toggleAccountExpansion(account.id)}
                             className="ml-4 p-2 hover:bg-gray-100 rounded transition-colors"
-                            aria-label={expandedAccounts[account.id] ? 'Collapse details' : 'Expand details'}
+                            aria-label={
+                              expandedAccounts[account.id] ? 'Collapse details' : 'Expand details'
+                            }
                           >
                             {expandedAccounts[account.id] ? (
                               <ChevronDown className="h-4 w-4" />
@@ -746,34 +808,45 @@ const RecordDetailsPage = () => {
                             )}
                           </button>
                         </div>
-                        
+
                         {/* Expandable Field Responses Section */}
                         {expandedAccounts[account.id] && (
                           <div className="mt-4 pt-4 border-t">
                             {loadingAccountResponses[account.id] ? (
                               <div className="flex items-center justify-center py-4">
                                 <Loader2 className="animate-spin w-6 h-6 text-primary" />
-                                <span className="ml-2 text-sm text-muted-foreground">Loading field responses...</span>
+                                <span className="ml-2 text-sm text-muted-foreground">
+                                  Loading field responses...
+                                </span>
                               </div>
-                            ) : accountFieldResponses[account.id] && accountFieldResponses[account.id].length > 0 ? (
+                            ) : accountFieldResponses[account.id] &&
+                              accountFieldResponses[account.id].length > 0 ? (
                               <div className="space-y-3">
-                                <h4 className="font-medium text-sm text-muted-foreground">Additional Account Information:</h4>
+                                <h4 className="font-medium text-sm text-muted-foreground">
+                                  Additional Account Information:
+                                </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {accountFieldResponses[account.id].map((response: FieldResponseDetail) => (
-                                    <div key={response.id} className="p-3 rounded border bg-gray-50/50">
-                                      <div className="text-sm font-medium text-gray-700 mb-1">
-                                        {response.fieldName}
-                                      </div>
-                                      <div className="text-sm text-gray-900">
-                                        {renderFieldResponseValue(response)}
-                                      </div>
-                                      {response.created && (
-                                        <div className="text-xs text-gray-500 mt-1">
-                                          Created: {new Date(response.created).toLocaleDateString()}
+                                  {accountFieldResponses[account.id].map(
+                                    (response: FieldResponseDetail) => (
+                                      <div
+                                        key={response.id}
+                                        className="p-3 rounded border bg-gray-50/50"
+                                      >
+                                        <div className="text-sm font-medium text-gray-700 mb-1">
+                                          {response.fieldName}
                                         </div>
-                                      )}
-                                    </div>
-                                  ))}
+                                        <div className="text-sm text-gray-900">
+                                          {renderFieldResponseValue(response)}
+                                        </div>
+                                        {response.created && (
+                                          <div className="text-xs text-gray-500 mt-1">
+                                            Created:{' '}
+                                            {new Date(response.created).toLocaleDateString()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  )}
                                 </div>
                               </div>
                             ) : (
@@ -824,9 +897,9 @@ const RecordDetailsPage = () => {
                         <td className="border px-3 py-2">
                           <span
                             className="px-2 w-16 text-center py-1 rounded-md inline-block"
-                            style={{ 
+                            style={{
                               backgroundColor: c.riskLevelBGColor || c.scoreBGColor,
-                              color: c.riskLevelColor 
+                              color: c.riskLevelColor
                             }}
                           >
                             {c.score}

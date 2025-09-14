@@ -1149,7 +1149,11 @@ const NewRecordPage = () => {
                     </Label>
                     <Select
                       name="countryOfBirthLookupValueId"
-                      value={formik.values.countryOfBirthLookupValueId ? formik.values.countryOfBirthLookupValueId.toString() : ''}
+                      value={
+                        formik.values.countryOfBirthLookupValueId
+                          ? formik.values.countryOfBirthLookupValueId.toString()
+                          : ''
+                      }
                       onValueChange={(value: string) => {
                         formik.setFieldValue(
                           'countryOfBirthLookupValueId',
@@ -1157,11 +1161,14 @@ const NewRecordPage = () => {
                         );
                       }}
                     >
-                      <SelectTrigger className={
-                        formik.touched.countryOfBirthLookupValueId && formik.errors.countryOfBirthLookupValueId
-                          ? 'border-red-500 w-full'
-                          : 'w-full'
-                      }>
+                      <SelectTrigger
+                        className={
+                          formik.touched.countryOfBirthLookupValueId &&
+                          formik.errors.countryOfBirthLookupValueId
+                            ? 'border-red-500 w-full'
+                            : 'w-full'
+                        }
+                      >
                         <SelectValue placeholder="Select country of birth" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1172,7 +1179,8 @@ const NewRecordPage = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                    {formik.touched.countryOfBirthLookupValueId && formik.errors.countryOfBirthLookupValueId ? (
+                    {formik.touched.countryOfBirthLookupValueId &&
+                    formik.errors.countryOfBirthLookupValueId ? (
                       <div className="text-red-500 text-sm mt-1">
                         {formik.errors.countryOfBirthLookupValueId as string}
                       </div>
@@ -1184,7 +1192,11 @@ const NewRecordPage = () => {
                     </Label>
                     <Select
                       name="nationalityLookupValueId"
-                      value={formik.values.nationalityLookupValueId ? formik.values.nationalityLookupValueId.toString() : ''}
+                      value={
+                        formik.values.nationalityLookupValueId
+                          ? formik.values.nationalityLookupValueId.toString()
+                          : ''
+                      }
                       onValueChange={(value: string) => {
                         formik.setFieldValue(
                           'nationalityLookupValueId',
@@ -1192,11 +1204,14 @@ const NewRecordPage = () => {
                         );
                       }}
                     >
-                      <SelectTrigger className={
-                        formik.touched.nationalityLookupValueId && formik.errors.nationalityLookupValueId
-                          ? 'border-red-500 w-full'
-                          : 'w-full'
-                      }>
+                      <SelectTrigger
+                        className={
+                          formik.touched.nationalityLookupValueId &&
+                          formik.errors.nationalityLookupValueId
+                            ? 'border-red-500 w-full'
+                            : 'w-full'
+                        }
+                      >
                         <SelectValue placeholder="Select nationality" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1207,7 +1222,8 @@ const NewRecordPage = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                    {formik.touched.nationalityLookupValueId && formik.errors.nationalityLookupValueId ? (
+                    {formik.touched.nationalityLookupValueId &&
+                    formik.errors.nationalityLookupValueId ? (
                       <div className="text-red-500 text-sm mt-1">
                         {formik.errors.nationalityLookupValueId as string}
                       </div>

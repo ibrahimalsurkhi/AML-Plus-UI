@@ -22,8 +22,8 @@ const CustomValueListPage = () => {
             </div>
           </ToolbarHeading>
           <ToolbarActions>
-            <Button 
-              variant="default" 
+            <Button
+              variant="default"
               className="bg-primary text-white"
               onClick={() => navigate('/custom-values/new')}
             >
@@ -40,7 +40,7 @@ const CustomValueListPage = () => {
           <CardContent className="p-8">
             <div className="text-center py-8">
               <p className="text-gray-500 mb-4">No custom values created yet.</p>
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => navigate('/custom-values/new')}
                 className="flex items-center gap-2 mx-auto"

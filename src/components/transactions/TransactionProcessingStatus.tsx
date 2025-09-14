@@ -183,7 +183,7 @@ export const TransactionProcessingStatus: React.FC<TransactionProcessingStatusPr
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
         <div>
           <p className="text-sm text-muted-foreground">Transaction ID</p>
-          <p className="font-medium">{status.transactionID}</p>
+          <p className="font-medium">{status.transactionId}</p>
         </div>
         <div>
           <p className="text-sm text-muted-foreground">Internal ID</p>

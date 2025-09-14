@@ -31,8 +31,8 @@ const TransactionsPage = () => {
     async (page = 1) => {
       try {
         setLoading(true);
-        const data = await transactionService.getTransactions({ 
-          pageNumber: page, 
+        const data = await transactionService.getTransactions({
+          pageNumber: page,
           pageSize,
           sortBy: 'id',
           sortDirection: 'desc'
@@ -97,7 +97,6 @@ const TransactionsPage = () => {
     }
   };
 
-
   const formatAmount = (amount: number, currencyName?: string) => {
     return formatCurrency(amount, currencyName);
   };
@@ -118,7 +117,7 @@ const TransactionsPage = () => {
   const getStatusColor = (transaction: Transaction) => {
     // Use transactionStatusId for color determination (primary method)
     const statusId = transaction.transactionStatusId || transaction.transactionStatus;
-    
+
     switch (statusId) {
       case 1:
         return 'text-green-600 bg-green-100';
@@ -207,7 +206,10 @@ const TransactionsPage = () => {
                   </TableHeader>
                   <TableBody>
                     {transactions.items.map((transaction) => (
-                      <TableRow key={transaction.id || transaction.uuid} className="hover:bg-muted/50">
+                      <TableRow
+                        key={transaction.id || transaction.uuid}
+                        className="hover:bg-muted/50"
+                      >
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             <KeenIcon icon="credit-card" style="outline" className="text-primary" />
@@ -216,7 +218,11 @@ const TransactionsPage = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <KeenIcon icon="sort" style="outline" className="text-muted-foreground" />
+                            <KeenIcon
+                              icon="sort"
+                              style="outline"
+                              className="text-muted-foreground"
+                            />
                             {transaction.transactionTypeName ||
                               `Type ${transaction.transactionTypeId}`}
                           </div>
@@ -224,58 +230,72 @@ const TransactionsPage = () => {
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             <KeenIcon icon="dollar" style="outline" className="text-green-600" />
-                            {formatAmount(transaction.transactionAmount, transaction.transactionCurrencyName)}
+                            {formatAmount(
+                              transaction.transactionAmount,
+                              transaction.transactionCurrencyName
+                            )}
                           </div>
                         </TableCell>
-                        
+
                         <TableCell>
                           <div>
-                            <div 
+                            <div
                               className={`font-medium flex items-center gap-2 ${
-                                transaction.senderRecordUuid 
-                                  ? 'text-primary hover:text-primary-dark cursor-pointer transition-colors' 
+                                transaction.senderRecordUuid
+                                  ? 'text-primary hover:text-primary-dark cursor-pointer transition-colors'
                                   : 'text-muted-foreground'
                               }`}
-                              onClick={() => transaction.senderRecordUuid && handleSenderClick(transaction)}
+                              onClick={() =>
+                                transaction.senderRecordUuid && handleSenderClick(transaction)
+                              }
                             >
-                              <KeenIcon 
-                                icon={transaction.senderRecordUuid ? "link" : "user"} 
-                                style="outline" 
-                                className={transaction.senderRecordUuid ? "text-primary" : "text-muted-foreground"} 
+                              <KeenIcon
+                                icon={transaction.senderRecordUuid ? 'link' : 'user'}
+                                style="outline"
+                                className={
+                                  transaction.senderRecordUuid
+                                    ? 'text-primary'
+                                    : 'text-muted-foreground'
+                                }
                               />
                               {transaction.senderName || transaction.sender?.name || 'N/A'}
                               {transaction.senderRecordUuid && (
-                                <KeenIcon 
-                                  icon="external-link" 
-                                  style="outline" 
-                                  className="h-3 w-3 text-primary ml-1" 
+                                <KeenIcon
+                                  icon="external-link"
+                                  style="outline"
+                                  className="h-3 w-3 text-primary ml-1"
                                 />
                               )}
                             </div>
-                            
                           </div>
                         </TableCell>
                         <TableCell>
                           <div>
-                            <div 
+                            <div
                               className={`font-medium flex items-center gap-2 ${
-                                transaction.recipientRecordUuid 
-                                  ? 'text-primary hover:text-primary-dark cursor-pointer transition-colors' 
+                                transaction.recipientRecordUuid
+                                  ? 'text-primary hover:text-primary-dark cursor-pointer transition-colors'
                                   : 'text-muted-foreground'
                               }`}
-                              onClick={() => transaction.recipientRecordUuid && handleRecipientClick(transaction)}
+                              onClick={() =>
+                                transaction.recipientRecordUuid && handleRecipientClick(transaction)
+                              }
                             >
-                              <KeenIcon 
-                                icon={transaction.recipientRecordUuid ? "link" : "user"} 
-                                style="outline" 
-                                className={transaction.recipientRecordUuid ? "text-primary" : "text-muted-foreground"} 
+                              <KeenIcon
+                                icon={transaction.recipientRecordUuid ? 'link' : 'user'}
+                                style="outline"
+                                className={
+                                  transaction.recipientRecordUuid
+                                    ? 'text-primary'
+                                    : 'text-muted-foreground'
+                                }
                               />
                               {transaction.recipientName || transaction.recipient?.name || 'N/A'}
                               {transaction.recipientRecordUuid && (
-                                <KeenIcon 
-                                  icon="external-link" 
-                                  style="outline" 
-                                  className="h-3 w-3 text-primary ml-1" 
+                                <KeenIcon
+                                  icon="external-link"
+                                  style="outline"
+                                  className="h-3 w-3 text-primary ml-1"
                                 />
                               )}
                             </div>
@@ -291,7 +311,11 @@ const TransactionsPage = () => {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
-                            <KeenIcon icon="calendar" style="outline" className="text-muted-foreground" />
+                            <KeenIcon
+                              icon="calendar"
+                              style="outline"
+                              className="text-muted-foreground"
+                            />
                             {formatDate(transaction.transactionTime)}
                           </div>
                         </TableCell>
@@ -328,7 +352,8 @@ const TransactionsPage = () => {
               />
               <h3 className="text-lg font-semibold mb-2">No Transactions Found</h3>
               <p className="text-muted-foreground mb-4">
-                There are no transactions in the system yet. Create your first transaction to get started.
+                There are no transactions in the system yet. Create your first transaction to get
+                started.
               </p>
               <Button onClick={handleCreate}>
                 <KeenIcon icon="plus" style="duotone" className="mr-2" />

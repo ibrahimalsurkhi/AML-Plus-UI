@@ -85,7 +85,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
   accountType
 }) => {
   const navigate = useNavigate();
-  
+
   // State for records and accounts
   const [records, setRecords] = useState<any[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
@@ -94,41 +94,45 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
   const [accounts, setAccounts] = useState<any[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [showCreateAccount, setShowCreateAccount] = useState(false);
-  
+
   // State for unified search
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'customer' | 'account' | null>(null);
   const [unifiedSearchLoading, setUnifiedSearchLoading] = useState(false);
   const [filterType, setFilterType] = useState<'customer' | 'account'>('customer');
-  
+
   // State for pagination and filtering
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
   const [totalPages, setTotalPages] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-  
+
   // State for template selection
   const [templates, setTemplates] = useState<any[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
-  
+
   // State for account creation
   const [accountData, setAccountData] = useState<any>({});
   const [accountFieldResponses, setAccountFieldResponses] = useState<FieldResponseCreate[]>([]);
   const [accountErrors, setAccountErrors] = useState<Record<string, string>>({});
-  
+
   // State for account template fields
   const [accountTemplateFields, setAccountTemplateFields] = useState<ExtendedTemplateField[]>([]);
   const [accountTemplateFieldsLoading, setAccountTemplateFieldsLoading] = useState(false);
-  
+
   // State for bank countries
   const [bankCountries, setBankCountries] = useState<any[]>([]);
   const [bankCountriesLoading, setBankCountriesLoading] = useState(false);
-  
+
   // State for account field responses display
   const [expandedAccounts, setExpandedAccounts] = useState<Record<number, boolean>>({});
-  const [accountFieldResponsesData, setAccountFieldResponsesData] = useState<Record<number, FieldResponseDetail[]>>({});
-  const [loadingAccountResponses, setLoadingAccountResponses] = useState<Record<number, boolean>>({});
+  const [accountFieldResponsesData, setAccountFieldResponsesData] = useState<
+    Record<number, FieldResponseDetail[]>
+  >({});
+  const [loadingAccountResponses, setLoadingAccountResponses] = useState<Record<number, boolean>>(
+    {}
+  );
 
   // Account status enum
   const AccountStatusEnum = [
@@ -159,7 +163,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
       setSelectedAccount(null);
       setAccounts([]);
       setCurrentPage(1);
-      
+
       // Load records for the new template
       fetchRecords();
     }
@@ -189,7 +193,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
 
   const fetchAccountsByRecord = async () => {
     if (!selectedRecord) return;
-    
+
     setAccountsLoading(true);
     try {
       const response = await accountService.getAccountsByRecordId({
@@ -208,9 +212,9 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
   // Unified search function using filter type dropdown
   const handleUnifiedSearch = async () => {
     if (!selectedTemplateId) return;
-    
+
     setUnifiedSearchLoading(true);
-    
+
     if (filterType === 'account') {
       // Search by account number
       setSearchType('account');
@@ -223,15 +227,19 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
         setAccounts(response.items || response);
         setSelectedRecord(null); // Clear any selected record
       } catch {
-        toast({ title: 'Error', description: 'Failed to fetch accounts by number', variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch accounts by number',
+          variant: 'destructive'
+        });
       }
     } else {
       // Search by customer reference ID (or show all if no search term)
       setSearchType('customer');
       setCurrentPage(1); // Reset to first page when searching
       try {
-        const res = await recordService.getRecords({ 
-          pageNumber: 1, 
+        const res = await recordService.getRecords({
+          pageNumber: 1,
           pageSize: pageSize,
           templateId: selectedTemplateId,
           customerRefId: searchTerm.trim() || undefined // Show all if no search term
@@ -245,7 +253,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
         toast({ title: 'Error', description: 'Failed to fetch customers', variant: 'destructive' });
       }
     }
-    
+
     setUnifiedSearchLoading(false);
   };
 
@@ -276,8 +284,8 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
   const fetchTemplates = async () => {
     setTemplatesLoading(true);
     try {
-      const res = await templateService.getTemplates({ 
-        pageNumber: 1, 
+      const res = await templateService.getTemplates({
+        pageNumber: 1,
         pageSize: 100,
         templateType: 1 // Only Record templates (type = 1)
       });
@@ -295,11 +303,11 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
 
   const fetchRecords = async () => {
     if (!selectedTemplateId) return;
-    
+
     setRecordsLoading(true);
     try {
-      const res = await recordService.getRecords({ 
-        pageNumber: currentPage, 
+      const res = await recordService.getRecords({
+        pageNumber: currentPage,
         pageSize: pageSize,
         templateId: selectedTemplateId,
         customerRefId: searchTerm.trim() || undefined // Only filter if search term is provided
@@ -399,18 +407,18 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
 
   const toggleAccountExpansion = async (accountId: number) => {
     const isCurrentlyExpanded = expandedAccounts[accountId];
-    
-    setExpandedAccounts(prev => ({
+
+    setExpandedAccounts((prev) => ({
       ...prev,
       [accountId]: !isCurrentlyExpanded
     }));
 
     if (!isCurrentlyExpanded && !accountFieldResponsesData[accountId]) {
-      setLoadingAccountResponses(prev => ({ ...prev, [accountId]: true }));
-      
+      setLoadingAccountResponses((prev) => ({ ...prev, [accountId]: true }));
+
       try {
         const responses = await fieldResponseService.getFieldResponses({ accountId });
-        setAccountFieldResponsesData(prev => ({
+        setAccountFieldResponsesData((prev) => ({
           ...prev,
           [accountId]: responses
         }));
@@ -422,7 +430,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
           variant: 'destructive'
         });
       } finally {
-        setLoadingAccountResponses(prev => ({ ...prev, [accountId]: false }));
+        setLoadingAccountResponses((prev) => ({ ...prev, [accountId]: false }));
       }
     }
   };
@@ -592,17 +600,23 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
       ? field.fieldType === FieldType.Number
         ? currentResponse.valueNumber
         : field.fieldType === FieldType.Date
-          ? currentResponse.valueDate ? currentResponse.valueDate.split('T')[0] : ''
+          ? currentResponse.valueDate
+            ? currentResponse.valueDate.split('T')[0]
+            : ''
           : field.fieldType === FieldType.Checkbox
             ? (() => {
                 if (!currentResponse.optionId) return false;
-                const selectedOption = field.options?.find(opt => opt.id?.toString() === currentResponse.optionId?.toString());
+                const selectedOption = field.options?.find(
+                  (opt) => opt.id?.toString() === currentResponse.optionId?.toString()
+                );
                 return selectedOption?.label.toLowerCase() === 'checked';
               })()
             : field.fieldType === FieldType.Dropdown ||
                 field.fieldType === FieldType.Radio ||
                 field.fieldType === FieldType.Lookup
-              ? currentResponse.optionId ? currentResponse.optionId.toString() : ''
+              ? currentResponse.optionId
+                ? currentResponse.optionId.toString()
+                : ''
               : currentResponse.valueText
       : '';
 
@@ -617,7 +631,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
     );
 
     const inputClasses = cn(
-      'w-full', 
+      'w-full',
       field.fieldType === FieldType.Checkbox ? 'mt-1' : '',
       isInvalid ? 'border-red-500 focus-visible:ring-red-500' : ''
     );
@@ -632,7 +646,9 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
               <Input
                 id={fieldName}
                 value={(fieldValue as string) || ''}
-                onChange={(e) => handleAccountFieldChange(field.id!, e.target.value, field.fieldType)}
+                onChange={(e) =>
+                  handleAccountFieldChange(field.id!, e.target.value, field.fieldType)
+                }
                 className={inputClasses}
                 placeholder={field.placeholder}
                 minLength={field.minLength || undefined}
@@ -642,7 +658,9 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
               <Textarea
                 id={fieldName}
                 value={(fieldValue as string) || ''}
-                onChange={(e) => handleAccountFieldChange(field.id!, e.target.value, field.fieldType)}
+                onChange={(e) =>
+                  handleAccountFieldChange(field.id!, e.target.value, field.fieldType)
+                }
                 className={inputClasses}
                 placeholder={field.placeholder}
                 minLength={field.minLength || undefined}
@@ -846,10 +864,10 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
 
     accountTemplateFields.forEach((field) => {
       const fieldKey = `field_${field.id}`;
-      
+
       if (field.isRequired) {
         const fieldResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
-        
+
         if (!fieldResponse) {
           errors.push(`${field.label} is required`);
           fieldErrors[fieldKey] = `${field.label} is required`;
@@ -863,7 +881,8 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
             hasValue = fieldResponse.valueText && fieldResponse.valueText.trim() !== '';
             break;
           case FieldType.Number:
-            hasValue = fieldResponse.valueNumber !== null && fieldResponse.valueNumber !== undefined;
+            hasValue =
+              fieldResponse.valueNumber !== null && fieldResponse.valueNumber !== undefined;
             break;
           case FieldType.Date:
             hasValue = fieldResponse.valueDate && fieldResponse.valueDate.trim() !== '';
@@ -886,10 +905,14 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
 
       if (field.fieldType === FieldType.Number && field.ranges) {
         const fieldResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
-        if (fieldResponse && fieldResponse.valueNumber !== null && fieldResponse.valueNumber !== undefined) {
+        if (
+          fieldResponse &&
+          fieldResponse.valueNumber !== null &&
+          fieldResponse.valueNumber !== undefined
+        ) {
           const { min, max } = getRangeBounds(field.ranges);
           const value = fieldResponse.valueNumber;
-          
+
           if (min !== undefined && value < min) {
             const errorMsg = `${field.label} must be at least ${min}`;
             errors.push(errorMsg);
@@ -903,11 +926,11 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
         }
       }
 
-      if ((field.fieldType === FieldType.Text || field.fieldType === FieldType.TextArea)) {
+      if (field.fieldType === FieldType.Text || field.fieldType === FieldType.TextArea) {
         const fieldResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
         if (fieldResponse && fieldResponse.valueText) {
           const textLength = fieldResponse.valueText.length;
-          
+
           if (field.minLength && textLength < field.minLength) {
             const errorMsg = `${field.label} must be at least ${field.minLength} characters`;
             errors.push(errorMsg);
@@ -925,7 +948,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
         const fieldResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
         if (fieldResponse && fieldResponse.valueDate) {
           const fieldDate = new Date(fieldResponse.valueDate);
-          
+
           if (field.minDate) {
             const minDate = new Date(field.minDate);
             if (fieldDate < minDate) {
@@ -952,7 +975,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
 
   const handleCreateAccount = async () => {
     setAccountErrors({});
-    
+
     const validationErrors = validateAccountCreation(accountData, accountFieldResponses);
 
     if (validationErrors.length > 0) {
@@ -1056,7 +1079,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
                 </div>
                 {selectedTemplateId && (
                   <div className="mt-3 text-sm text-blue-600">
-                    Template selected: {templates.find(t => t.id === selectedTemplateId)?.name}
+                    Template selected: {templates.find((t) => t.id === selectedTemplateId)?.name}
                   </div>
                 )}
               </div>
@@ -1088,7 +1111,11 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
                         </Select>
                         <Input
                           id="searchTerm"
-                          placeholder={filterType === 'customer' ? 'Enter customer ID...' : 'Enter account number...'}
+                          placeholder={
+                            filterType === 'customer'
+                              ? 'Enter customer ID...'
+                              : 'Enter account number...'
+                          }
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           className="flex-1"
@@ -1109,17 +1136,23 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
                       {unifiedSearchLoading ? 'Searching...' : 'Filter'}
                     </Button>
                   </div>
-                  
+
                   {/* Search Results Summary */}
                   {searchType && (
                     <div className="mt-3 p-3 rounded bg-white border">
                       <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${searchType === 'customer' ? 'bg-blue-500' : 'bg-green-500'}`}></div>
+                        <div
+                          className={`w-3 h-3 rounded-full ${searchType === 'customer' ? 'bg-blue-500' : 'bg-green-500'}`}
+                        ></div>
                         <span className="text-sm font-medium">
                           {searchType === 'customer' ? 'Customer Records' : 'Account Search'}
                         </span>
                         <span className="text-xs text-gray-500">
-                          ({searchType === 'customer' ? `${totalCount} customers found` : `${accounts.length} accounts found`})
+                          (
+                          {searchType === 'customer'
+                            ? `${totalCount} customers found`
+                            : `${accounts.length} accounts found`}
+                          )
                         </span>
                       </div>
                       <div className="text-xs text-gray-600 mt-1">
@@ -1162,9 +1195,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
                             <td className="border px-3 py-2">
                               {rec.firstName} {rec.lastName}
                             </td>
-                            <td className="border px-3 py-2">
-                              {rec.customerReferenceId || '-'}
-                            </td>
+                            <td className="border px-3 py-2">{rec.customerReferenceId || '-'}</td>
                             <td className="border px-3 py-2">{rec.dateOfBirth}</td>
                             <td className="border px-3 py-2">{rec.identification}</td>
                           </tr>
@@ -1191,7 +1222,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                       disabled={currentPage === 1 || recordsLoading}
                     >
                       Previous
@@ -1200,7 +1231,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                       disabled={currentPage === totalPages || recordsLoading}
                     >
                       Next
@@ -1230,9 +1261,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
                     </>
                   ) : (
                     <>
-                      <div className="font-semibold">
-                        Account Search Results
-                      </div>
+                      <div className="font-semibold">Account Search Results</div>
                       <div className="text-xs text-muted-foreground">
                         Found {accounts.length} account(s) for: "{searchTerm}"
                       </div>
@@ -1313,14 +1342,22 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
                                 {loadingAccountResponses[acc.id] ? (
                                   <div className="flex items-center justify-center py-4">
                                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                                    <span className="ml-2 text-sm text-muted-foreground">Loading field responses...</span>
+                                    <span className="ml-2 text-sm text-muted-foreground">
+                                      Loading field responses...
+                                    </span>
                                   </div>
-                                ) : accountFieldResponsesData[acc.id] && accountFieldResponsesData[acc.id].length > 0 ? (
+                                ) : accountFieldResponsesData[acc.id] &&
+                                  accountFieldResponsesData[acc.id].length > 0 ? (
                                   <div className="space-y-2">
-                                    <h4 className="font-medium text-sm">Account Field Responses:</h4>
+                                    <h4 className="font-medium text-sm">
+                                      Account Field Responses:
+                                    </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                       {accountFieldResponsesData[acc.id].map((response) => (
-                                        <div key={response.id} className="bg-white p-3 rounded border">
+                                        <div
+                                          key={response.id}
+                                          className="bg-white p-3 rounded border"
+                                        >
                                           <div className="text-sm font-medium text-gray-700">
                                             {response.fieldName}
                                           </div>
@@ -1329,7 +1366,8 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
                                           </div>
                                           {response.created && (
                                             <div className="text-xs text-gray-500 mt-1">
-                                              Created: {new Date(response.created).toLocaleDateString()}
+                                              Created:{' '}
+                                              {new Date(response.created).toLocaleDateString()}
                                             </div>
                                           )}
                                         </div>
@@ -1462,7 +1500,9 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
                       {accountTemplateFieldsLoading ? (
                         <div className="flex items-center justify-center py-4">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                          <span className="ml-2 text-sm text-muted-foreground">Loading fields...</span>
+                          <span className="ml-2 text-sm text-muted-foreground">
+                            Loading fields...
+                          </span>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1483,7 +1523,9 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
                       )}
 
                       {/* Checkbox fields for account template */}
-                      {accountTemplateFields.some((field) => field.fieldType === FieldType.Checkbox) && (
+                      {accountTemplateFields.some(
+                        (field) => field.fieldType === FieldType.Checkbox
+                      ) && (
                         <div className="mt-4 pt-3 border-t">
                           <h5 className="text-sm font-medium mb-2 text-muted-foreground">
                             Account Options
@@ -1520,11 +1562,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
           <Button type="button" onClick={handleDone}>
             Done
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate('/records/new')}
-          >
+          <Button type="button" variant="outline" onClick={() => navigate('/records/new')}>
             Create New Customer
           </Button>
         </DialogFooter>

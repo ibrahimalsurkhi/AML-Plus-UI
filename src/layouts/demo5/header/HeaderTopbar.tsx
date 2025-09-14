@@ -100,7 +100,7 @@ const HeaderTopbar = () => {
               alt=""
             />
           </MenuToggle>
-          {DropdownUser({ menuItemRef: itemUserRef })}
+          {DropdownUser()}
         </MenuItem>
       </Menu>
     </div>

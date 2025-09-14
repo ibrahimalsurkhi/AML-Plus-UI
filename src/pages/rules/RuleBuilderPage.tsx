@@ -16,12 +16,12 @@ import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
 import { ruleService } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
 import { getRulePreview } from '@/services/rulePreviewService';
-import { 
-  saveRuleDraft, 
-  loadRuleDraft, 
-  deleteRuleDraft, 
-  hasDraft, 
-  getDraftAge 
+import {
+  saveRuleDraft,
+  loadRuleDraft,
+  deleteRuleDraft,
+  hasDraft,
+  getDraftAge
 } from '@/utils/ruleDraftStorage';
 import DraftConfirmationDialog from '@/components/rule-builder/DraftConfirmationDialog';
 import { Save } from 'lucide-react';
@@ -68,11 +68,12 @@ const RuleBuilderPage = () => {
 
   // Save draft whenever rule changes (debounced)
   useEffect(() => {
-    const isEmptyRule = !rule.name && 
-                      rule.ruleType === 'simple' && 
-                      rule.applyTo === ApplyTo.Sender && 
-                      rule.root.children.length === 0;
-    
+    const isEmptyRule =
+      !rule.name &&
+      rule.ruleType === 'simple' &&
+      rule.applyTo === ApplyTo.Sender &&
+      rule.root.children.length === 0;
+
     if (!isEmptyRule) {
       const timeoutId = setTimeout(() => {
         saveRuleDraft({
@@ -82,11 +83,11 @@ const RuleBuilderPage = () => {
           root: rule.root
         });
         setIsDraftSaved(true);
-        
+
         // Clear the saved indicator after 2 seconds
         setTimeout(() => setIsDraftSaved(false), 2000);
       }, 1000); // 1 second debounce
-      
+
       return () => clearTimeout(timeoutId);
     }
   }, [rule]);
@@ -142,10 +143,10 @@ const RuleBuilderPage = () => {
         tenantId: 1 // default tenant, adjust as needed
       };
       await ruleService.createRule(ruleToSend);
-      
+
       // Delete draft after successful save
       deleteRuleDraft();
-      
+
       navigate('/rules'); // Redirect to rule list page
     } catch (err) {
       console.error('Failed to save rule:', err);
@@ -262,7 +263,7 @@ const RuleBuilderPage = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Draft Confirmation Dialog */}
         <DraftConfirmationDialog
           isOpen={showDraftDialog}

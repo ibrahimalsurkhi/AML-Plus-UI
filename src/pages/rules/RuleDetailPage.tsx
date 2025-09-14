@@ -46,10 +46,14 @@ const RuleDetailPage: React.FC = () => {
           setRulePreview(preview);
         } catch (error) {
           console.error('Failed to generate rule preview:', error);
-          setRulePreview('[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]');
+          setRulePreview(
+            '[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]'
+          );
         }
       } else {
-        setRulePreview('[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]');
+        setRulePreview(
+          '[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]'
+        );
       }
     };
     loadRulePreview();

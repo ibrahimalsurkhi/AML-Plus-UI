@@ -46,14 +46,14 @@ export const loadRuleDraft = (): RuleDraft | null => {
     const stored = localStorage.getItem(RULE_DRAFT_KEY);
     if (stored) {
       const draft: RuleDraft = JSON.parse(stored);
-      
+
       // Check if draft is expired
       if (isDraftExpired(draft.timestamp)) {
         // Auto-delete expired draft
         deleteRuleDraft();
         return null;
       }
-      
+
       return draft;
     }
     return null;
@@ -81,16 +81,16 @@ export const hasDraft = (): boolean => {
   try {
     const stored = localStorage.getItem(RULE_DRAFT_KEY);
     if (!stored) return false;
-    
+
     const draft: RuleDraft = JSON.parse(stored);
-    
+
     // Check if draft is expired
     if (isDraftExpired(draft.timestamp)) {
       // Auto-delete expired draft
       deleteRuleDraft();
       return false;
     }
-    
+
     return true;
   } catch (error) {
     console.error('Failed to check for rule draft:', error);
@@ -106,14 +106,14 @@ export const getDraftAge = (): number => {
   try {
     const stored = localStorage.getItem(RULE_DRAFT_KEY);
     if (!stored) return 0;
-    
+
     const draft: RuleDraft = JSON.parse(stored);
-    
+
     // Check if draft is expired
     if (isDraftExpired(draft.timestamp)) {
       return 0;
     }
-    
+
     const ageMs = Date.now() - draft.timestamp;
     return ageMs / (1000 * 60 * 60); // Convert to hours
   } catch (error) {

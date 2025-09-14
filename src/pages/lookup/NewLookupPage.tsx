@@ -58,7 +58,7 @@ const NewLookupPage = () => {
                   required
                 />
               </div>
-              
+
               <Button type="submit" disabled={loading}>
                 {loading ? 'Creating...' : 'Create'}
               </Button>

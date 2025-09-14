@@ -169,9 +169,7 @@ const CreateCustomValuePage = () => {
               {/* Field */}
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700">
-                  Field
-                </label>
+                <label className="block text-sm font-medium mb-2 text-gray-700">Field</label>
                 <Select
                   value={customValue.aggregateFieldId?.toString() || ''}
                   onValueChange={(value) => handleFieldChange('aggregateFieldId', Number(value))}
@@ -189,7 +187,6 @@ const CreateCustomValuePage = () => {
                 </Select>
               </div>
 
-
               {/* Grid for other aggregation settings */}
               {customValue.isAggregated && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -200,7 +197,9 @@ const CreateCustomValuePage = () => {
                     </label>
                     <Select
                       value={customValue.aggregateFunction?.toString() || ''}
-                      onValueChange={(value) => handleFieldChange('aggregateFunction', Number(value))}
+                      onValueChange={(value) =>
+                        handleFieldChange('aggregateFunction', Number(value))
+                      }
                     >
                       <SelectTrigger className="w-full bg-white border-gray-200">
                         <SelectValue placeholder="Select function" />
@@ -238,28 +237,27 @@ const CreateCustomValuePage = () => {
                   </div>
 
                   <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Account Type
-                  </label>
-                  <Select
-                    value={customValue.accountType?.toString() || ''}
-                    onValueChange={(value) => handleFieldChange('accountType', Number(value))}
-                  >
-                    <SelectTrigger className="w-full bg-white border-gray-200">
-                      <SelectValue placeholder="Select account type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {AccountTypeOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value.toString()}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">
+                      Account Type
+                    </label>
+                    <Select
+                      value={customValue.accountType?.toString() || ''}
+                      onValueChange={(value) => handleFieldChange('accountType', Number(value))}
+                    >
+                      <SelectTrigger className="w-full bg-white border-gray-200">
+                        <SelectValue placeholder="Select account type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AccountTypeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value.toString()}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
-
             </div>
           </CardContent>
         </Card>
@@ -288,10 +286,10 @@ const CreateCustomValuePage = () => {
                       value={customValue.duration ?? ''}
                       onChange={(e) => {
                         const durationVal = e.target.value ? Number(e.target.value) : null;
-                        
+
                         if (durationVal) {
                           // If Duration is entered, reset Last Transaction Count and auto-set durationType if not set
-                          setCustomValue(prev => ({
+                          setCustomValue((prev) => ({
                             ...prev,
                             duration: durationVal,
                             durationType: prev.durationType || 1,
@@ -299,7 +297,7 @@ const CreateCustomValuePage = () => {
                           }));
                         } else {
                           // If Duration is cleared, also clear durationType
-                          setCustomValue(prev => ({
+                          setCustomValue((prev) => ({
                             ...prev,
                             duration: null,
                             durationType: null
@@ -348,11 +346,13 @@ const CreateCustomValuePage = () => {
                     type="number"
                     value={customValue.lastTransactionCount ?? ''}
                     onChange={(e) => {
-                      const lastTransactionCountVal = e.target.value ? Number(e.target.value) : null;
-                      
+                      const lastTransactionCountVal = e.target.value
+                        ? Number(e.target.value)
+                        : null;
+
                       // If Last Transaction Count is entered, reset Duration & Type
                       if (lastTransactionCountVal) {
-                        setCustomValue(prev => ({
+                        setCustomValue((prev) => ({
                           ...prev,
                           lastTransactionCount: lastTransactionCountVal,
                           duration: null,

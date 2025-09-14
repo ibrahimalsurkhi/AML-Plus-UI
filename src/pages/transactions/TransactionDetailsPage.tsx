@@ -27,7 +27,6 @@ import {
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 
-
 interface TransactionDetails extends Transaction {
   // The Transaction interface now includes sender, recipient, and fieldResponses
   // No need for additional interfaces as they're already defined in the API service
@@ -157,19 +156,19 @@ const TransactionDetailsPage = () => {
     }
   };
 
-
   // Helper to get field score information
   const getFieldScore = (fieldId: number) => {
     if (!transaction?.fieldResponses) return null;
     const response = transaction.fieldResponses.find((fr) => fr.fieldId === fieldId);
-    return response ? {
-      score: response.score,
-      scoreCriteriaKey: response.scoreCriteriaKey,
-      scoreCriteriaBGColor: response.scoreCriteriaBGColor,
-      scoreCriteriaColor: response.scoreCriteriaColor
-    } : null;
+    return response
+      ? {
+          score: response.score,
+          scoreCriteriaKey: response.scoreCriteriaKey,
+          scoreCriteriaBGColor: response.scoreCriteriaBGColor,
+          scoreCriteriaColor: response.scoreCriteriaColor
+        }
+      : null;
   };
-
 
   if (loading) {
     return (
@@ -263,7 +262,9 @@ const TransactionDetailsPage = () => {
               </div>
               <div>
                 <p className="text-sm text-blue-600 font-medium">Created</p>
-                <p className="font-semibold text-blue-900">{formatDate(transaction.created!) || 'N/A'}</p>
+                <p className="font-semibold text-blue-900">
+                  {formatDate(transaction.created!) || 'N/A'}
+                </p>
               </div>
             </div>
 
@@ -273,7 +274,9 @@ const TransactionDetailsPage = () => {
               </div>
               <div>
                 <p className="text-sm text-green-600 font-medium">Currency</p>
-                <p className="font-semibold text-green-900">{transaction.transactionCurrencyName}</p>
+                <p className="font-semibold text-green-900">
+                  {transaction.transactionCurrencyName}
+                </p>
               </div>
             </div>
 
@@ -304,7 +307,10 @@ const TransactionDetailsPage = () => {
               </div>
               <div className="text-right">
                 <div className="text-4xl font-bold text-primary mb-1">
-                  {formatCurrency(transaction.transactionAmount, transaction.transactionCurrencyName)}
+                  {formatCurrency(
+                    transaction.transactionAmount,
+                    transaction.transactionCurrencyName
+                  )}
                 </div>
                 <div className="text-sm text-gray-500">
                   {transaction.transactionCurrencyName || 'USD'}
@@ -384,9 +390,7 @@ const TransactionDetailsPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Account Number</span>
-                      <span className="font-mono font-medium">
-                        {transaction.sender.number}
-                      </span>
+                      <span className="font-mono font-medium">{transaction.sender.number}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Record</span>
@@ -396,9 +400,7 @@ const TransactionDetailsPage = () => {
                             variant="link"
                             size="sm"
                             className="p-0 h-auto font-medium text-primary hover:text-primary/80"
-                            onClick={() =>
-                              navigate(`/records/${transaction.sender!.record!.id}`)
-                            }
+                            onClick={() => navigate(`/records/${transaction.sender!.record!.id}`)}
                           >
                             {transaction.sender.record.recordName}
                           </Button>
@@ -409,9 +411,7 @@ const TransactionDetailsPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Bank</span>
-                      <span className="font-medium">
-                        {transaction.sender.bankOfCountryName}
-                      </span>
+                      <span className="font-medium">{transaction.sender.bankOfCountryName}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">City</span>
@@ -429,15 +429,21 @@ const TransactionDetailsPage = () => {
                       <>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-500">Template</span>
-                          <span className="font-medium">{transaction.sender.record.templateName}</span>
+                          <span className="font-medium">
+                            {transaction.sender.record.templateName}
+                          </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-500">Customer Ref</span>
-                          <span className="font-medium">{transaction.sender.record.customerReferenceId}</span>
+                          <span className="font-medium">
+                            {transaction.sender.record.customerReferenceId}
+                          </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-500">Nationality</span>
-                          <span className="font-medium">{transaction.sender.record.nationality}</span>
+                          <span className="font-medium">
+                            {transaction.sender.record.nationality}
+                          </span>
                         </div>
                       </>
                     )}
@@ -466,9 +472,7 @@ const TransactionDetailsPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Account Number</span>
-                      <span className="font-mono font-medium">
-                        {transaction.recipient.number}
-                      </span>
+                      <span className="font-mono font-medium">{transaction.recipient.number}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Record</span>
@@ -491,9 +495,7 @@ const TransactionDetailsPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Bank</span>
-                      <span className="font-medium">
-                        {transaction.recipient.bankOfCountryName}
-                      </span>
+                      <span className="font-medium">{transaction.recipient.bankOfCountryName}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">City</span>
@@ -522,23 +524,33 @@ const TransactionDetailsPage = () => {
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-500">Customer Ref</span>
-                            <span className="font-mono text-xs">{transaction.recipient.record.customerReferenceId}</span>
+                            <span className="font-mono text-xs">
+                              {transaction.recipient.record.customerReferenceId}
+                            </span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-500">Nationality</span>
-                            <span className="font-medium">{transaction.recipient.record.nationality}</span>
+                            <span className="font-medium">
+                              {transaction.recipient.record.nationality}
+                            </span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-500">Country of Birth</span>
-                            <span className="font-medium">{transaction.recipient.record.countryOfBirth}</span>
+                            <span className="font-medium">
+                              {transaction.recipient.record.countryOfBirth}
+                            </span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-500">Date of Birth</span>
-                            <span className="font-medium">{formatDateOnly(transaction.recipient.record.dateOfBirth)}</span>
+                            <span className="font-medium">
+                              {formatDateOnly(transaction.recipient.record.dateOfBirth)}
+                            </span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-500">Identification</span>
-                            <span className="font-mono text-xs">{transaction.recipient.record.identification}</span>
+                            <span className="font-mono text-xs">
+                              {transaction.recipient.record.identification}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -552,9 +564,7 @@ const TransactionDetailsPage = () => {
                 )}
               </div>
             </div>
-
           </div>
-
 
           {/* Field Responses Card */}
           {transaction.fieldResponses && transaction.fieldResponses.length > 0 && (
@@ -572,11 +582,14 @@ const TransactionDetailsPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {transaction.fieldResponses.map((fieldResponse) => {
                     const fieldScore = getFieldScore(fieldResponse.fieldId);
-                    const fieldValue = fieldResponse.optionValue || 
-                                     fieldResponse.valueText || 
-                                     fieldResponse.valueNumber || 
-                                     (fieldResponse.valueDate ? new Date(fieldResponse.valueDate).toLocaleDateString() : null);
-                    
+                    const fieldValue =
+                      fieldResponse.optionValue ||
+                      fieldResponse.valueText ||
+                      fieldResponse.valueNumber ||
+                      (fieldResponse.valueDate
+                        ? new Date(fieldResponse.valueDate).toLocaleDateString()
+                        : null);
+
                     return (
                       <div
                         key={fieldResponse.id}
@@ -588,7 +601,9 @@ const TransactionDetailsPage = () => {
                               <FileText className="w-4 h-4 text-blue-600" />
                             </div>
                             <div>
-                              <h4 className="font-semibold text-gray-900">{fieldResponse.fieldLabel}</h4>
+                              <h4 className="font-semibold text-gray-900">
+                                {fieldResponse.fieldLabel}
+                              </h4>
                             </div>
                           </div>
                           {fieldScore && fieldScore.score !== null && (
@@ -604,13 +619,15 @@ const TransactionDetailsPage = () => {
                             </Badge>
                           )}
                         </div>
-                        
+
                         <div className="bg-white rounded-lg p-3 border">
                           <div className="text-lg font-semibold text-gray-900">
-                            {fieldValue || <span className="text-gray-400 italic">No value set</span>}
+                            {fieldValue || (
+                              <span className="text-gray-400 italic">No value set</span>
+                            )}
                           </div>
                         </div>
-                        
+
                         {fieldResponse.fieldName !== fieldResponse.fieldLabel && (
                           <div className="mt-2 text-xs text-gray-500">
                             Internal Name: {fieldResponse.fieldName}

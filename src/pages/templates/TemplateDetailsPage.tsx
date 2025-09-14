@@ -484,17 +484,21 @@ const StatusIcon = ({ status }: { status: TemplateStatus }) => {
 };
 
 // Component to render score criteria badge with fallback to template score criteria
-const ScoreCriteriaBadge = ({ 
-  option, 
-  scoreCriteria, 
-  lookupValue 
-}: { 
-  option: FieldOption; 
-  scoreCriteria: ScoreCriteria[]; 
+const ScoreCriteriaBadge = ({
+  option,
+  scoreCriteria,
+  lookupValue
+}: {
+  option: FieldOption;
+  scoreCriteria: ScoreCriteria[];
   lookupValue?: LookupValue;
 }) => {
   // First try to use lookup value score criteria data
-  if (lookupValue?.scoreCriteriaKey && lookupValue?.scoreCriteriaBGColor && lookupValue?.scoreCriteriaColor) {
+  if (
+    lookupValue?.scoreCriteriaKey &&
+    lookupValue?.scoreCriteriaBGColor &&
+    lookupValue?.scoreCriteriaColor
+  ) {
     return (
       <div className="flex items-center gap-2">
         <Badge
@@ -525,9 +529,7 @@ const ScoreCriteriaBadge = ({
         >
           {criteria.key}
         </Badge>
-        <span className="text-sm text-gray-500">
-          ({criteria.score.toFixed(2)})
-        </span>
+        <span className="text-sm text-gray-500">({criteria.score.toFixed(2)})</span>
       </div>
     );
   }
@@ -1018,44 +1020,44 @@ const TemplateFieldDialog = ({
             {/* Additional validation fields based on field type */}
             {(formData.fieldType === FieldType.Text ||
               formData.fieldType === FieldType.TextArea) && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="minLength">Min Length</Label>
-                    <Input
-                      id="minLength"
-                      type="number"
-                      min={0}
-                      value={formData.minLength || ''}
-                      onChange={(e) => {
-                        const value = e.target.value ? Number(e.target.value) : null;
-                        setFormData({ ...formData, minLength: value });
-                        if (errors.minLength) {
-                          setErrors({ ...errors, minLength: '' });
-                        }
-                      }}
-                      placeholder="Min length"
-                      className={errors.minLength ? 'border-red-500 focus-visible:ring-red-500' : ''}
-                    />
-                    {errors.minLength && (
-                      <p className="text-red-500 text-sm mt-1">{errors.minLength}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="maxLength">Max Length</Label>
-                    <Input
-                      id="maxLength"
-                      type="number"
-                      min={0}
-                      value={formData.maxLength || ''}
-                      onChange={(e) => {
-                        const value = e.target.value ? Number(e.target.value) : null;
-                        setFormData({ ...formData, maxLength: value });
-                      }}
-                      placeholder="Max length"
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="minLength">Min Length</Label>
+                  <Input
+                    id="minLength"
+                    type="number"
+                    min={0}
+                    value={formData.minLength || ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : null;
+                      setFormData({ ...formData, minLength: value });
+                      if (errors.minLength) {
+                        setErrors({ ...errors, minLength: '' });
+                      }
+                    }}
+                    placeholder="Min length"
+                    className={errors.minLength ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  />
+                  {errors.minLength && (
+                    <p className="text-red-500 text-sm mt-1">{errors.minLength}</p>
+                  )}
                 </div>
-              )}
+                <div className="space-y-2">
+                  <Label htmlFor="maxLength">Max Length</Label>
+                  <Input
+                    id="maxLength"
+                    type="number"
+                    min={0}
+                    value={formData.maxLength || ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : null;
+                      setFormData({ ...formData, maxLength: value });
+                    }}
+                    placeholder="Max length"
+                  />
+                </div>
+              </div>
+            )}
 
             {formData.fieldType === FieldType.Number && (
               <div className="grid grid-cols-2 gap-4">
@@ -1567,14 +1569,14 @@ const FieldOptionsDialog = ({
                         .sort((a, b) => a.displayOrder - b.displayOrder)
                         .map((option) => {
                           // Find corresponding lookup value for this option
-                          const lookupValue = lookupValues.find(lv => lv.id === option.id);
-                          
+                          const lookupValue = lookupValues.find((lv) => lv.id === option.id);
+
                           return (
                             <TableRow key={option.id}>
                               <TableCell className="font-medium">{option.label}</TableCell>
                               {templateType === TemplateType.Record && (
                                 <TableCell>
-                                  <ScoreCriteriaBadge 
+                                  <ScoreCriteriaBadge
                                     option={option}
                                     scoreCriteria={scoreCriteria}
                                     lookupValue={lookupValue}
@@ -1584,7 +1586,6 @@ const FieldOptionsDialog = ({
                               <TableCell>{option.displayOrder}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
-
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -2210,7 +2211,10 @@ export const TemplateDetailsPage = () => {
   const [fieldDialogOpen, setFieldDialogOpen] = useState(false);
   const [selectedField, setSelectedField] = useState<TemplateField | null>(null);
   const [editingWeight, setEditingWeight] = useState<{ id: number; value: number } | null>(null);
-  const [editingPersonalWeight, setEditingPersonalWeight] = useState<{ field: string; value: number } | null>(null);
+  const [editingPersonalWeight, setEditingPersonalWeight] = useState<{
+    field: string;
+    value: number;
+  } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fieldToDelete, setFieldToDelete] = useState<TemplateField | null>(null);
 
@@ -2257,7 +2261,7 @@ export const TemplateDetailsPage = () => {
     try {
       setLoading(true);
       const data = await templateService.getTemplateById(templateId);
-      
+
       // Ensure weight properties exist with default values
       const templateWithDefaults = {
         ...data,
@@ -2265,7 +2269,7 @@ export const TemplateDetailsPage = () => {
         nationalityWeight: data.nationalityWeight ?? 0,
         scoreToOpenCase: data.scoreToOpenCase ?? 0
       };
-      
+
       setTemplate(templateWithDefaults);
       setScoreToOpenCase(templateWithDefaults.scoreToOpenCase?.toString() || '0');
       setError(null);
@@ -2300,31 +2304,35 @@ export const TemplateDetailsPage = () => {
   // Helper function to calculate global weight distribution percentages
   const calculateGlobalWeightDistribution = (currentFieldWeight: number): string => {
     if (!template) return '0.0';
-    
+
     // Get total weight from personal information
-    const personalInfoWeight = (template.countryOfBirthWeight || 0) + (template.nationalityWeight || 0);
-    
+    const personalInfoWeight =
+      (template.countryOfBirthWeight || 0) + (template.nationalityWeight || 0);
+
     // Get total weight from all template fields
     const allFields = getAllTemplateFields();
     const templateFieldsWeight = allFields.reduce((sum, field) => sum + (field.weight || 0), 0);
-    
+
     // Calculate global total weight
     const globalTotalWeight = personalInfoWeight + templateFieldsWeight;
-    
+
     if (globalTotalWeight === 0) return '0.0';
-    
+
     const percentage = ((currentFieldWeight || 0) / globalTotalWeight) * 100;
     return percentage.toFixed(1);
   };
 
   // Helper function to calculate weight distribution percentages (legacy for backwards compatibility)
-  const calculateWeightDistribution = (fields: TemplateField[], currentFieldWeight: number): string => {
+  const calculateWeightDistribution = (
+    fields: TemplateField[],
+    currentFieldWeight: number
+  ): string => {
     return calculateGlobalWeightDistribution(currentFieldWeight);
   };
 
   // Helper function to get fields for distribution calculation (section-specific)
   const getSectionFields = (sectionId: number): TemplateField[] => {
-    const section = templateSections.find(s => s.id === sectionId);
+    const section = templateSections.find((s) => s.id === sectionId);
     return section ? section.fields : [];
   };
 
@@ -2533,7 +2541,7 @@ export const TemplateDetailsPage = () => {
 
     try {
       setEditingPersonalWeight(null);
-      
+
       const weights: { countryOfBirthWeight?: number; nationalityWeight?: number } = {};
       if (field === 'countryOfBirth') {
         weights.countryOfBirthWeight = newWeight;
@@ -2544,11 +2552,16 @@ export const TemplateDetailsPage = () => {
       await templateService.updateTemplateWeights(template.id.toString(), weights);
 
       // Update the template weights in state
-      setTemplate(prev => prev ? {
-        ...prev,
-        countryOfBirthWeight: field === 'countryOfBirth' ? newWeight : prev.countryOfBirthWeight,
-        nationalityWeight: field === 'nationality' ? newWeight : prev.nationalityWeight
-      } : null);
+      setTemplate((prev) =>
+        prev
+          ? {
+              ...prev,
+              countryOfBirthWeight:
+                field === 'countryOfBirth' ? newWeight : prev.countryOfBirthWeight,
+              nationalityWeight: field === 'nationality' ? newWeight : prev.nationalityWeight
+            }
+          : null
+      );
 
       toast({
         title: 'Success',
@@ -2569,7 +2582,7 @@ export const TemplateDetailsPage = () => {
     if (!id || !template) return;
 
     const numericValue = parseFloat(scoreToOpenCase);
-    
+
     // Validation
     if (isNaN(numericValue) || numericValue < 0 || numericValue > 5) {
       toast({
@@ -2589,12 +2602,16 @@ export const TemplateDetailsPage = () => {
 
     try {
       await templateService.updateScoreToOpenCase(id, numericValue);
-      
+
       // Update local state
-      setTemplate(prev => prev ? {
-        ...prev,
-        scoreToOpenCase: numericValue
-      } : null);
+      setTemplate((prev) =>
+        prev
+          ? {
+              ...prev,
+              scoreToOpenCase: numericValue
+            }
+          : null
+      );
 
       toast({
         title: 'Success',
@@ -2639,7 +2656,8 @@ export const TemplateDetailsPage = () => {
     if (optionFieldId < 0) {
       toast({
         title: 'Not Allowed',
-        description: 'Cannot create new options for read-only dropdown fields. Options are managed externally.',
+        description:
+          'Cannot create new options for read-only dropdown fields. Options are managed externally.',
         variant: 'destructive'
       });
       return;
@@ -2675,7 +2693,7 @@ export const TemplateDetailsPage = () => {
     // For read-only fields (negative IDs), allow score updates but block other changes
     if (optionFieldId < 0) {
       // Find the original option to check if only score is being updated
-      const originalOption = fieldOptions.find(opt => opt.id === optionId);
+      const originalOption = fieldOptions.find((opt) => opt.id === optionId);
       try {
         await templateService.updateFieldOption(id, optionFieldId, originalOption?.id || 0, option);
 
@@ -2703,10 +2721,7 @@ export const TemplateDetailsPage = () => {
           variant: 'destructive'
         });
       }
-
-
-    }
-    else {
+    } else {
       try {
         await templateService.updateFieldOption(id, optionFieldId, optionId, option);
 
@@ -2728,7 +2743,6 @@ export const TemplateDetailsPage = () => {
         });
       }
     }
-
   };
 
   const confirmDeleteOption = (option: FieldOption) => {
@@ -2743,7 +2757,8 @@ export const TemplateDetailsPage = () => {
     if (optionFieldId < 0) {
       toast({
         title: 'Not Allowed',
-        description: 'Cannot delete options for read-only dropdown fields. Options are managed externally.',
+        description:
+          'Cannot delete options for read-only dropdown fields. Options are managed externally.',
         variant: 'destructive'
       });
       setOptionToDelete(null);
@@ -3089,13 +3104,17 @@ export const TemplateDetailsPage = () => {
       await templateService.updateTemplateDefaultScoreCriteria(id, defaultScoreCriteriaId);
 
       // Update local template state
-      setTemplate(prev => prev ? {
-        ...prev,
-        defaultScoreCriteriaId,
-        defaultScoreCriteria: defaultScoreCriteriaId
-          ? scoreCriteria.find(c => c.id === defaultScoreCriteriaId) || null
+      setTemplate((prev) =>
+        prev
+          ? {
+              ...prev,
+              defaultScoreCriteriaId,
+              defaultScoreCriteria: defaultScoreCriteriaId
+                ? scoreCriteria.find((c) => c.id === defaultScoreCriteriaId) || null
+                : null
+            }
           : null
-      } : null);
+      );
 
       toast({
         title: 'Success',
@@ -3216,7 +3235,7 @@ export const TemplateDetailsPage = () => {
               </CardHeader>
               <CardContent className="px-6 py-8">
                 <ScoreCriteriaBar criteria={scoreCriteria} onChange={handleScoreChange} />
-                
+
                 {/* Score to Open Case Input */}
                 <div className="mt-8 pt-6 border-t border-gray-200">
                   <div className="flex items-center justify-between mb-4">
@@ -3227,11 +3246,14 @@ export const TemplateDetailsPage = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="max-w-xs">
                     <div className="flex items-center gap-3">
                       <div className="flex-1">
-                        <label htmlFor="scoreToOpenCase" className="block text-xs font-medium text-gray-700 mb-1">
+                        <label
+                          htmlFor="scoreToOpenCase"
+                          className="block text-xs font-medium text-gray-700 mb-1"
+                        >
                           Score Threshold
                         </label>
                         <input
@@ -3247,13 +3269,9 @@ export const TemplateDetailsPage = () => {
                           placeholder="e.g., 3.50"
                         />
                       </div>
-                      <div className="text-xs text-gray-500 self-end pb-2">
-                        / 5.00
-                      </div>
+                      <div className="text-xs text-gray-500 self-end pb-2">/ 5.00</div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Range: 0.00 - 5.00
-                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Range: 0.00 - 5.00</p>
                   </div>
                 </div>
               </CardContent>
@@ -3293,7 +3311,9 @@ export const TemplateDetailsPage = () => {
                       <>
                         <Separator />
                         <div className="space-y-1">
-                          <p className="text-sm font-medium text-gray-500">Default Score Criteria</p>
+                          <p className="text-sm font-medium text-gray-500">
+                            Default Score Criteria
+                          </p>
                           <div className="flex items-center gap-2">
                             <select
                               value={template.defaultScoreCriteriaId || ''}
@@ -3412,8 +3432,9 @@ export const TemplateDetailsPage = () => {
                         >
                           <Icon
                             name="expand_more"
-                            className={`text-blue-600 transition-transform duration-200 ${isPersonalInfoCollapsed ? 'rotate-180' : ''
-                              }`}
+                            className={`text-blue-600 transition-transform duration-200 ${
+                              isPersonalInfoCollapsed ? 'rotate-180' : ''
+                            }`}
                           />
                         </Button>
                       </div>
@@ -3468,9 +3489,13 @@ export const TemplateDetailsPage = () => {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {(field.label === 'Country of Birth' || field.label === 'Nationality') ? (
+                              {field.label === 'Country of Birth' ||
+                              field.label === 'Nationality' ? (
                                 <div className="flex items-center gap-2">
-                                  {editingPersonalWeight?.field === (field.label === 'Country of Birth' ? 'countryOfBirth' : 'nationality') ? (
+                                  {editingPersonalWeight?.field ===
+                                  (field.label === 'Country of Birth'
+                                    ? 'countryOfBirth'
+                                    : 'nationality') ? (
                                     <div className="flex items-center gap-2">
                                       <Input
                                         type="number"
@@ -3479,7 +3504,10 @@ export const TemplateDetailsPage = () => {
                                         value={editingPersonalWeight.value}
                                         onChange={(e) =>
                                           setEditingPersonalWeight({
-                                            field: field.label === 'Country of Birth' ? 'countryOfBirth' : 'nationality',
+                                            field:
+                                              field.label === 'Country of Birth'
+                                                ? 'countryOfBirth'
+                                                : 'nationality',
                                             value: Number(e.target.value)
                                           })
                                         }
@@ -3489,7 +3517,9 @@ export const TemplateDetailsPage = () => {
                                         size="sm"
                                         onClick={() =>
                                           handleUpdatePersonalWeight(
-                                            field.label === 'Country of Birth' ? 'countryOfBirth' : 'nationality',
+                                            field.label === 'Country of Birth'
+                                              ? 'countryOfBirth'
+                                              : 'nationality',
                                             editingPersonalWeight.value
                                           )
                                         }
@@ -3514,7 +3544,10 @@ export const TemplateDetailsPage = () => {
                                         size="sm"
                                         onClick={() =>
                                           setEditingPersonalWeight({
-                                            field: field.label === 'Country of Birth' ? 'countryOfBirth' : 'nationality',
+                                            field:
+                                              field.label === 'Country of Birth'
+                                                ? 'countryOfBirth'
+                                                : 'nationality',
                                             value: getPersonalFieldWeight(field.label)
                                           })
                                         }
@@ -3529,11 +3562,13 @@ export const TemplateDetailsPage = () => {
                               )}
                             </TableCell>
                             <TableCell>
-                              {(field.label === 'Country of Birth' || field.label === 'Nationality') ? (
+                              {field.label === 'Country of Birth' ||
+                              field.label === 'Nationality' ? (
                                 <span className="text-sm text-gray-600">
                                   {(() => {
                                     const weight = getPersonalFieldWeight(field.label);
-                                    const distribution = calculatePersonalWeightDistribution(weight);
+                                    const distribution =
+                                      calculatePersonalWeightDistribution(weight);
                                     return `${distribution}%`;
                                   })()}
                                 </span>
@@ -3631,8 +3666,9 @@ export const TemplateDetailsPage = () => {
                             >
                               <Icon
                                 name="expand_more"
-                                className={`text-gray-500 transition-transform duration-200 ${collapsedSections.has(`section-${section.id}`) ? 'rotate-180' : ''
-                                  }`}
+                                className={`text-gray-500 transition-transform duration-200 ${
+                                  collapsedSections.has(`section-${section.id}`) ? 'rotate-180' : ''
+                                }`}
                               />
                             </Button>
                             <Button
@@ -3787,14 +3823,20 @@ export const TemplateDetailsPage = () => {
                                                         )
                                                       }
                                                     >
-                                                      <Icon name="check" className="text-green-500" />
+                                                      <Icon
+                                                        name="check"
+                                                        className="text-green-500"
+                                                      />
                                                     </Button>
                                                     <Button
                                                       size="sm"
                                                       variant="ghost"
                                                       onClick={() => setEditingWeight(null)}
                                                     >
-                                                      <Icon name="close" className="text-gray-500" />
+                                                      <Icon
+                                                        name="close"
+                                                        className="text-gray-500"
+                                                      />
                                                     </Button>
                                                   </div>
                                                 ) : (
@@ -3821,7 +3863,11 @@ export const TemplateDetailsPage = () => {
                                           </TableCell>
                                           <TableCell>
                                             <span className="text-sm text-gray-600">
-                                              {calculateWeightDistribution(getSectionFields(section.id), field.weight)}%
+                                              {calculateWeightDistribution(
+                                                getSectionFields(section.id),
+                                                field.weight
+                                              )}
+                                              %
                                             </span>
                                           </TableCell>
                                         </>
@@ -3932,8 +3978,9 @@ export const TemplateDetailsPage = () => {
                             >
                               <Icon
                                 name="expand_more"
-                                className={`text-gray-500 transition-transform duration-200 ${isFieldsWithoutSectionCollapsed ? 'rotate-180' : ''
-                                  }`}
+                                className={`text-gray-500 transition-transform duration-200 ${
+                                  isFieldsWithoutSectionCollapsed ? 'rotate-180' : ''
+                                }`}
                               />
                             </Button>
                           </div>
@@ -4067,7 +4114,11 @@ export const TemplateDetailsPage = () => {
                                       </TableCell>
                                       <TableCell>
                                         <span className="text-sm text-gray-600">
-                                          {calculateWeightDistribution(fieldsWithoutSection, field.weight)}%
+                                          {calculateWeightDistribution(
+                                            fieldsWithoutSection,
+                                            field.weight
+                                          )}
+                                          %
                                         </span>
                                       </TableCell>
                                     </>
@@ -4336,7 +4387,11 @@ export const TemplateDetailsPage = () => {
               setCurrentReadOnlyFieldName(null);
             }
           }}
-          field={optionFieldId && optionFieldId < 0 ? selectedField : getAllTemplateFields().find((f) => f.id === optionFieldId) || null}
+          field={
+            optionFieldId && optionFieldId < 0
+              ? selectedField
+              : getAllTemplateFields().find((f) => f.id === optionFieldId) || null
+          }
           options={fieldOptions}
           scoreCriteria={scoreCriteria}
           onCreateOption={handleCreateOption}

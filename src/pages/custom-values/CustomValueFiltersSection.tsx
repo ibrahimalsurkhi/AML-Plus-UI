@@ -248,9 +248,7 @@ export const CustomValueFiltersSection: React.FC<CustomValueFiltersSectionProps>
               {/* Filter Header */}
               <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium text-gray-700">
-                    Filter {index + 1}
-                  </h4>
+                  <h4 className="text-sm font-medium text-gray-700">Filter {index + 1}</h4>
                   <Button
                     type="button"
                     variant="ghost"
@@ -296,7 +294,7 @@ export const CustomValueFiltersSection: React.FC<CustomValueFiltersSectionProps>
                           ))}
                         </SelectContent>
                       </Select>
-                      
+
                       {/* Operator dropdown, depends on field */}
                       <Select
                         value={filter.comparisonOperator.toString()}
@@ -322,9 +320,9 @@ export const CustomValueFiltersSection: React.FC<CustomValueFiltersSectionProps>
                                   </SelectItem>
                                 ))
                               : filter.aggregateFieldId === AggregateFieldId.Amount ||
-                                filter.aggregateFieldId === AggregateFieldId.TransactionCount ||
-                                filter.aggregateFieldId === AggregateFieldId.TransactionTime ||
-                                filter.aggregateFieldId === AggregateFieldId.CurrencyAmount
+                                  filter.aggregateFieldId === AggregateFieldId.TransactionCount ||
+                                  filter.aggregateFieldId === AggregateFieldId.TransactionTime ||
+                                  filter.aggregateFieldId === AggregateFieldId.CurrencyAmount
                                 ? ComparisonOperatorOptions.map((option) => (
                                     <SelectItem key={option.value} value={option.value.toString()}>
                                       {option.label}
@@ -392,8 +390,8 @@ export const CustomValueFiltersSection: React.FC<CustomValueFiltersSectionProps>
       {filters.length > 0 && (
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Filter Logic:</strong> All filters will be applied using AND logic. 
-            The custom value will only match records that satisfy all specified filter conditions.
+            <strong>Filter Logic:</strong> All filters will be applied using AND logic. The custom
+            value will only match records that satisfy all specified filter conditions.
           </p>
         </div>
       )}

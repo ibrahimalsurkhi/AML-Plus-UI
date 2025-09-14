@@ -23,22 +23,22 @@ interface DataPaginationProps {
    * Pagination data from PaginatedResponse
    */
   paginationData: PaginationData;
-  
+
   /**
    * Callback when page changes
    */
   onPageChange: (page: number) => void;
-  
+
   /**
    * Maximum number of page links to show (default: 5)
    */
   maxVisiblePages?: number;
-  
+
   /**
    * Show page info text (e.g., "Showing 1-20 of 100 items")
    */
   showPageInfo?: boolean;
-  
+
   /**
    * Custom class name for the container
    */
@@ -56,7 +56,8 @@ export const DataPagination: React.FC<DataPaginationProps> = ({
   showPageInfo = true,
   className = ''
 }) => {
-  const { pageNumber, pageSize, totalCount, totalPages, hasPreviousPage, hasNextPage } = paginationData;
+  const { pageNumber, pageSize, totalCount, totalPages, hasPreviousPage, hasNextPage } =
+    paginationData;
 
   // Don't render if there's only one page or no data
   if (totalPages <= 1) {
@@ -137,25 +138,20 @@ export const DataPagination: React.FC<DataPaginationProps> = ({
     <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 ${className}`}>
       {showPageInfo && (
         <div className="text-sm text-muted-foreground">
-          {totalCount === 0 ? (
-            'No items found'
-          ) : (
-            `Showing ${startItem.toLocaleString()}-${endItem.toLocaleString()} of ${totalCount.toLocaleString()} items`
-          )}
+          {totalCount === 0
+            ? 'No items found'
+            : `Showing ${startItem.toLocaleString()}-${endItem.toLocaleString()} of ${totalCount.toLocaleString()} items`}
         </div>
       )}
-      
+
       <Pagination>
         <PaginationContent>
           {hasPreviousPage && (
             <PaginationItem>
-              <PaginationPrevious 
-                onClick={handlePreviousClick}
-                className="cursor-pointer"
-              />
+              <PaginationPrevious onClick={handlePreviousClick} className="cursor-pointer" />
             </PaginationItem>
           )}
-          
+
           {pageNumbers.map((pageNum, index) => (
             <PaginationItem key={index}>
               {pageNum === 'ellipsis' ? (
@@ -171,13 +167,10 @@ export const DataPagination: React.FC<DataPaginationProps> = ({
               )}
             </PaginationItem>
           ))}
-          
+
           {hasNextPage && (
             <PaginationItem>
-              <PaginationNext 
-                onClick={handleNextClick}
-                className="cursor-pointer"
-              />
+              <PaginationNext onClick={handleNextClick} className="cursor-pointer" />
             </PaginationItem>
           )}
         </PaginationContent>

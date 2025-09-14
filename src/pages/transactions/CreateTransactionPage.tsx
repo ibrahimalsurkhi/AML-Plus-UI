@@ -42,7 +42,13 @@ import {
   DialogBody,
   DialogFooter
 } from '@/components/ui/dialog';
-import { recordService, accountService, fieldResponseService, type FieldResponseDetail, type FieldResponseCreate } from '@/services/api';
+import {
+  recordService,
+  accountService,
+  fieldResponseService,
+  type FieldResponseDetail,
+  type FieldResponseCreate
+} from '@/services/api';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
@@ -82,7 +88,9 @@ const CreateTransactionPage = () => {
   const [transactionTypes, setTransactionTypes] = useState<TransactionTypeOption[]>([]);
   const [currencyOptions, setCurrencyOptions] = useState<CurrencyOption[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
-  const [processingStatusOptions, setProcessingStatusOptions] = useState<ProcessingStatusOption[]>([]);
+  const [processingStatusOptions, setProcessingStatusOptions] = useState<ProcessingStatusOption[]>(
+    []
+  );
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [transactionTemplates, setTransactionTemplates] = useState<TransactionTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -112,7 +120,7 @@ const CreateTransactionPage = () => {
       try {
         setLoading(true);
         const prepareData = await transactionService.prepareTransaction();
-        
+
         // Set all the data from the prepare API
         setTransactionTypes(prepareData.transactionTypes);
         setCurrencyOptions(prepareData.currencyOptions);
@@ -120,9 +128,9 @@ const CreateTransactionPage = () => {
         setProcessingStatusOptions(prepareData.processingStatusOptions);
         setCustomFields(prepareData.customFields);
         setTransactionTemplates(prepareData.transactionTemplates);
-        
+
         // Convert customFields to templateFields format for backward compatibility
-        const templateFieldsFromCustomFields = prepareData.customFields.map(customField => ({
+        const templateFieldsFromCustomFields = prepareData.customFields.map((customField) => ({
           id: customField.id,
           templateId: customField.templateId,
           label: customField.label,
@@ -139,7 +147,7 @@ const CreateTransactionPage = () => {
           maxDate: customField.maxDate,
           pattern: customField.pattern,
           lookupId: customField.lookupId,
-          options: customField.lookupOptions.map(option => ({
+          options: customField.lookupOptions.map((option) => ({
             id: option.id,
             fieldId: customField.id,
             label: option.value,
@@ -149,15 +157,16 @@ const CreateTransactionPage = () => {
           }))
         }));
         setTemplateFields(templateFieldsFromCustomFields);
-        
+
         // Set currencies from currency options for backward compatibility
-        setCurrencies(prepareData.currencyOptions.map(currency => ({
-          id: currency.id,
-          lookupId: 2, // Assuming currency lookup ID
-          value: currency.value,
-          scoreCriteriaId: 0
-        })));
-        
+        setCurrencies(
+          prepareData.currencyOptions.map((currency) => ({
+            id: currency.id,
+            lookupId: 2, // Assuming currency lookup ID
+            value: currency.value,
+            scoreCriteriaId: 0
+          }))
+        );
       } catch (err) {
         toast({
           title: 'Error',
@@ -261,7 +270,6 @@ const CreateTransactionPage = () => {
     setErrors((err: any) => ({ ...err, [name]: undefined }));
   };
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Form submission started');
@@ -280,8 +288,12 @@ const CreateTransactionPage = () => {
     console.log('Validation passed, proceeding with transaction creation');
     setLoading(true);
     try {
-      let senderId = selectedSenderAccount?.id ? String(selectedSenderAccount.id) : (form.senderId || undefined);
-      let recipientId = selectedRecipientAccount?.id ? String(selectedRecipientAccount.id) : (form.recipientId || undefined);
+      let senderId = selectedSenderAccount?.id
+        ? String(selectedSenderAccount.id)
+        : form.senderId || undefined;
+      let recipientId = selectedRecipientAccount?.id
+        ? String(selectedRecipientAccount.id)
+        : form.recipientId || undefined;
 
       console.log(
         'Using senderId:',
@@ -369,7 +381,10 @@ const CreateTransactionPage = () => {
           fieldResponses: fieldResponses
         };
 
-        console.log('Creating transaction with field responses included:', transactionDataWithFields);
+        console.log(
+          'Creating transaction with field responses included:',
+          transactionDataWithFields
+        );
         createdTransaction = await transactionService.createTransaction(transactionDataWithFields);
         console.log('Transaction creation response:', createdTransaction);
       } catch (error: any) {
@@ -399,8 +414,6 @@ const CreateTransactionPage = () => {
         toast({ title: 'Success', description: 'Transaction created successfully!' });
         return;
       }
-
-
 
       setSuccess(true);
       toast({
@@ -451,20 +464,20 @@ const CreateTransactionPage = () => {
       }, 2000); // Check status after 2 seconds
     } catch (error: any) {
       console.error('Error creating transaction:', error);
-      
+
       // Handle validation errors from server
       if (error.response?.data?.validationErrors) {
         const validationErrors = error.response.data.validationErrors;
         const errorMessages: string[] = [];
-        
+
         // Convert validation errors to user-friendly messages
-        Object.keys(validationErrors).forEach(field => {
+        Object.keys(validationErrors).forEach((field) => {
           const fieldErrors = validationErrors[field];
           fieldErrors.forEach((errorMsg: string) => {
             errorMessages.push(`${field}: ${errorMsg}`);
           });
         });
-        
+
         toast({
           title: 'Validation Error',
           description: errorMessages.join('\n'),
@@ -618,7 +631,6 @@ const CreateTransactionPage = () => {
     </Label>
   );
 
-
   // Handle field value changes
   const handleFieldChange = (fieldId: number, value: any, fieldType: FieldType) => {
     setFieldResponses((prev) => {
@@ -692,7 +704,6 @@ const CreateTransactionPage = () => {
     });
   };
 
-
   // Render dynamic form field based on field type
   const renderDynamicField = (field: ExtendedTemplateField) => {
     const fieldName = `field_${field.id}`;
@@ -701,17 +712,23 @@ const CreateTransactionPage = () => {
       ? field.fieldType === FieldType.Number
         ? currentResponse.valueNumber
         : field.fieldType === FieldType.Date
-          ? currentResponse.valueDate ? currentResponse.valueDate.split('T')[0] : ''
+          ? currentResponse.valueDate
+            ? currentResponse.valueDate.split('T')[0]
+            : ''
           : field.fieldType === FieldType.Checkbox
             ? (() => {
                 if (!currentResponse.optionId) return false;
-                const selectedOption = field.options?.find(opt => opt.id?.toString() === currentResponse.optionId?.toString());
+                const selectedOption = field.options?.find(
+                  (opt) => opt.id?.toString() === currentResponse.optionId?.toString()
+                );
                 return selectedOption?.label.toLowerCase() === 'checked';
               })()
             : field.fieldType === FieldType.Dropdown ||
                 field.fieldType === FieldType.Radio ||
                 field.fieldType === FieldType.Lookup
-              ? currentResponse.optionId ? currentResponse.optionId.toString() : ''
+              ? currentResponse.optionId
+                ? currentResponse.optionId.toString()
+                : ''
               : currentResponse.valueText
       : '';
 
@@ -913,7 +930,6 @@ const CreateTransactionPage = () => {
       return (a.displayOrder || 0) - (b.displayOrder || 0);
     });
   };
-
 
   return (
     <Container>
@@ -1133,10 +1149,7 @@ const CreateTransactionPage = () => {
                   {/* Sender selection button and dialog */}
                   {!selectedSenderAccount ? (
                     <>
-                      <Button
-                        type="button"
-                        onClick={() => setSenderDialogOpen(true)}
-                      >
+                      <Button type="button" onClick={() => setSenderDialogOpen(true)}>
                         Select or Create Customer
                       </Button>
                       <AccountSelectionDialog
@@ -1195,10 +1208,7 @@ const CreateTransactionPage = () => {
                   {/* Recipient selection button and dialog */}
                   {!selectedRecipientAccount ? (
                     <>
-                      <Button
-                        type="button"
-                        onClick={() => setRecipientDialogOpen(true)}
-                      >
+                      <Button type="button" onClick={() => setRecipientDialogOpen(true)}>
                         Select or Create Customer
                       </Button>
                       <AccountSelectionDialog

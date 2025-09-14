@@ -4,7 +4,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Clock, FileText, Trash2 } from 'lucide-react';
@@ -61,44 +61,28 @@ const DraftConfirmationDialog: React.FC<DraftConfirmationDialogProps> = ({
           </DialogTitle>
           <DialogDescription>
             We found a saved draft of your rule from{' '}
-            <span className="font-medium text-gray-700">
-              {formatDraftAge(draftAge)}
-            </span>
-            . What would you like to do?
+            <span className="font-medium text-gray-700">{formatDraftAge(draftAge)}</span>. What
+            would you like to do?
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <Clock className="h-4 w-4 text-blue-600" />
-          <span className="text-sm text-blue-800">
-            Draft saved {formatDraftAge(draftAge)}
-          </span>
+          <span className="text-sm text-blue-800">Draft saved {formatDraftAge(draftAge)}</span>
         </div>
 
         <div className="flex flex-col gap-2">
-          <Button
-            onClick={handleLoadDraft}
-            className="w-full justify-start"
-            variant="default"
-          >
+          <Button onClick={handleLoadDraft} className="w-full justify-start" variant="default">
             <FileText className="h-4 w-4 mr-2" />
             Load Draft and Continue Editing
           </Button>
-          
-          <Button
-            onClick={handleDeleteDraft}
-            className="w-full justify-start"
-            variant="outline"
-          >
+
+          <Button onClick={handleDeleteDraft} className="w-full justify-start" variant="outline">
             <Trash2 className="h-4 w-4 mr-2" />
             Delete Draft and Start Fresh
           </Button>
-          
-          <Button
-            onClick={handleStartFresh}
-            className="w-full justify-start"
-            variant="ghost"
-          >
+
+          <Button onClick={handleStartFresh} className="w-full justify-start" variant="ghost">
             Start Fresh (Keep Draft)
           </Button>
         </div>

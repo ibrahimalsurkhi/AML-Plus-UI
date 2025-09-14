@@ -195,10 +195,9 @@ export const templateService = {
     );
   },
   updateScoreToOpenCase: async (templateId: string, scoreToOpenCase: number): Promise<void> => {
-    await api.put(
-      `${API_CONFIG.endpoints.templates.list}/${templateId}/score-to-open-case`,
-      { scoreToOpenCase }
-    );
+    await api.put(`${API_CONFIG.endpoints.templates.list}/${templateId}/score-to-open-case`, {
+      scoreToOpenCase
+    });
   },
   getTemplateFields: async (templateId: string): Promise<TemplateFieldsResponse> => {
     const response = await api.get<TemplateFieldsResponse>(
@@ -232,7 +231,10 @@ export const templateService = {
       weight
     });
   },
-  updateTemplateWeights: async (templateId: string, weights: { countryOfBirthWeight?: number; nationalityWeight?: number }): Promise<void> => {
+  updateTemplateWeights: async (
+    templateId: string,
+    weights: { countryOfBirthWeight?: number; nationalityWeight?: number }
+  ): Promise<void> => {
     await api.put(`${API_CONFIG.endpoints.templates.list}/${templateId}/weights`, weights);
   },
   getFieldOptions: async (templateId: string, fieldId: number): Promise<FieldOption[]> => {
@@ -355,12 +357,9 @@ export const templateService = {
     templateId: string,
     defaultScoreCriteriaId: number | null
   ): Promise<void> => {
-    await api.put(
-      `${API_CONFIG.endpoints.templates.list}/${templateId}/default-score-criteria`,
-      {
-        defaultScoreCriteriaId
-      }
-    );
+    await api.put(`${API_CONFIG.endpoints.templates.list}/${templateId}/default-score-criteria`, {
+      defaultScoreCriteriaId
+    });
   }
 };
 
@@ -414,7 +413,7 @@ export const recordService = {
     const endpoint = templateId
       ? `${API_CONFIG.endpoints.templates.list}/records`
       : API_CONFIG.endpoints.records.list.replace('{templateId}', 'all');
-    
+
     // Use POST method with request body for server-side pagination and filtering
     const requestBody = {
       templateId: templateId, // Default template ID
@@ -422,7 +421,7 @@ export const recordService = {
       pageNumber,
       pageSize
     };
-    
+
     const response = await api.post<PaginatedResponse<Record>>(endpoint, requestBody);
     return response.data;
   },
@@ -587,9 +586,12 @@ export const lookupService = {
     key: string,
     params: LookupValueQueryParams
   ): Promise<PaginatedResponse<LookupValue>> => {
-    const response = await api.get<PaginatedResponse<LookupValue>>(`/Lookups/values/by-key/${key}`, {
-      params
-    });
+    const response = await api.get<PaginatedResponse<LookupValue>>(
+      `/Lookups/values/by-key/${key}`,
+      {
+        params
+      }
+    );
     return response.data;
   },
   getLookupValueById: async (id: number): Promise<LookupValue> => {
@@ -1007,11 +1009,14 @@ export const fieldResponseService = {
     accountId?: number;
   }): Promise<FieldResponseDetail[]> => {
     const queryParams = new URLSearchParams();
-    if (params.masterResponseId) queryParams.append('MasterResponseId', params.masterResponseId.toString());
+    if (params.masterResponseId)
+      queryParams.append('MasterResponseId', params.masterResponseId.toString());
     if (params.transactionId) queryParams.append('TransactionId', params.transactionId.toString());
     if (params.accountId) queryParams.append('AccountId', params.accountId.toString());
 
-    const response = await api.get<FieldResponseDetail[]>(`/FieldResponses?${queryParams.toString()}`);
+    const response = await api.get<FieldResponseDetail[]>(
+      `/FieldResponses?${queryParams.toString()}`
+    );
     return response.data;
   }
 };
@@ -1092,7 +1097,7 @@ export const customValueService = {
       }
     });
     // Transform the response to simplified options
-    return response.data.items.map(item => ({
+    return response.data.items.map((item) => ({
       id: item.id || item.key,
       title: item.title
     }));
@@ -1197,12 +1202,10 @@ export const transactionService = {
     sortDirection?: string;
   }): Promise<PaginatedResponse<Transaction>> => {
     const response = await api.post<PaginatedResponse<Transaction>>('/Transactions/search', {
-
       Page: params.pageNumber,
       PageSize: params.pageSize,
       SortBy: params.sortBy || 'id',
       SortDirection: params.sortDirection || 'desc'
-
     });
     return response.data;
   },

@@ -62,7 +62,7 @@ const HeaderTopbar = () => {
             <MenuToggle className="btn btn-icon btn-icon-base btn-sm text-gray-600 hover:text-primary dropdown-open:text-primary">
               <KeenIcon icon="profile-circle" />
             </MenuToggle>
-            {DropdownUser({ menuItemRef: itemUserRef })}
+            {DropdownUser()}
           </MenuItem>
         </Menu>
       </div>

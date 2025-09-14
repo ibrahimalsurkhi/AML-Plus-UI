@@ -38,7 +38,7 @@ const SidebarFooter = forwardRef<HTMLDivElement, any>((props, ref) => {
               alt=""
             />
           </MenuToggle>
-          {DropdownUser({ menuItemRef: itemUserRef })}
+          {DropdownUser()}
         </MenuItem>
       </Menu>
 

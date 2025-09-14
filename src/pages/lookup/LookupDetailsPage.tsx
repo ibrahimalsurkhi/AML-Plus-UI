@@ -178,7 +178,7 @@ const LookupDetailsPage = () => {
                 onChange={(e) => setEditName(e.target.value)}
               />
             </div>
-            
+
             <Button onClick={handleUpdateLookup}>Save</Button>
           </CardContent>
         </Card>

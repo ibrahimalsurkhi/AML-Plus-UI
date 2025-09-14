@@ -4,15 +4,93 @@
 
 // List of valid ISO 4217 currency codes
 const VALID_CURRENCY_CODES = [
-  'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD',
-  'MXN', 'SGD', 'HKD', 'NOK', 'TRY', 'RUB', 'INR', 'BRL', 'ZAR', 'KRW',
-  'AED', 'SAR', 'QAR', 'KWD', 'BHD', 'OMR', 'JOD', 'LBP', 'EGP', 'ILS',
-  'PLN', 'CZK', 'HUF', 'RON', 'BGN', 'HRK', 'RSD', 'MKD', 'ALL', 'BAM',
-  'UAH', 'BYN', 'MDL', 'GEL', 'AMD', 'AZN', 'KZT', 'UZS', 'KGS', 'TJS',
-  'TMT', 'AFN', 'PKR', 'BDT', 'LKR', 'NPR', 'BTN', 'MVR', 'SCR', 'KMF',
-  'DJF', 'ETB', 'SOS', 'TZS', 'UGX', 'KES', 'RWF', 'BIF', 'MWK', 'ZMW',
-  'ZWL', 'BWP', 'SZL', 'LSL', 'NAD', 'MZN', 'AOA', 'XOF', 'XAF', 'XPF',
-  'DZD', 'MAD', 'TND', 'LYD', 'SDG', 'SSP', 'ERN'
+  'USD',
+  'EUR',
+  'GBP',
+  'JPY',
+  'CAD',
+  'AUD',
+  'CHF',
+  'CNY',
+  'SEK',
+  'NZD',
+  'MXN',
+  'SGD',
+  'HKD',
+  'NOK',
+  'TRY',
+  'RUB',
+  'INR',
+  'BRL',
+  'ZAR',
+  'KRW',
+  'AED',
+  'SAR',
+  'QAR',
+  'KWD',
+  'BHD',
+  'OMR',
+  'JOD',
+  'LBP',
+  'EGP',
+  'ILS',
+  'PLN',
+  'CZK',
+  'HUF',
+  'RON',
+  'BGN',
+  'HRK',
+  'RSD',
+  'MKD',
+  'ALL',
+  'BAM',
+  'UAH',
+  'BYN',
+  'MDL',
+  'GEL',
+  'AMD',
+  'AZN',
+  'KZT',
+  'UZS',
+  'KGS',
+  'TJS',
+  'TMT',
+  'AFN',
+  'PKR',
+  'BDT',
+  'LKR',
+  'NPR',
+  'BTN',
+  'MVR',
+  'SCR',
+  'KMF',
+  'DJF',
+  'ETB',
+  'SOS',
+  'TZS',
+  'UGX',
+  'KES',
+  'RWF',
+  'BIF',
+  'MWK',
+  'ZMW',
+  'ZWL',
+  'BWP',
+  'SZL',
+  'LSL',
+  'NAD',
+  'MZN',
+  'AOA',
+  'XOF',
+  'XAF',
+  'XPF',
+  'DZD',
+  'MAD',
+  'TND',
+  'LYD',
+  'SDG',
+  'SSP',
+  'ERN'
 ];
 
 /**
@@ -32,18 +110,16 @@ export function isValidCurrencyCode(currencyCode: string): boolean {
  * @returns Formatted currency string
  */
 export function formatCurrency(
-  amount: number, 
-  currencyCode?: string, 
+  amount: number,
+  currencyCode?: string,
   locale: string = 'en-US'
 ): string {
   // Use the provided currency code or default to USD
   const currency = currencyCode || 'USD';
-  
+
   // Validate the currency code and fallback to USD if invalid
-  const validCurrency = isValidCurrencyCode(currency) 
-    ? currency.toUpperCase() 
-    : 'USD';
-  
+  const validCurrency = isValidCurrencyCode(currency) ? currency.toUpperCase() : 'USD';
+
   try {
     return new Intl.NumberFormat(locale, {
       style: 'currency',
@@ -52,9 +128,9 @@ export function formatCurrency(
   } catch (error) {
     // If formatting still fails, return a simple formatted number with currency symbol
     console.warn(`Failed to format currency ${validCurrency}:`, error);
-    return `$${amount.toLocaleString(locale, { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
+    return `$${amount.toLocaleString(locale, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     })}`;
   }
 }

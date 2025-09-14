@@ -199,7 +199,7 @@ const SidebarPrimary = () => {
                 alt=""
               />
             </MenuToggle>
-            {DropdownUser({ menuItemRef: itemUserRef })}
+            {DropdownUser()}
           </MenuItem>
         </Menu>
       </div>

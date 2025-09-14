@@ -21,7 +21,6 @@ export const MENU_SIDEBAR: TMenuConfig = [
     title: 'Compliance Management',
     icon: 'document',
     children: [
-      
       {
         title: 'Transaction Monitoring',
         icon: 'sort',
@@ -67,7 +66,7 @@ export const MENU_SIDEBAR: TMenuConfig = [
         title: 'Templates',
         icon: 'document',
         path: '/templates'
-      },
+      }
     ]
   }
 ];
