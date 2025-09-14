@@ -405,15 +405,25 @@ export interface RecordQueryParams {
   pageNumber: number;
   pageSize: number;
   templateId?: number;
+  customerRefId?: string;
 }
 
 export const recordService = {
   getRecords: async (params: RecordQueryParams): Promise<PaginatedResponse<Record>> => {
-    const { templateId, ...queryParams } = params;
+    const { templateId, customerRefId, pageNumber, pageSize } = params;
     const endpoint = templateId
       ? `${API_CONFIG.endpoints.templates.list}/records`
       : API_CONFIG.endpoints.records.list.replace('{templateId}', 'all');
-    const response = await api.get<PaginatedResponse<Record>>(endpoint, { params: queryParams });
+    
+    // Use POST method with request body for server-side pagination and filtering
+    const requestBody = {
+      templateId: templateId, // Default template ID
+      customerRefId: customerRefId || '',
+      pageNumber,
+      pageSize
+    };
+    
+    const response = await api.post<PaginatedResponse<Record>>(endpoint, requestBody);
     return response.data;
   },
   getRecordById: async (recordId: number): Promise<Record> => {
@@ -714,9 +724,16 @@ export const ruleService = {
   }
 };
 
+export interface AccountQueryParams {
+  recordId?: number;
+  number?: string;
+  pageNumber: number;
+  pageSize: number;
+}
+
 export const accountService = {
-  getAccountsByRecordId: async (recordId: number) => {
-    const response = await api.get(`/Accounts/by-record/${recordId}`);
+  getAccountsByRecordId: async (params: AccountQueryParams) => {
+    const response = await api.post('/Accounts/by-record', params);
     return response.data;
   },
   createAccount: async (account: any) => {

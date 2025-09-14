@@ -46,6 +46,7 @@ import { recordService, accountService, fieldResponseService, type FieldResponse
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { AccountSelectionDialog } from '@/components/account-selection';
 
 // Define field option type
 interface FieldOption {
@@ -95,43 +96,16 @@ const CreateTransactionPage = () => {
   const [creatingRecipient, setCreatingRecipient] = useState(false);
   const [step, setStep] = useState(1);
   const [success, setSuccess] = useState(false);
-  // New state for sender dialog
+  // Dialog state
   const [senderDialogOpen, setSenderDialogOpen] = useState(false);
-  const [records, setRecords] = useState<any[]>([]);
-  const [recordsLoading, setRecordsLoading] = useState(false);
-  const [selectedSenderRecord, setSelectedSenderRecord] = useState<any>(null);
-  const [selectedSenderAccount, setSelectedSenderAccount] = useState<any>(null);
-  const [senderAccounts, setSenderAccounts] = useState<any[]>([]);
-  const [accountsLoading, setAccountsLoading] = useState(false);
-  const [showCreateAccount, setShowCreateAccount] = useState(false);
-  // Recipient dialog state
   const [recipientDialogOpen, setRecipientDialogOpen] = useState(false);
-  const [recipientRecords, setRecipientRecords] = useState<any[]>([]);
-  const [recipientRecordsLoading, setRecipientRecordsLoading] = useState(false);
-  const [selectedRecipientRecord, setSelectedRecipientRecord] = useState<any>(null);
+  const [selectedSenderAccount, setSelectedSenderAccount] = useState<any>(null);
   const [selectedRecipientAccount, setSelectedRecipientAccount] = useState<any>(null);
-  const [recipientAccounts, setRecipientAccounts] = useState<any[]>([]);
-  const [recipientAccountsLoading, setRecipientAccountsLoading] = useState(false);
-  const [showCreateRecipientAccount, setShowCreateRecipientAccount] = useState(false);
-  // Bank countries state
-  const [bankCountries, setBankCountries] = useState<any[]>([]);
-  const [bankCountriesLoading, setBankCountriesLoading] = useState(false);
   // Currencies state
   const [currencies, setCurrencies] = useState<any[]>([]);
   // Template fields state
   const [templateFields, setTemplateFields] = useState<ExtendedTemplateField[]>([]);
   const [fieldResponses, setFieldResponses] = useState<FieldResponseCreate[]>([]);
-  // Account template fields state
-  const [accountTemplateFields, setAccountTemplateFields] = useState<ExtendedTemplateField[]>([]);
-  const [accountTemplateFieldsLoading, setAccountTemplateFieldsLoading] = useState(false);
-  const [senderAccountFieldResponses, setSenderAccountFieldResponses] = useState<FieldResponseCreate[]>([]);
-  const [recipientAccountFieldResponses, setRecipientAccountFieldResponses] = useState<FieldResponseCreate[]>([]);
-  const [senderAccountErrors, setSenderAccountErrors] = useState<Record<string, string>>({});
-  const [recipientAccountErrors, setRecipientAccountErrors] = useState<Record<string, string>>({});
-  // Account field responses display state
-  const [expandedAccounts, setExpandedAccounts] = useState<Record<number, boolean>>({});
-  const [accountFieldResponses, setAccountFieldResponses] = useState<Record<number, FieldResponseDetail[]>>({});
-  const [loadingAccountResponses, setLoadingAccountResponses] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     const prepareTransaction = async () => {
@@ -199,171 +173,18 @@ const CreateTransactionPage = () => {
 
   // Template fields are now loaded from the prepare API as customFields
 
-  // Fetch account template fields for template ID 13
-  useEffect(() => {
-    const fetchAccountTemplateFields = async () => {
-      setAccountTemplateFieldsLoading(true);
-      try {
-        const fieldsResponse = await templateService.getTemplateFields('13');
-        // Get all fields from sections and fields without section
-        const allFields = [
-          ...fieldsResponse.sections.flatMap((section) => section.fields),
-          ...fieldsResponse.fieldsWithoutSection
-        ];
-
-        // Fetch options and ranges for fields that need them
-        const fieldsWithOptions = await Promise.all(
-          allFields.map(async (field) => {
-            const extendedField: ExtendedTemplateField = { ...field };
-
-            // Fetch options for option-based fields
-            if (
-              field.fieldType === FieldType.Dropdown ||
-              field.fieldType === FieldType.Radio ||
-              field.fieldType === FieldType.Checkbox
-            ) {
-              const options = await templateService.getFieldOptions('13', field.id!);
-              extendedField.options = options.map((opt) => ({
-                ...opt,
-                value: opt.label
-              }));
-            }
-
-            // Fetch lookup values for Lookup fields
-            if (field.fieldType === FieldType.Lookup && field.lookupId) {
-              try {
-                const lookupValues = await lookupService.getLookupValues(field.lookupId, {
-                  pageNumber: 1,
-                  pageSize: 100
-                });
-                extendedField.options = lookupValues.items.map((lookupValue, index) => ({
-                  id: lookupValue.id,
-                  fieldId: field.id!,
-                  label: lookupValue.value,
-                  scoreCriteriaId: 0,
-                  displayOrder: index + 1,
-                  value: lookupValue.value
-                }));
-              } catch (error) {
-                console.error(`Error fetching lookup values for field ${field.id}:`, error);
-                extendedField.options = [];
-              }
-            }
-
-            // Fetch ranges for number fields
-            if (field.fieldType === FieldType.Number) {
-              const ranges = await templateService.getTemplateScoreCriteriaRanges('13', field.id!);
-              extendedField.ranges = ranges;
-            }
-
-            return extendedField;
-          })
-        );
-        setAccountTemplateFields(fieldsWithOptions);
-      } catch (error) {
-        console.error('Error fetching account template fields:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch account template fields. Please try again.',
-          variant: 'destructive'
-        });
-      } finally {
-        setAccountTemplateFieldsLoading(false);
-      }
-    };
-
-    fetchAccountTemplateFields();
-  }, []);
-
-  // Fetch bank countries from lookup service
-  useEffect(() => {
-    const fetchBankCountries = async () => {
-      setBankCountriesLoading(true);
-      try {
-        const lookup = await lookupService.getLookupById(4);
-        const values = await lookupService.getLookupValues(4, { pageNumber: 1, pageSize: 100 });
-        setBankCountries(values.items);
-      } catch (err) {
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch bank countries',
-          variant: 'destructive'
-        });
-      } finally {
-        setBankCountriesLoading(false);
-      }
-    };
-    fetchBankCountries();
-  }, []);
-
   // Currencies are now loaded from the prepare API
 
-  // Fetch records for dialog
-  const fetchRecords = async () => {
-    setRecordsLoading(true);
-    try {
-      const res = await recordService.getRecords({ pageNumber: 1, pageSize: 10 });
-      setRecords(res.items);
-    } catch {
-      toast({ title: 'Error', description: 'Failed to fetch customers', variant: 'destructive' });
-    } finally {
-      setRecordsLoading(false);
-    }
+  // Handler functions for account selection
+  const handleSenderAccountSelected = (account: any) => {
+    setSelectedSenderAccount(account);
+    setForm((f) => ({ ...f, senderId: String(account.id) }));
   };
 
-  // Fetch accounts for selected record
-  useEffect(() => {
-    if (selectedSenderRecord) {
-      setAccountsLoading(true);
-      accountService
-        .getAccountsByRecordId(selectedSenderRecord.id)
-        .then((accounts) => setSenderAccounts(accounts))
-        .catch(() =>
-          toast({ title: 'Error', description: 'Failed to fetch accounts', variant: 'destructive' })
-        )
-        .finally(() => setAccountsLoading(false));
-    } else {
-      setSenderAccounts([]);
-      setSelectedSenderAccount(null);
-    }
-  }, [selectedSenderRecord]);
-
-  // Fetch recipient records for dialog
-  const fetchRecipientRecords = async () => {
-    console.log('Fetching recipient records...');
-    setRecipientRecordsLoading(true);
-    try {
-      const res = await recordService.getRecords({ pageNumber: 1, pageSize: 10 });
-      console.log('Recipient records fetched:', res.items);
-      setRecipientRecords(res.items);
-    } catch {
-      toast({ title: 'Error', description: 'Failed to fetch customers', variant: 'destructive' });
-    } finally {
-      setRecipientRecordsLoading(false);
-    }
+  const handleRecipientAccountSelected = (account: any) => {
+    setSelectedRecipientAccount(account);
+    setForm((f) => ({ ...f, recipientId: String(account.id) }));
   };
-
-  // Fetch accounts for selected recipient record
-  useEffect(() => {
-    if (selectedRecipientRecord) {
-      console.log('Selected recipient record:', selectedRecipientRecord);
-      setRecipientAccountsLoading(true);
-      accountService
-        .getAccountsByRecordId(selectedRecipientRecord.id)
-        .then((accounts) => {
-          console.log('Recipient accounts loaded:', accounts);
-          setRecipientAccounts(accounts);
-        })
-        .catch(() =>
-          toast({ title: 'Error', description: 'Failed to fetch accounts', variant: 'destructive' })
-        )
-        .finally(() => setRecipientAccountsLoading(false));
-    } else {
-      console.log('No recipient record selected, clearing accounts');
-      setRecipientAccounts([]);
-      setSelectedRecipientAccount(null);
-    }
-  }, [selectedRecipientRecord]);
 
   const validate = () => {
     const newErrors: any = {};
@@ -375,6 +196,15 @@ const CreateTransactionPage = () => {
     if (!form.transactionTime) newErrors.transactionTime = 'Time is required';
     if (!form.transactionPurpose) newErrors.transactionPurpose = 'Purpose is required';
     if (!form.transactionStatus) newErrors.transactionStatus = 'Status is required';
+
+    // Check if transaction time is in the future
+    if (form.transactionTime) {
+      const transactionDate = new Date(form.transactionTime);
+      const now = new Date();
+      if (transactionDate > now) {
+        newErrors.transactionTime = 'Transaction time cannot be in the future';
+      }
+    }
 
     // Debug logging
     console.log(
@@ -417,16 +247,6 @@ const CreateTransactionPage = () => {
     }
   }, [selectedSenderAccount, selectedRecipientAccount, errors.senderId, errors.recipientId]);
 
-  // Update form state when accounts are selected
-  useEffect(() => {
-    if (selectedSenderAccount) {
-      setForm((f) => ({ ...f, senderId: selectedSenderAccount.id }));
-    }
-    if (selectedRecipientAccount) {
-      setForm((f) => ({ ...f, recipientId: selectedRecipientAccount.id }));
-    }
-  }, [selectedSenderAccount, selectedRecipientAccount]);
-
   const handleTypeChange = (id: string) => {
     setForm((f) => ({ ...f, transactionTypeId: id }));
     const type = transactionTypes.find((t) => t.id.toString() === id);
@@ -441,53 +261,6 @@ const CreateTransactionPage = () => {
     setErrors((err: any) => ({ ...err, [name]: undefined }));
   };
 
-  const handleCreateAccount = async (type: 'sender' | 'recipient') => {
-    if (type === 'sender') {
-      setCreatingSender(true);
-      try {
-        const res = await accountService.createAccount(senderAccount);
-        setForm((f) => ({ ...f, senderId: String(res.id) }));
-        toast({ title: 'Success', description: 'Sender account created' });
-        setStep(2);
-      } catch {
-        toast({
-          title: 'Error',
-          description: 'Failed to create sender account',
-          variant: 'destructive'
-        });
-      } finally {
-        setCreatingSender(false);
-      }
-    } else {
-      setCreatingRecipient(true);
-      try {
-        const res = await accountService.createAccount(recipientAccount);
-        setForm((f) => ({ ...f, recipientId: String(res.id) }));
-        toast({ title: 'Success', description: 'Recipient account created' });
-        setStep(3);
-      } catch {
-        toast({
-          title: 'Error',
-          description: 'Failed to create recipient account',
-          variant: 'destructive'
-        });
-      } finally {
-        setCreatingRecipient(false);
-      }
-    }
-  };
-
-  const handleAccountInput = (
-    type: 'sender' | 'recipient',
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const { name, value } = e.target;
-    if (type === 'sender') {
-      setSenderAccount((a: Record<string, any>) => ({ ...a, [name]: value }));
-    } else {
-      setRecipientAccount((a: Record<string, any>) => ({ ...a, [name]: value }));
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -499,7 +272,6 @@ const CreateTransactionPage = () => {
     console.log('Sender account object:', senderAccount);
     console.log('Recipient account object:', recipientAccount);
     console.log('Recipient dialog open state:', recipientDialogOpen);
-    console.log('Recipient accounts list:', recipientAccounts);
 
     if (!validate()) {
       console.log('Validation failed, returning early');
@@ -508,11 +280,8 @@ const CreateTransactionPage = () => {
     console.log('Validation passed, proceeding with transaction creation');
     setLoading(true);
     try {
-      let senderId =
-        form.senderId || (selectedSenderAccount?.id ? String(selectedSenderAccount.id) : undefined);
-      let recipientId =
-        form.recipientId ||
-        (selectedRecipientAccount?.id ? String(selectedRecipientAccount.id) : undefined);
+      let senderId = selectedSenderAccount?.id ? String(selectedSenderAccount.id) : (form.senderId || undefined);
+      let recipientId = selectedRecipientAccount?.id ? String(selectedRecipientAccount.id) : (form.recipientId || undefined);
 
       console.log(
         'Using senderId:',
@@ -680,13 +449,35 @@ const CreateTransactionPage = () => {
           }, 2000);
         }
       }, 2000); // Check status after 2 seconds
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating transaction:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to create transaction',
-        variant: 'destructive'
-      });
+      
+      // Handle validation errors from server
+      if (error.response?.data?.validationErrors) {
+        const validationErrors = error.response.data.validationErrors;
+        const errorMessages: string[] = [];
+        
+        // Convert validation errors to user-friendly messages
+        Object.keys(validationErrors).forEach(field => {
+          const fieldErrors = validationErrors[field];
+          fieldErrors.forEach((errorMsg: string) => {
+            errorMessages.push(`${field}: ${errorMsg}`);
+          });
+        });
+        
+        toast({
+          title: 'Validation Error',
+          description: errorMessages.join('\n'),
+          variant: 'destructive'
+        });
+      } else {
+        // Handle other errors
+        toast({
+          title: 'Error',
+          description: error.response?.data?.message || 'Failed to create transaction',
+          variant: 'destructive'
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -827,74 +618,6 @@ const CreateTransactionPage = () => {
     </Label>
   );
 
-  // Handle account field value changes
-  const handleAccountFieldChange = (fieldId: number, value: any, fieldType: FieldType, accountType: 'sender' | 'recipient') => {
-    const setFieldResponses = accountType === 'sender' ? setSenderAccountFieldResponses : setRecipientAccountFieldResponses;
-    
-    setFieldResponses((prev) => {
-      const existingIndex = prev.findIndex((fr) => fr.fieldId === fieldId);
-      let response: FieldResponseCreate = {
-        fieldId: fieldId
-      };
-
-      switch (fieldType) {
-        case FieldType.Text:
-        case FieldType.TextArea:
-          response.valueText = String(value);
-          break;
-        case FieldType.Number:
-          const numericValue = value !== undefined && value !== '' ? Number(value) : null;
-          response.valueNumber = numericValue;
-
-          // Find the matching range based on the value
-          const field = accountTemplateFields.find((f) => f.id === fieldId);
-          const matchingRange = field?.ranges?.find(
-            (range) =>
-              numericValue !== null &&
-              numericValue >= range.minValue &&
-              numericValue <= range.maxValue
-          );
-
-          response.templateFieldScoreCriteriaId = matchingRange
-            ? parseInt(matchingRange.id.toString())
-            : null;
-          break;
-        case FieldType.Date:
-          response.valueDate = value ? new Date(String(value)).toISOString() : null;
-          break;
-        case FieldType.Dropdown:
-        case FieldType.Radio:
-        case FieldType.Checkbox:
-        case FieldType.Lookup:
-          const fieldWithOptions = accountTemplateFields.find((f) => f.id === fieldId);
-          let selectedOption;
-
-          if (fieldType === FieldType.Checkbox) {
-            selectedOption = fieldWithOptions?.options?.find(
-              (opt) => opt.label.toLowerCase() === (value === true ? 'checked' : 'unchecked')
-            );
-            if (!selectedOption && fieldWithOptions?.options?.[0]) {
-              selectedOption = fieldWithOptions.options[0];
-            }
-          } else {
-            selectedOption = fieldWithOptions?.options?.find(
-              (opt) => opt.id && opt.id.toString() === value
-            );
-          }
-
-          response.optionId = selectedOption?.id ? parseInt(selectedOption.id.toString()) : null;
-          break;
-      }
-
-      if (existingIndex >= 0) {
-        const newResponses = [...prev];
-        newResponses[existingIndex] = response;
-        return newResponses;
-      } else {
-        return [...prev, response];
-      }
-    });
-  };
 
   // Handle field value changes
   const handleFieldChange = (fieldId: number, value: any, fieldType: FieldType) => {
@@ -969,226 +692,6 @@ const CreateTransactionPage = () => {
     });
   };
 
-  // Render account dynamic form field based on field type
-  const renderAccountDynamicField = (field: ExtendedTemplateField, accountType: 'sender' | 'recipient') => {
-    const fieldName = `account_field_${field.id}`;
-    const fieldResponses = accountType === 'sender' ? senderAccountFieldResponses : recipientAccountFieldResponses;
-    const currentResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
-    const fieldValue = currentResponse
-      ? field.fieldType === FieldType.Number
-        ? currentResponse.valueNumber
-        : field.fieldType === FieldType.Date
-          ? currentResponse.valueDate ? currentResponse.valueDate.split('T')[0] : ''
-          : field.fieldType === FieldType.Checkbox
-            ? (() => {
-                if (!currentResponse.optionId) return false;
-                const selectedOption = field.options?.find(opt => opt.id?.toString() === currentResponse.optionId?.toString());
-                return selectedOption?.label.toLowerCase() === 'checked';
-              })()
-            : field.fieldType === FieldType.Dropdown ||
-                field.fieldType === FieldType.Radio ||
-                field.fieldType === FieldType.Lookup
-              ? currentResponse.optionId ? currentResponse.optionId.toString() : ''
-              : currentResponse.valueText
-      : '';
-
-    const fieldErrors = accountType === 'sender' ? senderAccountErrors : recipientAccountErrors;
-    const fieldErrorKey = `field_${field.id}`;
-    const fieldError = fieldErrors[fieldErrorKey];
-    const isInvalid = !!fieldError;
-
-    const fieldWrapperClasses = cn(
-      'space-y-2',
-      field.fieldType === FieldType.Checkbox ? 'flex items-start space-x-2' : '',
-      field.fieldType === FieldType.Radio ? 'space-y-3' : ''
-    );
-
-    const inputClasses = cn(
-      'w-full', 
-      field.fieldType === FieldType.Checkbox ? 'mt-1' : '',
-      isInvalid ? 'border-red-500 focus-visible:ring-red-500' : ''
-    );
-
-    switch (field.fieldType) {
-      case FieldType.Text:
-      case FieldType.TextArea:
-        return (
-          <div key={field.id} className={fieldWrapperClasses}>
-            {renderFieldLabel(field, fieldName)}
-            {field.fieldType === FieldType.Text ? (
-              <Input
-                id={fieldName}
-                value={(fieldValue as string) || ''}
-                onChange={(e) => handleAccountFieldChange(field.id!, e.target.value, field.fieldType, accountType)}
-                className={inputClasses}
-                placeholder={field.placeholder}
-                minLength={field.minLength || undefined}
-                maxLength={field.maxLength || undefined}
-              />
-            ) : (
-              <Textarea
-                id={fieldName}
-                value={(fieldValue as string) || ''}
-                onChange={(e) => handleAccountFieldChange(field.id!, e.target.value, field.fieldType, accountType)}
-                className={inputClasses}
-                placeholder={field.placeholder}
-                minLength={field.minLength || undefined}
-                maxLength={field.maxLength || undefined}
-                rows={4}
-              />
-            )}
-            {fieldError && <p className="text-sm text-red-500 mt-1">{fieldError}</p>}
-          </div>
-        );
-
-      case FieldType.Number:
-        const { min, max } = getRangeBounds(field.ranges);
-        return (
-          <div key={field.id} className={fieldWrapperClasses}>
-            {renderFieldLabel(field, fieldName)}
-            <Input
-              id={fieldName}
-              type="number"
-              value={(fieldValue as number) || ''}
-              onChange={(e) => handleAccountFieldChange(field.id!, e.target.value, field.fieldType, accountType)}
-              className={inputClasses}
-              placeholder={field.placeholder}
-              min={min !== undefined ? min : field.minValue || undefined}
-              max={max !== undefined ? max : field.maxValue || undefined}
-              step="any"
-            />
-            {fieldError && <p className="text-sm text-red-500 mt-1">{fieldError}</p>}
-          </div>
-        );
-
-      case FieldType.Date:
-        return (
-          <div key={field.id} className={fieldWrapperClasses}>
-            {renderFieldLabel(field, fieldName)}
-            <Input
-              id={fieldName}
-              type="date"
-              value={
-                typeof fieldValue === 'string' || typeof fieldValue === 'number'
-                  ? String(fieldValue)
-                  : ''
-              }
-              onChange={(e) => handleAccountFieldChange(field.id!, e.target.value, field.fieldType, accountType)}
-              className={inputClasses}
-              min={field.minDate || undefined}
-              max={field.maxDate || undefined}
-            />
-            {fieldError && <p className="text-sm text-red-500 mt-1">{fieldError}</p>}
-          </div>
-        );
-
-      case FieldType.Checkbox:
-        return (
-          <div key={field.id} className={fieldWrapperClasses}>
-            <div className="flex items-start space-x-2">
-              <Checkbox
-                id={fieldName}
-                checked={Boolean(fieldValue)}
-                onCheckedChange={(checked) => {
-                  handleAccountFieldChange(field.id!, checked, field.fieldType, accountType);
-                }}
-                className={cn('mt-1', inputClasses)}
-              />
-              <div className="space-y-1">
-                {renderFieldLabel(field, fieldName)}
-                {fieldError && <p className="text-sm text-red-500">{fieldError}</p>}
-              </div>
-            </div>
-          </div>
-        );
-
-      case FieldType.Dropdown:
-        return (
-          <div key={field.id} className={fieldWrapperClasses}>
-            {renderFieldLabel(field, fieldName)}
-            <Select
-              value={(fieldValue as string) || ''}
-              onValueChange={(value: string) => {
-                handleAccountFieldChange(field.id!, value, field.fieldType, accountType);
-              }}
-            >
-              <SelectTrigger className={cn(inputClasses, 'w-full')}>
-                <SelectValue placeholder={field.placeholder || 'Select an option'} />
-              </SelectTrigger>
-              <SelectContent>
-                {field.options?.map(
-                  (option: FieldOption) =>
-                    option.id && (
-                      <SelectItem key={option.id} value={option.id.toString()}>
-                        {option.label}
-                      </SelectItem>
-                    )
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-
-      case FieldType.Lookup:
-        return (
-          <div key={field.id} className={fieldWrapperClasses}>
-            {renderFieldLabel(field, fieldName)}
-            <Select
-              value={(fieldValue as string) || ''}
-              onValueChange={(value: string) => {
-                handleAccountFieldChange(field.id!, value, field.fieldType, accountType);
-              }}
-            >
-              <SelectTrigger className={cn(inputClasses, 'w-full')}>
-                <SelectValue placeholder={field.placeholder || 'Select a lookup value'} />
-              </SelectTrigger>
-              <SelectContent>
-                {field.options?.map(
-                  (option: FieldOption) =>
-                    option.id && (
-                      <SelectItem key={option.id} value={option.id.toString()}>
-                        {option.label}
-                      </SelectItem>
-                    )
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-
-      case FieldType.Radio:
-        return (
-          <div key={field.id} className={fieldWrapperClasses}>
-            {renderFieldLabel(field, fieldName)}
-            <div className="space-y-2">
-              {field.options?.map(
-                (option: FieldOption) =>
-                  option.id && (
-                    <div key={option.id} className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id={`${fieldName}_${option.id}`}
-                        value={option.id.toString()}
-                        checked={fieldValue === option.id.toString()}
-                        onChange={(e) => {
-                          handleAccountFieldChange(field.id!, e.target.value, field.fieldType, accountType);
-                        }}
-                        className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <Label htmlFor={`${fieldName}_${option.id}`} className="text-sm font-normal">
-                        {option.label}
-                      </Label>
-                    </div>
-                  )
-              )}
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
 
   // Render dynamic form field based on field type
   const renderDynamicField = (field: ExtendedTemplateField) => {
@@ -1411,196 +914,6 @@ const CreateTransactionPage = () => {
     });
   };
 
-  // Validate account creation
-  const validateAccountCreation = (accountData: any, fieldResponses: any[], accountType: 'sender' | 'recipient') => {
-    const errors: string[] = [];
-    const fieldErrors: Record<string, string> = {};
-
-    // Validate static fields
-    if (!accountData.name?.trim()) {
-      errors.push('Account name is required');
-      fieldErrors['name'] = 'Account name is required';
-    }
-    if (!accountData.number?.trim()) {
-      errors.push('Account number is required');
-      fieldErrors['number'] = 'Account number is required';
-    }
-    if (!accountData.bankOfCountryId) {
-      errors.push('Bank country is required');
-      fieldErrors['bankOfCountryId'] = 'Bank country is required';
-    }
-    if (!accountData.bankOfCity?.trim()) {
-      errors.push('Bank city is required');
-      fieldErrors['bankOfCity'] = 'Bank city is required';
-    }
-    if (!accountData.creationDate) {
-      errors.push('Creation date is required');
-      fieldErrors['creationDate'] = 'Creation date is required';
-    }
-    if (!accountData.accountStatus) {
-      errors.push('Account status is required');
-      fieldErrors['accountStatus'] = 'Account status is required';
-    }
-
-    // Validate dynamic template fields
-    accountTemplateFields.forEach((field) => {
-      const fieldKey = `field_${field.id}`;
-      
-      if (field.isRequired) {
-        const fieldResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
-        
-        if (!fieldResponse) {
-          errors.push(`${field.label} is required`);
-          fieldErrors[fieldKey] = `${field.label} is required`;
-          return;
-        }
-
-        // Check if the field has a value based on its type
-        let hasValue = false;
-        switch (field.fieldType) {
-          case FieldType.Text:
-          case FieldType.TextArea:
-            hasValue = fieldResponse.valueText && fieldResponse.valueText.trim() !== '';
-            break;
-          case FieldType.Number:
-            hasValue = fieldResponse.valueNumber !== null && fieldResponse.valueNumber !== undefined;
-            break;
-          case FieldType.Date:
-            hasValue = fieldResponse.valueDate && fieldResponse.valueDate.trim() !== '';
-            break;
-          case FieldType.Dropdown:
-          case FieldType.Radio:
-          case FieldType.Lookup:
-            hasValue = fieldResponse.optionId !== null && fieldResponse.optionId !== undefined;
-            break;
-          case FieldType.Checkbox:
-            // Checkbox is considered valid if it has an optionId (checked or unchecked)
-            hasValue = fieldResponse.optionId !== null && fieldResponse.optionId !== undefined;
-            break;
-        }
-
-        if (!hasValue) {
-          errors.push(`${field.label} is required`);
-          fieldErrors[fieldKey] = `${field.label} is required`;
-        }
-      }
-
-      // Validate number field ranges
-      if (field.fieldType === FieldType.Number && field.ranges) {
-        const fieldResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
-        if (fieldResponse && fieldResponse.valueNumber !== null && fieldResponse.valueNumber !== undefined) {
-          const { min, max } = getRangeBounds(field.ranges);
-          const value = fieldResponse.valueNumber;
-          
-          if (min !== undefined && value < min) {
-            const errorMsg = `${field.label} must be at least ${min}`;
-            errors.push(errorMsg);
-            fieldErrors[fieldKey] = errorMsg;
-          }
-          if (max !== undefined && value > max) {
-            const errorMsg = `${field.label} must be at most ${max}`;
-            errors.push(errorMsg);
-            fieldErrors[fieldKey] = errorMsg;
-          }
-        }
-      }
-
-      // Validate text field length constraints
-      if ((field.fieldType === FieldType.Text || field.fieldType === FieldType.TextArea)) {
-        const fieldResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
-        if (fieldResponse && fieldResponse.valueText) {
-          const textLength = fieldResponse.valueText.length;
-          
-          if (field.minLength && textLength < field.minLength) {
-            const errorMsg = `${field.label} must be at least ${field.minLength} characters`;
-            errors.push(errorMsg);
-            fieldErrors[fieldKey] = errorMsg;
-          }
-          if (field.maxLength && textLength > field.maxLength) {
-            const errorMsg = `${field.label} must be at most ${field.maxLength} characters`;
-            errors.push(errorMsg);
-            fieldErrors[fieldKey] = errorMsg;
-          }
-        }
-      }
-
-      // Validate date field constraints
-      if (field.fieldType === FieldType.Date) {
-        const fieldResponse = fieldResponses.find((fr) => fr.fieldId === field.id);
-        if (fieldResponse && fieldResponse.valueDate) {
-          const fieldDate = new Date(fieldResponse.valueDate);
-          
-          if (field.minDate) {
-            const minDate = new Date(field.minDate);
-            if (fieldDate < minDate) {
-              const errorMsg = `${field.label} must be on or after ${field.minDate}`;
-              errors.push(errorMsg);
-              fieldErrors[fieldKey] = errorMsg;
-            }
-          }
-          if (field.maxDate) {
-            const maxDate = new Date(field.maxDate);
-            if (fieldDate > maxDate) {
-              const errorMsg = `${field.label} must be on or before ${field.maxDate}`;
-              errors.push(errorMsg);
-              fieldErrors[fieldKey] = errorMsg;
-            }
-          }
-        }
-      }
-    });
-
-    // Update error state
-    if (accountType === 'sender') {
-      setSenderAccountErrors(fieldErrors);
-    } else {
-      setRecipientAccountErrors(fieldErrors);
-    }
-
-    return errors;
-  };
-
-  // Function to toggle account expansion and fetch field responses
-  const toggleAccountExpansion = async (accountId: number) => {
-    const isCurrentlyExpanded = expandedAccounts[accountId];
-    
-    // Toggle expansion state
-    setExpandedAccounts(prev => ({
-      ...prev,
-      [accountId]: !isCurrentlyExpanded
-    }));
-
-    // If expanding and we don't have data yet, fetch it
-    if (!isCurrentlyExpanded && !accountFieldResponses[accountId]) {
-      setLoadingAccountResponses(prev => ({ ...prev, [accountId]: true }));
-      
-      try {
-        const responses = await fieldResponseService.getFieldResponses({ accountId });
-        setAccountFieldResponses(prev => ({
-          ...prev,
-          [accountId]: responses
-        }));
-      } catch (error) {
-        console.error('Error fetching account field responses:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load account field responses',
-          variant: 'destructive'
-        });
-      } finally {
-        setLoadingAccountResponses(prev => ({ ...prev, [accountId]: false }));
-      }
-    }
-  };
-
-  // Function to render field response value
-  const renderFieldResponseValue = (response: FieldResponseDetail) => {
-    if (response.valueText) return response.valueText;
-    if (response.valueNumber !== null) return response.valueNumber.toString();
-    if (response.valueDate) return new Date(response.valueDate).toLocaleDateString();
-    if (response.optionValue) return response.optionValue;
-    return '-';
-  };
 
   return (
     <Container>
@@ -1750,6 +1063,7 @@ const CreateTransactionPage = () => {
                     onChange={handleInputChange}
                     required={true}
                     type="datetime-local"
+                    max={new Date().toISOString().slice(0, 16)}
                   />
                   {errors.transactionTime && (
                     <div className="text-xs text-destructive mt-1">{errors.transactionTime}</div>
@@ -1821,481 +1135,17 @@ const CreateTransactionPage = () => {
                     <>
                       <Button
                         type="button"
-                        onClick={() => {
-                          // Reset sender modal state
-                          setSelectedSenderRecord(null);
-                          setSelectedSenderAccount(null);
-                          setSenderAccounts([]);
-                          setShowCreateAccount(false);
-                          setSenderAccount({});
-                          setSenderAccountFieldResponses([]);
-                          setSenderAccountErrors({});
-                          // Reset expansion state
-                          setExpandedAccounts({});
-                          setAccountFieldResponses({});
-                          setLoadingAccountResponses({});
-                          
-                          setSenderDialogOpen(true);
-                          fetchRecords();
-                        }}
+                        onClick={() => setSenderDialogOpen(true)}
                       >
                         Select or Create Customer
                       </Button>
-                      <Dialog 
-                        open={senderDialogOpen} 
-                        onOpenChange={(open) => {
-                          setSenderDialogOpen(open);
-                          if (!open) {
-                            // Reset state when modal is closed
-                            setSelectedSenderRecord(null);
-                            setSelectedSenderAccount(null);
-                            setSenderAccounts([]);
-                            setShowCreateAccount(false);
-                            setSenderAccount({});
-                            setSenderAccountFieldResponses([]);
-                            setSenderAccountErrors({});
-                            // Reset expansion state
-                            setExpandedAccounts({});
-                            setAccountFieldResponses({});
-                            setLoadingAccountResponses({});
-                          }
-                        }}
-                      >
-                        <DialogContent className="max-w-4xl w-full">
-                          <DialogHeader>
-                            <DialogTitle>Select Customer & Account</DialogTitle>
-                          </DialogHeader>
-                          <DialogBody>
-                            {/* Step 1: Select Record */}
-                            {!selectedSenderRecord &&
-                              (recordsLoading ? (
-                                <div className="p-4 text-center">Loading...</div>
-                              ) : (
-                                <div className="overflow-x-auto mb-6">
-                                  <table className="min-w-full border text-sm">
-                                    <thead>
-                                      <tr className="bg-gray-50">
-                                        <th className="border px-3 py-2 text-left">Select</th>
-                                        <th className="border px-3 py-2 text-left">ID</th>
-                                        <th className="border px-3 py-2 text-left">Name</th>
-                                        <th className="border px-3 py-2 text-left">DOB</th>
-                                        <th className="border px-3 py-2 text-left">
-                                          Identification
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {records.map((rec) => (
-                                        <tr key={rec.id}>
-                                          <td className="border px-3 py-2">
-                                            <input
-                                              type="radio"
-                                              name="senderRecord"
-                                              checked={selectedSenderRecord?.id === rec.id}
-                                              onChange={() => setSelectedSenderRecord(rec)}
-                                            />
-                                          </td>
-                                          <td className="border px-3 py-2">{rec.id}</td>
-                                          <td className="border px-3 py-2">
-                                            {rec.firstName} {rec.lastName}
-                                          </td>
-                                          <td className="border px-3 py-2">{rec.dateOfBirth}</td>
-                                          <td className="border px-3 py-2">{rec.identification}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              ))}
-                            {/* Step 2: Show selected record info and accounts */}
-                            {selectedSenderRecord && (
-                              <>
-                                <div className="mb-4 p-3 rounded border bg-white flex flex-col md:flex-row md:items-center md:gap-8">
-                                  <div>
-                                    <div className="font-semibold">
-                                      {selectedSenderRecord.firstName}{' '}
-                                      {selectedSenderRecord.lastName}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      ID: {selectedSenderRecord.id} | Identification:{' '}
-                                      {selectedSenderRecord.identification}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      DOB: {selectedSenderRecord.dateOfBirth}
-                                    </div>
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setSelectedSenderRecord(null)}
-                                  >
-                                    Change Customer
-                                  </Button>
-                                </div>
-                                <div className="mb-2 font-medium">Select Account</div>
-                                {accountsLoading ? (
-                                  <div className="p-4 text-center">Loading accounts...</div>
-                                ) : (
-                                  <div className="overflow-x-auto mb-4">
-                                    <table className="min-w-full border text-sm">
-                                      <thead>
-                                        <tr className="bg-gray-50">
-                                          <th className="border px-3 py-2 text-left">Select</th>
-                                          <th className="border px-3 py-2 text-left">Name</th>
-                                          <th className="border px-3 py-2 text-left">Number</th>
-                                          <th className="border px-3 py-2 text-left">Bank</th>
-                                          <th className="border px-3 py-2 text-left">City</th>
-                                          <th className="border px-3 py-2 text-left">Status</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {senderAccounts.map((acc) => (
-                                          <React.Fragment key={acc.id}>
-                                            <tr>
-                                              <td className="border px-3 py-2">
-                                                <input
-                                                  type="radio"
-                                                  name="senderAccount"
-                                                  checked={selectedSenderAccount?.id === acc.id}
-                                                  onChange={() => {
-                                                    console.log('Selecting sender account:', acc);
-                                                    setSelectedSenderAccount(acc);
-                                                  }}
-                                                />
-                                              </td>
-                                              <td className="border px-3 py-2">
-                                                <div className="flex items-center gap-2">
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => toggleAccountExpansion(acc.id)}
-                                                    className="p-1 hover:bg-gray-100 rounded"
-                                                  >
-                                                    {expandedAccounts[acc.id] ? (
-                                                      <ChevronDown className="h-4 w-4" />
-                                                    ) : (
-                                                      <ChevronRight className="h-4 w-4" />
-                                                    )}
-                                                  </button>
-                                                  {acc.name}
-                                                </div>
-                                              </td>
-                                              <td className="border px-3 py-2">{acc.number}</td>
-                                              <td className="border px-3 py-2">
-                                                {acc.bankOfCountryName}
-                                              </td>
-                                              <td className="border px-3 py-2">{acc.bankOfCity}</td>
-                                              <td className="border px-3 py-2">
-                                                {acc.accountStatus}
-                                              </td>
-                                            </tr>
-                                            {expandedAccounts[acc.id] && (
-                                              <tr>
-                                                <td colSpan={6} className="border px-3 py-2 bg-gray-50">
-                                                  {loadingAccountResponses[acc.id] ? (
-                                                    <div className="flex items-center justify-center py-4">
-                                                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                                                      <span className="ml-2 text-sm text-muted-foreground">Loading field responses...</span>
-                                                    </div>
-                                                  ) : accountFieldResponses[acc.id] && accountFieldResponses[acc.id].length > 0 ? (
-                                                    <div className="space-y-2">
-                                                      <h4 className="font-medium text-sm">Account Field Responses:</h4>
-                                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                        {accountFieldResponses[acc.id].map((response) => (
-                                                          <div key={response.id} className="bg-white p-3 rounded border">
-                                                            <div className="text-sm font-medium text-gray-700">
-                                                              {response.fieldName}
-                                                            </div>
-                                                            <div className="text-sm text-gray-900 mt-1">
-                                                              {renderFieldResponseValue(response)}
-                                                            </div>
-                                                            {response.created && (
-                                                              <div className="text-xs text-gray-500 mt-1">
-                                                                Created: {new Date(response.created).toLocaleDateString()}
-                                                              </div>
-                                                            )}
-                                                          </div>
-                                                        ))}
-                                                      </div>
-                                                    </div>
-                                                  ) : (
-                                                    <div className="text-sm text-gray-500 py-2">
-                                                      No field responses found for this account.
-                                                    </div>
-                                                  )}
-                                                </td>
-                                              </tr>
-                                            )}
-                                          </React.Fragment>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                )}
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setShowCreateAccount((v) => !v)}
-                                >
-                                  {showCreateAccount ? 'Hide' : 'Create New Account'}
-                                </Button>
-                                {showCreateAccount && (
-                                  <div className="mt-4 p-4 border rounded bg-muted/10">
-                                    {/* Inline account creation form (reuse your previous form fields) */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                      <Input
-                                        name="name"
-                                        placeholder="Name"
-                                        onChange={(e) =>
-                                          setSenderAccount((a: any) => ({
-                                            ...a,
-                                            name: e.target.value
-                                          }))
-                                        }
-                                        autoComplete="off"
-                                      />
-                                      <Input
-                                        name="number"
-                                        placeholder="Account Number"
-                                        onChange={(e) =>
-                                          setSenderAccount((a: any) => ({
-                                            ...a,
-                                            number: e.target.value
-                                          }))
-                                        }
-                                        autoComplete="off"
-                                      />
-                                      <Select
-                                        value={String(senderAccount.bankOfCountryId || '')}
-                                        onValueChange={(v) =>
-                                          setSenderAccount((a: any) => ({
-                                            ...a,
-                                            bankOfCountryId: v
-                                          }))
-                                        }
-                                      >
-                                        <SelectTrigger className="w-full">
-                                          <SelectValue placeholder="Bank Of Country" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {bankCountriesLoading ? (
-                                            <div className="p-4 text-center">
-                                              Loading countries...
-                                            </div>
-                                          ) : (
-                                            bankCountries.map((country) => (
-                                              <SelectItem
-                                                key={country.id}
-                                                value={String(country.id)}
-                                              >
-                                                {country.value}
-                                              </SelectItem>
-                                            ))
-                                          )}
-                                        </SelectContent>
-                                      </Select>
-                                      <Input
-                                        name="bankOfCity"
-                                        placeholder="Bank Of City"
-                                        onChange={(e) =>
-                                          setSenderAccount((a: any) => ({
-                                            ...a,
-                                            bankOfCity: e.target.value
-                                          }))
-                                        }
-                                        autoComplete="off"
-                                      />
-                                      <Input
-                                        name="creationDate"
-                                        placeholder="Creation Date"
-                                        type="datetime-local"
-                                        onChange={(e) =>
-                                          setSenderAccount((a: any) => ({
-                                            ...a,
-                                            creationDate: e.target.value
-                                          }))
-                                        }
-                                      />
-                                      <Select
-                                        value={String(senderAccount.accountStatus || '')}
-                                        onValueChange={(v) =>
-                                          setSenderAccount((a: any) => ({
-                                            ...a,
-                                            accountStatus: Number(v)
-                                          }))
-                                        }
-                                      >
-                                        <SelectTrigger className="w-full">
-                                          <SelectValue placeholder="Account Status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {AccountStatusEnum.map((opt) => (
-                                            <SelectItem key={opt.value} value={String(opt.value)}>
-                                              {opt.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-
-                                    {/* Dynamic Template Fields for Account */}
-                                    {accountTemplateFields.length > 0 && (
-                                      <div className="mt-6 pt-4 border-t">
-                                        <h4 className="text-md font-medium mb-3 text-muted-foreground">
-                                          Additional Account Information
-                                        </h4>
-                                        {accountTemplateFieldsLoading ? (
-                                          <div className="flex items-center justify-center py-4">
-                                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                                            <span className="ml-2 text-sm text-muted-foreground">Loading fields...</span>
-                                          </div>
-                                        ) : (
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {sortFields(accountTemplateFields)
-                                              .filter((field) => field.fieldType !== FieldType.Checkbox)
-                                              .map((field) => (
-                                                <div
-                                                  key={field.id}
-                                                  className={cn(
-                                                    'p-3 rounded border bg-gray-50/50',
-                                                    field.fieldType === FieldType.TextArea ? 'md:col-span-2' : ''
-                                                  )}
-                                                >
-                                                  {renderAccountDynamicField(field, 'sender')}
-                                                </div>
-                                              ))}
-                                          </div>
-                                        )}
-
-                                        {/* Checkbox fields for account template */}
-                                        {accountTemplateFields.some((field) => field.fieldType === FieldType.Checkbox) && (
-                                          <div className="mt-4 pt-3 border-t">
-                                            <h5 className="text-sm font-medium mb-2 text-muted-foreground">
-                                              Account Options
-                                            </h5>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                              {sortFields(accountTemplateFields)
-                                                .filter((field) => field.fieldType === FieldType.Checkbox)
-                                                .map((field) => (
-                                                  <div key={field.id} className="p-2 rounded border bg-gray-50/30">
-                                                    {renderAccountDynamicField(field, 'sender')}
-                                                  </div>
-                                                ))}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      className="mt-4"
-                                      onClick={async () => {
-                                        // Clear previous errors
-                                        setSenderAccountErrors({});
-                                        
-                                        // Validate before creating account
-                                        const validationErrors = validateAccountCreation(
-                                          senderAccount,
-                                          senderAccountFieldResponses,
-                                          'sender'
-                                        );
-
-                                        if (validationErrors.length > 0) {
-                                          toast({
-                                            title: 'Validation Error',
-                                            description: validationErrors[0], // Show first error
-                                            variant: 'destructive'
-                                          });
-                                          return;
-                                        }
-
-                                        setAccountsLoading(true);
-                                        try {
-                                          const accountData = {
-                                            ...senderAccount,
-                                            recordId: selectedSenderRecord.id,
-                                            templateId: 13,
-                                            fieldResponses: senderAccountFieldResponses
-                                          };
-                                          const res =
-                                            await accountService.createAccount(accountData);
-                                          setSenderAccounts((prev: any[]) => [
-                                            ...prev,
-                                            { ...senderAccount, id: res.id }
-                                          ]);
-                                          setShowCreateAccount(false);
-                                          setSenderAccount({});
-                                          setSenderAccountFieldResponses([]);
-                                          toast({
-                                            title: 'Success',
-                                            description: 'Account created successfully'
-                                          });
-                                          // After account creation, select it and close the dialog
-                                          setSelectedSenderAccount({
-                                            ...senderAccount,
-                                            id: res.id
-                                          });
-                                          setForm((f) => ({ ...f, senderId: res.id }));
-                                          setSenderDialogOpen(false);
-                                        } catch (error: any) {
-                                          console.error('Error creating sender account:', error);
-                                          toast({
-                                            title: 'Error',
-                                            description: error?.response?.data?.message || 'Failed to create account',
-                                            variant: 'destructive'
-                                          });
-                                        } finally {
-                                          setAccountsLoading(false);
-                                        }
-                                      }}
-                                    >
-                                      Create Account
-                                    </Button>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </DialogBody>
-                          <DialogFooter>
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                console.log(
-                                  'Done button clicked. selectedSenderAccount:',
-                                  selectedSenderAccount
-                                );
-                                if (selectedSenderAccount) {
-                                  console.log(
-                                    'Setting form senderId to:',
-                                    selectedSenderAccount.id
-                                  );
-                                  setForm((f) => ({ ...f, senderId: selectedSenderAccount.id }));
-                                  setSenderDialogOpen(false);
-                                } else {
-                                  console.log('No sender account selected');
-                                  toast({
-                                    title: 'Select an account',
-                                    description: 'Please select an account before continuing.',
-                                    variant: 'destructive'
-                                  });
-                                }
-                              }}
-                            >
-                              Done
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => navigate('/records/new')}
-                            >
-                              Create New Customer
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                      <AccountSelectionDialog
+                        open={senderDialogOpen}
+                        onOpenChange={setSenderDialogOpen}
+                        onAccountSelected={handleSenderAccountSelected}
+                        title="Select Customer & Account"
+                        accountType="sender"
+                      />
                     </>
                   ) : (
                     <div className="p-2 bg-white rounded border mb-2">
@@ -2347,483 +1197,17 @@ const CreateTransactionPage = () => {
                     <>
                       <Button
                         type="button"
-                        onClick={() => {
-                          console.log('Opening recipient dialog...');
-                          // Reset recipient modal state
-                          setSelectedRecipientRecord(null);
-                          setSelectedRecipientAccount(null);
-                          setRecipientAccounts([]);
-                          setShowCreateRecipientAccount(false);
-                          setRecipientAccount({});
-                          setRecipientAccountFieldResponses([]);
-                          setRecipientAccountErrors({});
-                          // Reset expansion state
-                          setExpandedAccounts({});
-                          setAccountFieldResponses({});
-                          setLoadingAccountResponses({});
-                          
-                          setRecipientDialogOpen(true);
-                          fetchRecipientRecords();
-                        }}
+                        onClick={() => setRecipientDialogOpen(true)}
                       >
                         Select or Create Customer
                       </Button>
-                      <Dialog 
-                        open={recipientDialogOpen} 
-                        onOpenChange={(open) => {
-                          setRecipientDialogOpen(open);
-                          if (!open) {
-                            // Reset state when modal is closed
-                            setSelectedRecipientRecord(null);
-                            setSelectedRecipientAccount(null);
-                            setRecipientAccounts([]);
-                            setShowCreateRecipientAccount(false);
-                            setRecipientAccount({});
-                            setRecipientAccountFieldResponses([]);
-                            setRecipientAccountErrors({});
-                            // Reset expansion state
-                            setExpandedAccounts({});
-                            setAccountFieldResponses({});
-                            setLoadingAccountResponses({});
-                          }
-                        }}
-                      >
-                        <DialogContent className="max-w-4xl w-full">
-                          <DialogHeader>
-                            <DialogTitle>Select Customer & Account</DialogTitle>
-                          </DialogHeader>
-                          <DialogBody>
-                            {/* Step 1: Select Record */}
-                            {!selectedRecipientRecord &&
-                              (recipientRecordsLoading ? (
-                                <div className="p-4 text-center">Loading...</div>
-                              ) : (
-                                <div className="overflow-x-auto mb-6">
-                                  <table className="min-w-full border text-sm">
-                                    <thead>
-                                      <tr className="bg-gray-50">
-                                        <th className="border px-3 py-2 text-left">Select</th>
-                                        <th className="border px-3 py-2 text-left">ID</th>
-                                        <th className="border px-3 py-2 text-left">Name</th>
-                                        <th className="border px-3 py-2 text-left">DOB</th>
-                                        <th className="border px-3 py-2 text-left">
-                                          Identification
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {recipientRecords.map((rec) => (
-                                        <tr key={rec.id}>
-                                          <td className="border px-3 py-2">
-                                            <input
-                                              type="radio"
-                                              name="recipientRecord"
-                                              checked={selectedRecipientRecord?.id === rec.id}
-                                              onChange={() => setSelectedRecipientRecord(rec)}
-                                            />
-                                          </td>
-                                          <td className="border px-3 py-2">{rec.id}</td>
-                                          <td className="border px-3 py-2">
-                                            {rec.firstName} {rec.lastName}
-                                          </td>
-                                          <td className="border px-3 py-2">{rec.dateOfBirth}</td>
-                                          <td className="border px-3 py-2">{rec.identification}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              ))}
-                            {/* Step 2: Show selected record info and accounts */}
-                            {selectedRecipientRecord && (
-                              <>
-                                <div className="mb-4 p-3 rounded border bg-white flex flex-col md:flex-row md:items-center md:gap-8">
-                                  <div>
-                                    <div className="font-semibold">
-                                      {selectedRecipientRecord.firstName}{' '}
-                                      {selectedRecipientRecord.lastName}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      ID: {selectedRecipientRecord.id} | Identification:{' '}
-                                      {selectedRecipientRecord.identification}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      DOB: {selectedRecipientRecord.dateOfBirth}
-                                    </div>
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setSelectedRecipientRecord(null)}
-                                  >
-                                    Change Customer
-                                  </Button>
-                                </div>
-                                <div className="mb-2 font-medium">Select Account</div>
-                                {recipientAccountsLoading ? (
-                                  <div className="p-4 text-center">Loading accounts...</div>
-                                ) : (
-                                  <div className="overflow-x-auto mb-4">
-                                    <table className="min-w-full border text-sm">
-                                      <thead>
-                                        <tr className="bg-gray-50">
-                                          <th className="border px-3 py-2 text-left">Select</th>
-                                          <th className="border px-3 py-2 text-left">Name</th>
-                                          <th className="border px-3 py-2 text-left">Number</th>
-                                          <th className="border px-3 py-2 text-left">Bank</th>
-                                          <th className="border px-3 py-2 text-left">City</th>
-                                          <th className="border px-3 py-2 text-left">Status</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {recipientAccounts.map((acc) => (
-                                          <React.Fragment key={acc.id}>
-                                            <tr>
-                                              <td className="border px-3 py-2">
-                                                <input
-                                                  type="radio"
-                                                  name="recipientAccount"
-                                                  checked={selectedRecipientAccount?.id === acc.id}
-                                                  onChange={() => {
-                                                    console.log('Selecting recipient account:', acc);
-                                                    setSelectedRecipientAccount(acc);
-                                                  }}
-                                                />
-                                              </td>
-                                              <td className="border px-3 py-2">
-                                                <div className="flex items-center gap-2">
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => toggleAccountExpansion(acc.id)}
-                                                    className="p-1 hover:bg-gray-100 rounded"
-                                                  >
-                                                    {expandedAccounts[acc.id] ? (
-                                                      <ChevronDown className="h-4 w-4" />
-                                                    ) : (
-                                                      <ChevronRight className="h-4 w-4" />
-                                                    )}
-                                                  </button>
-                                                  {acc.name}
-                                                </div>
-                                              </td>
-                                              <td className="border px-3 py-2">{acc.number}</td>
-                                              <td className="border px-3 py-2">
-                                                {acc.bankOfCountryName}
-                                              </td>
-                                              <td className="border px-3 py-2">{acc.bankOfCity}</td>
-                                              <td className="border px-3 py-2">
-                                                {acc.accountStatus}
-                                              </td>
-                                            </tr>
-                                            {expandedAccounts[acc.id] && (
-                                              <tr>
-                                                <td colSpan={6} className="border px-3 py-2 bg-gray-50">
-                                                  {loadingAccountResponses[acc.id] ? (
-                                                    <div className="flex items-center justify-center py-4">
-                                                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                                                      <span className="ml-2 text-sm text-muted-foreground">Loading field responses...</span>
-                                                    </div>
-                                                  ) : accountFieldResponses[acc.id] && accountFieldResponses[acc.id].length > 0 ? (
-                                                    <div className="space-y-2">
-                                                      <h4 className="font-medium text-sm">Account Field Responses:</h4>
-                                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                        {accountFieldResponses[acc.id].map((response) => (
-                                                          <div key={response.id} className="bg-white p-3 rounded border">
-                                                            <div className="text-sm font-medium text-gray-700">
-                                                              {response.fieldName}
-                                                            </div>
-                                                            <div className="text-sm text-gray-900 mt-1">
-                                                              {renderFieldResponseValue(response)}
-                                                            </div>
-                                                            {response.created && (
-                                                              <div className="text-xs text-gray-500 mt-1">
-                                                                Created: {new Date(response.created).toLocaleDateString()}
-                                                              </div>
-                                                            )}
-                                                          </div>
-                                                        ))}
-                                                      </div>
-                                                    </div>
-                                                  ) : (
-                                                    <div className="text-sm text-gray-500 py-2">
-                                                      No field responses found for this account.
-                                                    </div>
-                                                  )}
-                                                </td>
-                                              </tr>
-                                            )}
-                                          </React.Fragment>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                )}
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setShowCreateRecipientAccount((v) => !v)}
-                                >
-                                  {showCreateRecipientAccount ? 'Hide' : 'Create New Account'}
-                                </Button>
-                                {showCreateRecipientAccount && (
-                                  <div className="mt-4 p-4 border rounded bg-muted/10">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                      <Input
-                                        name="name"
-                                        placeholder="Name"
-                                        onChange={(e) =>
-                                          setRecipientAccount((a: any) => ({
-                                            ...a,
-                                            name: e.target.value
-                                          }))
-                                        }
-                                        autoComplete="off"
-                                      />
-                                      <Input
-                                        name="number"
-                                        placeholder="Account Number"
-                                        onChange={(e) =>
-                                          setRecipientAccount((a: any) => ({
-                                            ...a,
-                                            number: e.target.value
-                                          }))
-                                        }
-                                        autoComplete="off"
-                                      />
-                                      <Select
-                                        value={String(recipientAccount.bankOfCountryId || '')}
-                                        onValueChange={(v) =>
-                                          setRecipientAccount((a: any) => ({
-                                            ...a,
-                                            bankOfCountryId: v
-                                          }))
-                                        }
-                                      >
-                                        <SelectTrigger className="w-full">
-                                          <SelectValue placeholder="Bank Of Country" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {bankCountriesLoading ? (
-                                            <div className="p-4 text-center">
-                                              Loading countries...
-                                            </div>
-                                          ) : (
-                                            bankCountries.map((country) => (
-                                              <SelectItem
-                                                key={country.id}
-                                                value={String(country.id)}
-                                              >
-                                                {country.value}
-                                              </SelectItem>
-                                            ))
-                                          )}
-                                        </SelectContent>
-                                      </Select>
-                                      <Input
-                                        name="bankOfCity"
-                                        placeholder="Bank Of City"
-                                        onChange={(e) =>
-                                          setRecipientAccount((a: any) => ({
-                                            ...a,
-                                            bankOfCity: e.target.value
-                                          }))
-                                        }
-                                        autoComplete="off"
-                                      />
-                                      <Input
-                                        name="creationDate"
-                                        placeholder="Creation Date"
-                                        type="datetime-local"
-                                        onChange={(e) =>
-                                          setRecipientAccount((a: any) => ({
-                                            ...a,
-                                            creationDate: e.target.value
-                                          }))
-                                        }
-                                      />
-                                      <Select
-                                        value={String(recipientAccount.accountStatus || '')}
-                                        onValueChange={(v) =>
-                                          setRecipientAccount((a: any) => ({
-                                            ...a,
-                                            accountStatus: Number(v)
-                                          }))
-                                        }
-                                      >
-                                        <SelectTrigger className="w-full">
-                                          <SelectValue placeholder="Account Status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {AccountStatusEnum.map((opt) => (
-                                            <SelectItem key={opt.value} value={String(opt.value)}>
-                                              {opt.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-
-                                    {/* Dynamic Template Fields for Recipient Account */}
-                                    {accountTemplateFields.length > 0 && (
-                                      <div className="mt-6 pt-4 border-t">
-                                        <h4 className="text-md font-medium mb-3 text-muted-foreground">
-                                          Additional Account Information
-                                        </h4>
-                                        {accountTemplateFieldsLoading ? (
-                                          <div className="flex items-center justify-center py-4">
-                                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                                            <span className="ml-2 text-sm text-muted-foreground">Loading fields...</span>
-                                          </div>
-                                        ) : (
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {sortFields(accountTemplateFields)
-                                              .filter((field) => field.fieldType !== FieldType.Checkbox)
-                                              .map((field) => (
-                                                <div
-                                                  key={field.id}
-                                                  className={cn(
-                                                    'p-3 rounded border bg-gray-50/50',
-                                                    field.fieldType === FieldType.TextArea ? 'md:col-span-2' : ''
-                                                  )}
-                                                >
-                                                  {renderAccountDynamicField(field, 'recipient')}
-                                                </div>
-                                              ))}
-                                          </div>
-                                        )}
-
-                                        {/* Checkbox fields for account template */}
-                                        {accountTemplateFields.some((field) => field.fieldType === FieldType.Checkbox) && (
-                                          <div className="mt-4 pt-3 border-t">
-                                            <h5 className="text-sm font-medium mb-2 text-muted-foreground">
-                                              Account Options
-                                            </h5>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                              {sortFields(accountTemplateFields)
-                                                .filter((field) => field.fieldType === FieldType.Checkbox)
-                                                .map((field) => (
-                                                  <div key={field.id} className="p-2 rounded border bg-gray-50/30">
-                                                    {renderAccountDynamicField(field, 'recipient')}
-                                                  </div>
-                                                ))}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      className="mt-4"
-                                      onClick={async () => {
-                                        // Clear previous errors
-                                        setRecipientAccountErrors({});
-                                        
-                                        // Validate before creating account
-                                        const validationErrors = validateAccountCreation(
-                                          recipientAccount,
-                                          recipientAccountFieldResponses,
-                                          'recipient'
-                                        );
-
-                                        if (validationErrors.length > 0) {
-                                          toast({
-                                            title: 'Validation Error',
-                                            description: validationErrors[0], // Show first error
-                                            variant: 'destructive'
-                                          });
-                                          return;
-                                        }
-
-                                        setRecipientAccountsLoading(true);
-                                        try {
-                                          const accountData = {
-                                            ...recipientAccount,
-                                            recordId: selectedRecipientRecord.id,
-                                            templateId: 13,
-                                            fieldResponses: recipientAccountFieldResponses
-                                          };
-                                          const res =
-                                            await accountService.createAccount(accountData);
-                                          setRecipientAccounts((prev: any[]) => [
-                                            ...prev,
-                                            { ...recipientAccount, id: res.id }
-                                          ]);
-                                          setShowCreateRecipientAccount(false);
-                                          setRecipientAccount({});
-                                          setRecipientAccountFieldResponses([]);
-                                          toast({
-                                            title: 'Success',
-                                            description: 'Account created successfully'
-                                          });
-                                          setSelectedRecipientAccount({
-                                            ...recipientAccount,
-                                            id: res.id
-                                          });
-                                          setForm((f) => ({ ...f, recipientId: res.id }));
-                                          setRecipientDialogOpen(false);
-                                        } catch (error: any) {
-                                          console.error('Error creating recipient account:', error);
-                                          toast({
-                                            title: 'Error',
-                                            description: error?.response?.data?.message || 'Failed to create account',
-                                            variant: 'destructive'
-                                          });
-                                        } finally {
-                                          setRecipientAccountsLoading(false);
-                                        }
-                                      }}
-                                    >
-                                      Create Account
-                                    </Button>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </DialogBody>
-                          <DialogFooter>
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                console.log(
-                                  'Recipient Done button clicked. selectedRecipientAccount:',
-                                  selectedRecipientAccount
-                                );
-                                if (selectedRecipientAccount) {
-                                  console.log(
-                                    'Setting form recipientId to:',
-                                    selectedRecipientAccount.id
-                                  );
-                                  setForm((f) => ({
-                                    ...f,
-                                    recipientId: selectedRecipientAccount.id
-                                  }));
-                                  setRecipientDialogOpen(false);
-                                } else {
-                                  console.log('No recipient account selected');
-                                  toast({
-                                    title: 'Select an account',
-                                    description: 'Please select an account before continuing.',
-                                    variant: 'destructive'
-                                  });
-                                }
-                              }}
-                            >
-                              Done
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => navigate('/records/new')}
-                            >
-                              Create New Customer
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                      <AccountSelectionDialog
+                        open={recipientDialogOpen}
+                        onOpenChange={setRecipientDialogOpen}
+                        onAccountSelected={handleRecipientAccountSelected}
+                        title="Select Customer & Account"
+                        accountType="recipient"
+                      />
                     </>
                   ) : (
                     <div className="p-2 bg-white rounded border mb-2">
