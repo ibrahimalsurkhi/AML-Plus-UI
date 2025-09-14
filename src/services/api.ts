@@ -1090,7 +1090,80 @@ export const customValueService = {
   }
 };
 
+// Transaction prepare interfaces
+export interface TransactionTemplate {
+  id: number;
+  name: string;
+  description: string;
+  version: number;
+  scoreToOpenCase: number;
+}
+
+export interface TransactionTypeOption {
+  id: number;
+  name: string;
+  isSenderRequired: boolean;
+  isRecipientRequired: boolean;
+}
+
+export interface CurrencyOption {
+  id: number;
+  value: string;
+  displayOrder: number;
+}
+
+export interface StatusOption {
+  id: number;
+  name: string;
+  value: string;
+}
+
+export interface ProcessingStatusOption {
+  id: number;
+  name: string;
+  value: string;
+}
+
+export interface CustomField {
+  id: number;
+  templateId: number;
+  label: string;
+  fieldType: number;
+  isRequired: boolean;
+  displayOrder: number;
+  placeholder?: string;
+  minLength?: number;
+  maxLength?: number;
+  minValue?: number;
+  maxValue?: number;
+  minDate?: string;
+  maxDate?: string;
+  pattern?: string;
+  lookupId?: number;
+  lookupName?: string;
+  lookupOptions: LookupOption[];
+}
+
+export interface LookupOption {
+  id: number;
+  value: string;
+  displayOrder: number;
+}
+
+export interface TransactionPrepareResponse {
+  transactionTemplates: TransactionTemplate[];
+  transactionTypes: TransactionTypeOption[];
+  currencyOptions: CurrencyOption[];
+  statusOptions: StatusOption[];
+  processingStatusOptions: ProcessingStatusOption[];
+  customFields: CustomField[];
+}
+
 export const transactionService = {
+  prepareTransaction: async (): Promise<TransactionPrepareResponse> => {
+    const response = await api.get<TransactionPrepareResponse>('/transactions/prepare');
+    return response.data;
+  },
   createTransaction: async (data: TransactionCreate): Promise<number> => {
     console.log('Creating transaction with data:', data);
     const response = await api.post<number>(API_CONFIG.endpoints.transactions.create, data);

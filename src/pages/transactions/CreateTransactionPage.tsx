@@ -20,8 +20,16 @@ import {
   transactionTypeService,
   lookupService,
   templateService,
+  transactionService,
   FieldType,
   type TemplateField,
+  type TransactionPrepareResponse,
+  type TransactionTemplate,
+  type TransactionTypeOption,
+  type CurrencyOption,
+  type StatusOption,
+  type ProcessingStatusOption,
+  type CustomField,
   ScoreCriteriaRange
 } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
@@ -34,7 +42,7 @@ import {
   DialogBody,
   DialogFooter
 } from '@/components/ui/dialog';
-import { recordService, accountService, transactionService, fieldResponseService, type FieldResponseDetail, type FieldResponseCreate } from '@/services/api';
+import { recordService, accountService, fieldResponseService, type FieldResponseDetail, type FieldResponseCreate } from '@/services/api';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
@@ -70,7 +78,12 @@ const initialForm = {
 
 const CreateTransactionPage = () => {
   const navigate = useNavigate();
-  const [transactionTypes, setTransactionTypes] = useState<any[]>([]);
+  const [transactionTypes, setTransactionTypes] = useState<TransactionTypeOption[]>([]);
+  const [currencyOptions, setCurrencyOptions] = useState<CurrencyOption[]>([]);
+  const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
+  const [processingStatusOptions, setProcessingStatusOptions] = useState<ProcessingStatusOption[]>([]);
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [transactionTemplates, setTransactionTemplates] = useState<TransactionTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState<any>({});
@@ -105,10 +118,8 @@ const CreateTransactionPage = () => {
   const [bankCountriesLoading, setBankCountriesLoading] = useState(false);
   // Currencies state
   const [currencies, setCurrencies] = useState<any[]>([]);
-  const [currenciesLoading, setCurrenciesLoading] = useState(false);
   // Template fields state
   const [templateFields, setTemplateFields] = useState<ExtendedTemplateField[]>([]);
-  const [templateFieldsLoading, setTemplateFieldsLoading] = useState(false);
   const [fieldResponses, setFieldResponses] = useState<FieldResponseCreate[]>([]);
   // Account template fields state
   const [accountTemplateFields, setAccountTemplateFields] = useState<ExtendedTemplateField[]>([]);
@@ -123,98 +134,70 @@ const CreateTransactionPage = () => {
   const [loadingAccountResponses, setLoadingAccountResponses] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    const fetchTypes = async () => {
+    const prepareTransaction = async () => {
       try {
-        const res = await transactionTypeService.getTransactionTypes({ page: 1, pageSize: 100 });
-        setTransactionTypes(res.items);
+        setLoading(true);
+        const prepareData = await transactionService.prepareTransaction();
+        
+        // Set all the data from the prepare API
+        setTransactionTypes(prepareData.transactionTypes);
+        setCurrencyOptions(prepareData.currencyOptions);
+        setStatusOptions(prepareData.statusOptions);
+        setProcessingStatusOptions(prepareData.processingStatusOptions);
+        setCustomFields(prepareData.customFields);
+        setTransactionTemplates(prepareData.transactionTemplates);
+        
+        // Convert customFields to templateFields format for backward compatibility
+        const templateFieldsFromCustomFields = prepareData.customFields.map(customField => ({
+          id: customField.id,
+          templateId: customField.templateId,
+          label: customField.label,
+          fieldType: customField.fieldType,
+          weight: 0, // Default weight
+          isRequired: customField.isRequired,
+          displayOrder: customField.displayOrder,
+          placeholder: customField.placeholder,
+          minLength: customField.minLength,
+          maxLength: customField.maxLength,
+          minValue: customField.minValue,
+          maxValue: customField.maxValue,
+          minDate: customField.minDate,
+          maxDate: customField.maxDate,
+          pattern: customField.pattern,
+          lookupId: customField.lookupId,
+          options: customField.lookupOptions.map(option => ({
+            id: option.id,
+            fieldId: customField.id,
+            label: option.value,
+            scoreCriteriaId: 0,
+            displayOrder: option.displayOrder,
+            value: option.value
+          }))
+        }));
+        setTemplateFields(templateFieldsFromCustomFields);
+        
+        // Set currencies from currency options for backward compatibility
+        setCurrencies(prepareData.currencyOptions.map(currency => ({
+          id: currency.id,
+          lookupId: 2, // Assuming currency lookup ID
+          value: currency.value,
+          scoreCriteriaId: 0
+        })));
+        
       } catch (err) {
         toast({
           title: 'Error',
-          description: 'Failed to fetch transaction types',
-          variant: 'destructive'
-        });
-      }
-    };
-    fetchTypes();
-  }, []);
-
-  // Fetch template fields for template ID 15
-  useEffect(() => {
-    const fetchTemplateFields = async () => {
-      setTemplateFieldsLoading(true);
-      try {
-        const fieldsResponse = await templateService.getTemplateFields('15');
-        // Get all fields from sections and fields without section
-        const allFields = [
-          ...fieldsResponse.sections.flatMap((section) => section.fields),
-          ...fieldsResponse.fieldsWithoutSection
-        ];
-
-        // Fetch options and ranges for fields that need them
-        const fieldsWithOptions = await Promise.all(
-          allFields.map(async (field) => {
-            const extendedField: ExtendedTemplateField = { ...field };
-
-            // Fetch options for option-based fields
-            if (
-              field.fieldType === FieldType.Dropdown ||
-              field.fieldType === FieldType.Radio ||
-              field.fieldType === FieldType.Checkbox
-            ) {
-              const options = await templateService.getFieldOptions('15', field.id!);
-              // Ensure all required fields are present and add value
-              extendedField.options = options.map((opt) => ({
-                ...opt,
-                value: opt.label // Add value property while preserving all required fields
-              }));
-            }
-
-            // Fetch lookup values for Lookup fields
-            if (field.fieldType === FieldType.Lookup && field.lookupId) {
-              try {
-                const lookupValues = await lookupService.getLookupValues(field.lookupId, {
-                  pageNumber: 1,
-                  pageSize: 100
-                });
-                // Convert lookup values to field options format
-                extendedField.options = lookupValues.items.map((lookupValue, index) => ({
-                  id: lookupValue.id,
-                  fieldId: field.id!,
-                  label: lookupValue.value,
-                  scoreCriteriaId: 0, // Default score criteria
-                  displayOrder: index + 1,
-                  value: lookupValue.value
-                }));
-              } catch (error) {
-                console.error(`Error fetching lookup values for field ${field.id}:`, error);
-                extendedField.options = [];
-              }
-            }
-
-            // Fetch ranges for number fields
-            if (field.fieldType === FieldType.Number) {
-              const ranges = await templateService.getTemplateScoreCriteriaRanges('15', field.id!);
-              extendedField.ranges = ranges;
-            }
-
-            return extendedField;
-          })
-        );
-        setTemplateFields(fieldsWithOptions);
-      } catch (error) {
-        console.error('Error fetching template fields:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch template fields. Please try again.',
+          description: 'Failed to prepare transaction data',
           variant: 'destructive'
         });
       } finally {
-        setTemplateFieldsLoading(false);
+        setLoading(false);
       }
     };
-
-    fetchTemplateFields();
+    prepareTransaction();
   }, []);
+
+  // Template fields are now loaded from the prepare API as customFields
 
   // Fetch account template fields for template ID 13
   useEffect(() => {
@@ -313,26 +296,7 @@ const CreateTransactionPage = () => {
     fetchBankCountries();
   }, []);
 
-  // Fetch currencies from lookup service
-  useEffect(() => {
-    const fetchCurrencies = async () => {
-      setCurrenciesLoading(true);
-      try {
-        const lookup = await lookupService.getLookupById(2);
-        const values = await lookupService.getLookupValues(2, { pageNumber: 1, pageSize: 100 });
-        setCurrencies(values.items);
-      } catch (err) {
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch currencies',
-          variant: 'destructive'
-        });
-      } finally {
-        setCurrenciesLoading(false);
-      }
-    };
-    fetchCurrencies();
-  }, []);
+  // Currencies are now loaded from the prepare API
 
   // Fetch records for dialog
   const fetchRecords = async () => {
@@ -466,8 +430,8 @@ const CreateTransactionPage = () => {
   const handleTypeChange = (id: string) => {
     setForm((f) => ({ ...f, transactionTypeId: id }));
     const type = transactionTypes.find((t) => t.id.toString() === id);
-    setShowSender(type?.isSenderRequired);
-    setShowRecipient(type?.isRecipientRequired);
+    setShowSender(type?.isSenderRequired ?? false);
+    setShowRecipient(type?.isRecipientRequired ?? false);
     setStep(1);
   };
 
@@ -1714,15 +1678,11 @@ const CreateTransactionPage = () => {
                       <SelectValue placeholder="Select Currency" />
                     </SelectTrigger>
                     <SelectContent>
-                      {currenciesLoading ? (
-                        <div className="p-4 text-center">Loading currencies...</div>
-                      ) : (
-                        currencies.map((currency) => (
-                          <SelectItem key={currency.id} value={String(currency.id)}>
-                            {currency.value}
-                          </SelectItem>
-                        ))
-                      )}
+                      {currencies.map((currency) => (
+                        <SelectItem key={currency.id} value={String(currency.id)}>
+                          {currency.value}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   {errors.transactionCurrencyId && (
@@ -2904,12 +2864,7 @@ const CreateTransactionPage = () => {
                     </p>
                   </div>
 
-                  {templateFieldsLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      <span className="ml-2 text-muted-foreground">Loading template fields...</span>
-                    </div>
-                  ) : (
+                  {templateFields.length > 0 ? (
                     <div className="space-y-6">
                       {/* Regular Fields */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2946,6 +2901,10 @@ const CreateTransactionPage = () => {
                           </div>
                         </div>
                       )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No additional fields required for this transaction.
                     </div>
                   )}
                 </div>

@@ -17,6 +17,7 @@ import { transactionService, type Transaction, type PaginatedResponse } from '@/
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { KeenIcon } from '@/components/keenicons';
+import { formatCurrency } from '@/utils/currency';
 
 const TransactionsPage = () => {
   const navigate = useNavigate();
@@ -70,13 +71,7 @@ const TransactionsPage = () => {
 
 
   const formatAmount = (amount: number, currencyName?: string) => {
-    // Use the currency name if available, otherwise default to USD
-    const currency = currencyName || 'USD';
-    
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency
-    }).format(amount);
+    return formatCurrency(amount, currencyName);
   };
 
   const formatDate = (dateString: string) => {

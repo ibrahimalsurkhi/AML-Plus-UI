@@ -24,6 +24,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { KeenIcon } from '@/components/keenicons';
+import { formatCurrencyUSD } from '@/utils/currency';
 
 const TransactionCaseDetailsPage = () => {
   const { uuid } = useParams<{ uuid: string }>();
@@ -133,10 +134,7 @@ const TransactionCaseDetailsPage = () => {
   };
 
   const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+    return formatCurrencyUSD(amount);
   };
 
   const formatDate = (dateString: string) => {

@@ -12,6 +12,7 @@ import {
 } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { KeenIcon } from '@/components/keenicons';
+import { formatCurrencyUSD, formatCurrency } from '@/utils/currency';
 import {
   ArrowLeft,
   Calendar,
@@ -137,10 +138,7 @@ const TransactionDetailsPage = () => {
   };
 
   const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+    return formatCurrencyUSD(amount);
   };
 
   const formatDate = (dateString: string) => {
@@ -306,10 +304,7 @@ const TransactionDetailsPage = () => {
               </div>
               <div className="text-right">
                 <div className="text-4xl font-bold text-primary mb-1">
-                  {transaction.transactionAmount.toLocaleString('en-US', {
-                    style: 'currency',
-                    currency: transaction.transactionCurrencyName || 'USD'
-                  })}
+                  {formatCurrency(transaction.transactionAmount, transaction.transactionCurrencyName)}
                 </div>
                 <div className="text-sm text-gray-500">
                   {transaction.transactionCurrencyName || 'USD'}
