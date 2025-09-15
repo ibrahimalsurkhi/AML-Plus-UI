@@ -30,7 +30,8 @@ import {
   FieldType,
   TemplateField,
   FieldOption,
-  LookupValue
+  LookupValue,
+  TemplateType
 } from '@/services/api';
 import { Input } from '@/components/ui/input';
 import {
@@ -317,16 +318,15 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
   // New state for custom fields with entity types
   const [customFields, setCustomFields] = useState<{
     transaction: TemplateField[]; // Old custom fields from transaction template
-    individual: TemplateField[];
-    organization: TemplateField[];
-  }>({ transaction: [], individual: [], organization: [] });
+    record: TemplateField[]; // All templates with type 1 (Record)
+  }>({ transaction: [], record: [] });
   const [combinedFieldOptions, setCombinedFieldOptions] = useState<
     Array<{
       label: string;
       value: string | number;
       isDivider?: boolean;
       isEntityHeader?: boolean;
-      entityType?: 'transaction' | 'individual' | 'organization';
+      entityType?: 'transaction' | 'record';
     }>
   >([]);
   const [customFieldOptions, setCustomFieldOptions] = useState<
@@ -340,10 +340,11 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
   const [isFieldDropdownOpen, setIsFieldDropdownOpen] = useState(false);
   const fieldDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Template IDs
-  const TRANSACTION_TEMPLATE_ID = 15; // Old custom fields
-  const INDIVIDUAL_TEMPLATE_ID = 17;
-  const ORGANIZATION_TEMPLATE_ID = 18;
+  // Template IDs - will be determined dynamically
+  const [templateIds, setTemplateIds] = useState<{
+    transaction: number | null;
+    record: number[]; // Array of all Record type template IDs
+  }>({ transaction: null, record: [] });
 
   // Load custom values and custom fields when component mounts
   useEffect(() => {
@@ -359,62 +360,72 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
     const loadCustomFields = async () => {
       try {
         // Debug: List all available templates
+        let transactionTemplateId: number | null = null;
+        let recordTemplateIds: number[] = [];
+        let allTemplates: any = null;
+
         try {
-          const allTemplates = await templateService.getTemplates({
+          allTemplates = await templateService.getTemplates({
             pageNumber: 1,
             pageSize: 100,
-            templateType: 1 // Record type
+            templateType: undefined // Get all templates
           });
           console.log(
             'Available templates:',
-            allTemplates.items.map((t) => ({ id: t.id, name: t.name, status: t.status }))
+            allTemplates.items.map((t: any) => ({ id: t.id, name: t.name, type: t.templateType, status: t.status }))
           );
+
+          // Find transaction template (type 3) and record templates (type 1)
+          const transactionTemplate = allTemplates.items.find((t: any) => t.templateType === TemplateType.Transaction);
+          const recordTemplates = allTemplates.items.filter((t: any) => t.templateType === TemplateType.Record);
+
+          console.log('Transaction template:', transactionTemplate);
+          console.log('Record templates:', recordTemplates);
+
+          // Set template IDs
+          transactionTemplateId = transactionTemplate?.id || null;
+          recordTemplateIds = recordTemplates.map((t: any) => t.id);
+
+          // Update template IDs state
+          setTemplateIds({
+            transaction: transactionTemplateId,
+            record: recordTemplateIds
+          });
+
         } catch (error) {
           console.error('Failed to fetch templates list:', error);
         }
 
-        // Fetch custom fields for all template types with individual error handling
-        let transactionFieldsResponse, individualFieldsResponse, organizationFieldsResponse;
+        // Fetch custom fields for transaction template and all record templates
+        let transactionFieldsResponse: any = { sections: [], fieldsWithoutSection: [] };
+        const recordFieldsResponses: { templateId: number; response: any }[] = [];
 
-        try {
-          transactionFieldsResponse = await templateService.getTemplateFields(
-            TRANSACTION_TEMPLATE_ID.toString()
-          );
-          console.log('Transaction template loaded successfully');
-        } catch (error) {
-          console.error('Failed to load transaction template:', error);
-          transactionFieldsResponse = { sections: [], fieldsWithoutSection: [] };
+        // Load transaction template fields if found
+        if (transactionTemplateId) {
+          try {
+            transactionFieldsResponse = await templateService.getTemplateFields(
+              transactionTemplateId.toString()
+            );
+            console.log('Transaction template loaded successfully');
+          } catch (error) {
+            console.error('Failed to load transaction template:', error);
+          }
         }
 
-        try {
-          individualFieldsResponse = await templateService.getTemplateFields(
-            INDIVIDUAL_TEMPLATE_ID.toString()
-          );
-          console.log('Individual template loaded successfully');
-        } catch (error) {
-          console.error('Failed to load individual template:', error);
-          individualFieldsResponse = { sections: [], fieldsWithoutSection: [] };
-        }
-
-        // Try to find organization template by trying multiple IDs
-        organizationFieldsResponse = { sections: [], fieldsWithoutSection: [] }; // Initialize with default
-        let organizationTemplateFound = false;
-        try {
-          organizationFieldsResponse = await templateService.getTemplateFields(
-            ORGANIZATION_TEMPLATE_ID.toString()
-          );
-        } catch (error) {
-          console.error('Failed to load organization template:', error);
-          organizationFieldsResponse = { sections: [], fieldsWithoutSection: [] };
-        }
-
-        if (!organizationTemplateFound) {
-          console.error('No organization template found, using empty response');
+        // Load all record template fields
+        for (const templateId of recordTemplateIds) {
+          try {
+            const response = await templateService.getTemplateFields(templateId.toString());
+            recordFieldsResponses.push({ templateId, response });
+            console.log(`Record template ${templateId} loaded successfully`);
+          } catch (error) {
+            console.error(`Failed to load record template ${templateId}:`, error);
+          }
         }
 
         // Process transaction fields (old custom fields)
         const allTransactionFields = [
-          ...transactionFieldsResponse.sections.flatMap((section) => section.fields),
+          ...transactionFieldsResponse.sections.flatMap((section: any) => section.fields),
           ...transactionFieldsResponse.fieldsWithoutSection
         ];
         const allowedTransactionFields = allTransactionFields.filter(
@@ -426,101 +437,111 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
             field.fieldType === FieldType.Number
         );
 
-        // Process individual fields
-        const allIndividualFields = [
-          ...individualFieldsResponse.sections.flatMap((section) => section.fields),
-          ...individualFieldsResponse.fieldsWithoutSection
-        ];
-        const allowedIndividualFields = allIndividualFields.filter(
-          (field) =>
-            field.fieldType === FieldType.Dropdown ||
-            field.fieldType === FieldType.Lookup ||
-            field.fieldType === FieldType.Radio ||
-            field.fieldType === FieldType.Checkbox ||
-            field.fieldType === FieldType.Number
-        );
+        // Process all record fields grouped by template
+        const recordFieldsByTemplate: { templateId: number; templateName: string; fields: TemplateField[] }[] = [];
+        recordFieldsResponses.forEach(({ templateId, response }) => {
+          const templateFields = [
+            ...response.sections.flatMap((section: any) => section.fields),
+            ...response.fieldsWithoutSection
+          ];
+          // Add template ID to each field for context
+          templateFields.forEach((field: TemplateField) => {
+            field.templateId = templateId;
+          });
+          
+          const allowedFields = templateFields.filter(
+            (field) =>
+              field.fieldType === FieldType.Dropdown ||
+              field.fieldType === FieldType.Lookup ||
+              field.fieldType === FieldType.Radio ||
+              field.fieldType === FieldType.Checkbox ||
+              field.fieldType === FieldType.Number
+          );
 
-        // Process organization fields
-        const allOrganizationFields = [
-          ...organizationFieldsResponse.sections.flatMap((section) => section.fields),
-          ...organizationFieldsResponse.fieldsWithoutSection
-        ];
-        const allowedOrganizationFields = allOrganizationFields.filter(
-          (field) =>
-            field.fieldType === FieldType.Dropdown ||
-            field.fieldType === FieldType.Lookup ||
-            field.fieldType === FieldType.Radio ||
-            field.fieldType === FieldType.Checkbox ||
-            field.fieldType === FieldType.Number
-        );
+          // Get template name from the templates list
+          const templateName = allTemplates?.items.find((t: any) => t.id === templateId)?.name || `Template ${templateId}`;
+          
+          if (allowedFields.length > 0) {
+            recordFieldsByTemplate.push({
+              templateId,
+              templateName,
+              fields: allowedFields
+            });
+          }
+        });
+
+        // Flatten all record fields for backward compatibility
+        const allRecordFields = recordFieldsByTemplate.flatMap(t => t.fields);
 
         // Debug logging
         console.log('Transaction fields:', allowedTransactionFields.length);
-        console.log('Individual fields:', allowedIndividualFields.length);
-        console.log('Organization fields:', allowedOrganizationFields.length);
-        console.log('Organization fields data:', allowedOrganizationFields);
+        console.log('Record fields:', allRecordFields.length);
+        console.log('Record fields by template:', recordFieldsByTemplate);
 
         setCustomFields({
           transaction: allowedTransactionFields,
-          individual: allowedIndividualFields,
-          organization: allowedOrganizationFields
+          record: allRecordFields
         });
 
-        // Create combined field options with static fields + entity type sub-menus
-        const combined = [
+        // Create combined field options with static fields + template headers
+        const combined: Array<{
+          label: string;
+          value: string | number;
+          isDivider?: boolean;
+          isEntityHeader?: boolean;
+          entityType?: 'transaction' | 'record';
+        }> = [
           // Static hardcoded fields
           ...AggregateFieldIdOptions.map((opt) => ({ label: opt.label, value: opt.value })),
 
           // Custom fields divider
           { label: '--- Custom Fields ---', value: 'divider', isDivider: true },
+        ];
 
-          // Old transaction custom fields (show first)
-          ...allowedTransactionFields.map((field) => ({
-            label: field.label,
+        // Add transaction template fields with header
+        if (allowedTransactionFields.length > 0) {
+          const transactionTemplateName = transactionTemplateId 
+            ? allTemplates?.items.find((t: any) => t.id === transactionTemplateId)?.name || 'Transaction Template'
+            : 'Transaction Template';
+          
+          combined.push({
+            label: `📋 ${transactionTemplateName}`,
+            value: 'transaction_header',
+            isEntityHeader: true,
+            entityType: 'transaction' as const
+          });
+          
+          combined.push(...allowedTransactionFields.map((field) => ({
+            label: `  ${field.label}`, // Indent to show it's under template
             value: createCustomFieldId(field.id!),
             entityType: 'transaction' as const
-          })),
+          })));
+        }
 
-          // Individual entity type header (only show if has fields)
-          ...(allowedIndividualFields.length > 0
-            ? [
-                {
-                  label: 'Individual',
-                  value: 'individual_header',
-                  isEntityHeader: true,
-                  entityType: 'individual' as const
-                }
-              ]
-            : []),
-          ...allowedIndividualFields.map((field) => ({
-            label: `  ${field.label}`, // Indent to show it's under Individual
-            value: createCustomFieldId(field.id!),
-            entityType: 'individual' as const
-          })),
-
-          // Organization entity type header (always show for debugging)
-          {
-            label: 'Organization',
-            value: 'organization_header',
+        // Add record template fields with individual headers for each template
+        recordFieldsByTemplate.forEach(({ templateName, fields }) => {
+          combined.push({
+            label: `📄 ${templateName}`,
+            value: `record_header_${templateName}`,
             isEntityHeader: true,
-            entityType: 'organization' as const
-          },
-          ...allowedOrganizationFields.map((field) => ({
-            label: `  ${field.label}`, // Indent to show it's under Organization
+            entityType: 'record' as const
+          });
+          
+          combined.push(...fields.map((field) => ({
+            label: `  ${field.label}`, // Indent to show it's under template
             value: createCustomFieldId(field.id!),
-            entityType: 'organization' as const
-          })),
-          // Debug: Add test organization field
-          ...(allowedOrganizationFields.length === 0
-            ? [
-                {
-                  label: '  [No organization fields found]',
-                  value: 'debug_org',
-                  entityType: 'organization' as const
-                }
-              ]
-            : [])
-        ];
+            entityType: 'record' as const
+          })));
+        });
+
+        // Debug: Add message if no custom fields found
+        if (allowedTransactionFields.length === 0 && recordFieldsByTemplate.length === 0) {
+          combined.push({
+            label: '  [No custom fields found]',
+            value: 'debug_no_fields',
+            entityType: 'record' as const
+          });
+        }
         setCombinedFieldOptions(combined);
       } catch (error) {
         console.error('Failed to load custom fields:', error);
@@ -565,8 +586,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
       const customFieldId = getCustomFieldId(condition.selectedFieldId);
       const field = [
         ...customFields.transaction,
-        ...customFields.individual,
-        ...customFields.organization
+        ...customFields.record
       ].find((f) => f.id === customFieldId);
 
       if (!field) return;
@@ -581,10 +601,13 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
         ) {
           // Load field options - determine template ID based on which entity type contains this field
           const templateId = customFields.transaction.some((f) => f.id === customFieldId)
-            ? TRANSACTION_TEMPLATE_ID.toString()
-            : customFields.individual.some((f) => f.id === customFieldId)
-              ? INDIVIDUAL_TEMPLATE_ID.toString()
-              : ORGANIZATION_TEMPLATE_ID.toString();
+            ? templateIds.transaction?.toString()
+            : field.templateId?.toString();
+
+          if (!templateId) {
+            console.error('No template ID found for field:', field);
+            return;
+          }
 
           const options = await templateService.getFieldOptions(templateId, field.id!);
           setCustomFieldOptions(
@@ -597,10 +620,13 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
         } else if (field.fieldType === FieldType.Lookup && field.lookupId) {
           // Load lookup values - determine template ID based on which entity type contains this field
           const templateId = customFields.transaction.some((f) => f.id === customFieldId)
-            ? TRANSACTION_TEMPLATE_ID.toString()
-            : customFields.individual.some((f) => f.id === customFieldId)
-              ? INDIVIDUAL_TEMPLATE_ID.toString()
-              : ORGANIZATION_TEMPLATE_ID.toString();
+            ? templateIds.transaction?.toString()
+            : field.templateId?.toString();
+
+          if (!templateId) {
+            console.error('No template ID found for field:', field);
+            return;
+          }
 
           const lookupValues = await lookupService.getLookupValues(field.lookupId, {
             pageNumber: 1,
@@ -619,11 +645,9 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
   }, [
     condition.selectedFieldId,
     customFields.transaction,
-    customFields.individual,
-    customFields.organization,
-    TRANSACTION_TEMPLATE_ID,
-    INDIVIDUAL_TEMPLATE_ID,
-    ORGANIZATION_TEMPLATE_ID
+    customFields.record,
+    templateIds.transaction,
+    templateIds.record
   ]);
 
   const handleFieldChange = (field: keyof Condition, value: any) => {
@@ -676,8 +700,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                 {condition.customFieldId
                   ? [
                       ...customFields.transaction,
-                      ...customFields.individual,
-                      ...customFields.organization
+                      ...customFields.record
                     ].find((f) => f.id === condition.customFieldId)?.label || '[Custom Field]'
                   : getLabel(AggregateFieldIdOptions, condition.aggregateFieldId)}
               </div>
@@ -800,15 +823,13 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
               <div>
                 <div className="text-xs text-muted-foreground mb-1">
                   {condition.customFieldId &&
-                  (customFields.individual.some((f) => f.id === condition.customFieldId) ||
-                    customFields.organization.some((f) => f.id === condition.customFieldId))
+                  customFields.record.some((f) => f.id === condition.customFieldId)
                     ? 'Apply To'
                     : 'Filter By'}
                 </div>
                 <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
                   {condition.customFieldId &&
-                  (customFields.individual.some((f) => f.id === condition.customFieldId) ||
-                    customFields.organization.some((f) => f.id === condition.customFieldId))
+                  customFields.record.some((f) => f.id === condition.customFieldId)
                     ? condition.filterBy === 1
                       ? 'Sender'
                       : condition.filterBy === 2
@@ -967,8 +988,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                                     const customFieldId = getCustomFieldId(v);
                                     const field = [
                                       ...customFields.transaction,
-                                      ...customFields.individual,
-                                      ...customFields.organization
+                                      ...customFields.record
                                     ].find((f) => f.id === customFieldId);
 
                                     onChange({
@@ -1407,12 +1427,11 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
         </div>
       )}
 
-      {/* Filter By for Individual/Organization custom fields - Show even without aggregation */}
+      {/* Filter By for Record custom fields - Show even without aggregation */}
       {!readOnly &&
         (condition.aggregateFieldId === AggregateFieldId.RiskStatus ||
           (condition.customFieldId &&
-            (customFields.individual.some((f) => f.id === condition.customFieldId) ||
-              customFields.organization.some((f) => f.id === condition.customFieldId)))) && (
+            customFields.record.some((f) => f.id === condition.customFieldId))) && (
           <div className="p-4 border-t bg-orange-50/30 border-orange-200">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -1439,14 +1458,13 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
           </div>
         )}
 
-      {/* Use Aggregation Toggle - Hide for Individual/Organization custom fields */}
+      {/* Use Aggregation Toggle - Hide for Record custom fields */}
       {!readOnly &&
         condition.aggregateFieldId !== AggregateFieldId.TransactionStatus &&
         condition.aggregateFieldId !== AggregateFieldId.RiskStatus &&
         !(
           condition.customFieldId &&
-          (customFields.individual.some((f) => f.id === condition.customFieldId) ||
-            customFields.organization.some((f) => f.id === condition.customFieldId))
+          customFields.record.some((f) => f.id === condition.customFieldId)
         ) && (
           <div className="p-4 border-t bg-blue-50/30 border-blue-200">
             <div className="flex items-center gap-3">
