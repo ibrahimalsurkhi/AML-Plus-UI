@@ -1,256 +1,49 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import {
-  recordService,
-  type Record,
-  type TemplateField,
-  templateService,
-  FieldType,
-  type Template,
-  caseService,
-  Case,
-  lookupService,
-  type LookupValue,
-  accountService,
-  fieldResponseService,
-  type FieldResponseDetail
-} from '@/services/api';
 import { Container } from '@/components/container';
+import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { recordService, type DetailedRecord, type DetailedFieldResponse, type DetailedTemplateField } from '@/services/api';
+import { toast } from '@/components/ui/use-toast';
+import { formatDate } from '@/lib/utils';
 import {
-  Loader2,
   ArrowLeft,
   User,
+  Shield, 
+  FileText, 
+  DollarSign, 
   Calendar,
   Hash,
-  FileText,
-  IdCard,
-  FileType,
-  UserRound,
-  Cake,
-  Globe,
+  MapPin,
   Flag,
   CreditCard,
-  ChevronDown,
-  ChevronRight,
-  Building
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Star
 } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
-import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
-import { cn } from '@/lib/utils';
-
-// Extend TemplateField type to include options and ranges
-interface ExtendedTemplateField extends TemplateField {
-  options?: Array<{
-    id?: number;
-    fieldId?: number;
-    label: string;
-    scoreCriteriaId: number;
-    displayOrder: number;
-  }>;
-}
-
-// Extended section interface with processed fields
-interface ExtendedTemplateSection {
-  id: number;
-  title: string;
-  displayOrder: number;
-  fields: ExtendedTemplateField[];
-}
-
-// Extended field response to handle optionId field
-interface ExtendedFieldResponse {
-  id: number;
-  fieldId: number;
-  valueText: string | null;
-  valueNumber: number | null;
-  valueDate: string | null;
-  optionId?: string | null;
-}
-
-// Extended Record interface to include lookup value objects
-interface ExtendedRecord extends Record {
-  countryOfBirthLookupValue?: LookupValue;
-  nationalityLookupValue?: LookupValue;
-}
 
 const RecordDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [record, setRecord] = useState<ExtendedRecord | null>(null);
-  const [templateName, setTemplateName] = useState<string>('');
-  const [sections, setSections] = useState<ExtendedTemplateSection[]>([]);
-  const [fieldsWithoutSection, setFieldsWithoutSection] = useState<ExtendedTemplateField[]>([]);
+  const [record, setRecord] = useState<DetailedRecord | null>(null);
   const [loading, setLoading] = useState(true);
-  const [cases, setCases] = useState<Case[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [accountsLoading, setAccountsLoading] = useState(false);
-  // Bank countries lookup state
-  const [bankCountries, setBankCountries] = useState<any[]>([]);
-  const [bankCountriesLoading, setBankCountriesLoading] = useState(false);
-  // Account field responses display state
-  const [expandedAccounts, setExpandedAccounts] = useState<{ [key: number]: boolean }>({});
-  const [accountFieldResponses, setAccountFieldResponses] = useState<{
-    [key: number]: FieldResponseDetail[];
-  }>({});
-  const [loadingAccountResponses, setLoadingAccountResponses] = useState<{
-    [key: number]: boolean;
-  }>({});
 
   useEffect(() => {
-    const fetchData = async () => {
+    if (id) {
+      fetchRecordDetails(id);
+    }
+  }, [id]);
+
+  const fetchRecordDetails = async (recordUuid: string) => {
       try {
         setLoading(true);
-
-        // Now get the full record details using the template ID
-        const fullRecord = await recordService.getRecordById(id!);
-        setRecord(fullRecord as ExtendedRecord);
-
-        // Get the template name
-        const templateDetails = await templateService.getTemplateById(
-          fullRecord.templateId.toString()
-        );
-        setTemplateName(templateDetails.name);
-
-        // Get the template fields and their options
-        const fieldsResponse = await templateService.getTemplateFields(
-          fullRecord.templateId.toString()
-        );
-
-        // Process sections with their fields
-        const processedSections = await Promise.all(
-          fieldsResponse.sections.map(async (section) => {
-            const fieldsWithOptions = await Promise.all(
-              section.fields.map(async (field) => {
-                const extendedField: ExtendedTemplateField = { ...field };
-
-                // Fetch options for option-based fields
-                if (
-                  field.fieldType === FieldType.Dropdown ||
-                  field.fieldType === FieldType.Radio ||
-                  field.fieldType === FieldType.Checkbox
-                ) {
-                  const options = await templateService.getFieldOptions(
-                    fullRecord.templateId.toString(),
-                    field.id!
-                  );
-                  extendedField.options = options;
-                }
-
-                // Fetch lookup values for Lookup fields
-                if (field.fieldType === FieldType.Lookup && field.lookupId) {
-                  try {
-                    const lookupValues = await lookupService.getLookupValues(field.lookupId, {
-                      pageNumber: 1,
-                      pageSize: 100
-                    });
-                    // Convert lookup values to field options format
-                    extendedField.options = lookupValues.items.map(
-                      (lookupValue: LookupValue, index: number) => ({
-                        id: lookupValue.id,
-                        fieldId: field.id!,
-                        label: lookupValue.value,
-                        scoreCriteriaId: lookupValue.scoreCriteriaId || 0,
-                        displayOrder: index + 1
-                      })
-                    );
-                    console.log(
-                      `Loaded ${lookupValues.items.length} lookup values for field ${field.id}:`,
-                      extendedField.options
-                    );
-                  } catch (error) {
-                    console.error(`Error fetching lookup values for field ${field.id}:`, error);
-                    extendedField.options = [];
-                  }
-                }
-
-                return extendedField;
-              })
-            );
-
-            return {
-              ...section,
-              fields: fieldsWithOptions
-            };
-          })
-        );
-
-        // Process fields without section
-        const processedFieldsWithoutSection = await Promise.all(
-          fieldsResponse.fieldsWithoutSection.map(async (field) => {
-            const extendedField: ExtendedTemplateField = { ...field };
-
-            // Fetch options for option-based fields
-            if (
-              field.fieldType === FieldType.Dropdown ||
-              field.fieldType === FieldType.Radio ||
-              field.fieldType === FieldType.Checkbox
-            ) {
-              const options = await templateService.getFieldOptions(
-                fullRecord.templateId.toString(),
-                field.id!
-              );
-              extendedField.options = options;
-            }
-
-            // Fetch lookup values for Lookup fields
-            if (field.fieldType === FieldType.Lookup && field.lookupId) {
-              try {
-                const lookupValues = await lookupService.getLookupValues(field.lookupId, {
-                  pageNumber: 1,
-                  pageSize: 100
-                });
-                // Convert lookup values to field options format
-                extendedField.options = lookupValues.items.map(
-                  (lookupValue: LookupValue, index: number) => ({
-                    id: lookupValue.id,
-                    fieldId: field.id!,
-                    label: lookupValue.value,
-                    scoreCriteriaId: lookupValue.scoreCriteriaId || 0,
-                    displayOrder: index + 1
-                  })
-                );
-                console.log(
-                  `Loaded ${lookupValues.items.length} lookup values for field ${field.id}:`,
-                  extendedField.options
-                );
-              } catch (error) {
-                console.error(`Error fetching lookup values for field ${field.id}:`, error);
-                extendedField.options = [];
-              }
-            }
-
-            return extendedField;
-          })
-        );
-
-        setSections(processedSections);
-        setFieldsWithoutSection(processedFieldsWithoutSection);
-
-        // Fetch cases by recordId
-        caseService.getCasesByRecordId(fullRecord.id).then(setCases);
-
-        // Fetch accounts by recordId
-        setAccountsLoading(true);
-        accountService
-          .getAccountsByRecordId({ recordUUID: fullRecord.uuid, pageNumber: 1, pageSize: 100 })
-          .then((accountsData) => {
-            console.log('Fetched accounts data:', accountsData);
-            if (accountsData && accountsData.length > 0) {
-              console.log('First account structure:', accountsData[0]);
-            }
-            setAccounts(accountsData);
-          })
-          .catch((error) => {
-            console.error('Error fetching accounts:', error);
-            toast({
-              title: 'Error',
-              description: 'Failed to fetch accounts. Please try again.',
-              variant: 'destructive'
-            });
-          })
-          .finally(() => setAccountsLoading(false));
+      const response = await recordService.getRecordDetails(recordUuid);
+      setRecord(response);
       } catch (error) {
         console.error('Error fetching record details:', error);
         toast({
@@ -262,35 +55,175 @@ const RecordDetailsPage = () => {
         setLoading(false);
       }
     };
-    fetchData();
-  }, [id]);
 
-  // Fetch bank countries from lookup service using "CountryOfBirth" key
-  useEffect(() => {
-    const fetchBankCountries = async () => {
-      setBankCountriesLoading(true);
-      try {
-        const values = await lookupService.getLookupValuesByKey('CountryOfBirth', {
-          pageNumber: 1,
-          pageSize: 100
-        });
-        console.log('Fetched bank countries from CountryOfBirth lookup:', values.items);
-        setBankCountries(values.items);
-      } catch (err) {
-        console.error('Error fetching bank countries from CountryOfBirth lookup:', err);
-        // Don't show toast error for this as it's not critical
-      } finally {
-        setBankCountriesLoading(false);
-      }
-    };
-    fetchBankCountries();
-  }, []);
+  const getFieldValue = (field: DetailedTemplateField): string => {
+    if (!field.fieldResponse) return 'Not provided';
+    
+    const response = field.fieldResponse;
+    
+    // Handle different field types
+    switch (field.fieldType) {
+      case 1: // Dropdown
+      case 2: // Radio
+      case 7: // Lookup
+        return response.lookupValue?.value || 'Not selected';
+      case 4: // Date
+        return response.valueDate ? formatDate(response.valueDate) : 'Not provided';
+      case 5: // Number
+        return response.valueNumber?.toString() || 'Not provided';
+      case 6: // TextArea
+      case 0: // Text
+        return response.valueText || 'Not provided';
+      default:
+        return 'Not provided';
+    }
+  };
+
+  const getFieldScore = (field: DetailedTemplateField): number | null => {
+    return field.fieldResponse?.score || null;
+  };
+
+  const getFieldIcon = (field: DetailedTemplateField) => {
+    const label = field.label.toLowerCase();
+    
+    if (label.includes('date') || label.includes('birth')) return <Calendar className="h-4 w-4 text-blue-500" />;
+    if (label.includes('number') || label.includes('count') || label.includes('amount')) return <Hash className="h-4 w-4 text-green-500" />;
+    if (label.includes('country') || label.includes('location')) return <MapPin className="h-4 w-4 text-purple-500" />;
+    if (label.includes('nationality') || label.includes('flag')) return <Flag className="h-4 w-4 text-orange-500" />;
+    if (label.includes('income') || label.includes('financial') || label.includes('worth')) return <DollarSign className="h-4 w-4 text-emerald-500" />;
+    if (label.includes('risk') || label.includes('pep') || label.includes('raca')) return <Shield className="h-4 w-4 text-red-500" />;
+    if (label.includes('product') || label.includes('channel')) return <CreditCard className="h-4 w-4 text-indigo-500" />;
+    if (label.includes('profession') || label.includes('education')) return <TrendingUp className="h-4 w-4 text-cyan-500" />;
+    
+    return <FileText className="h-4 w-4 text-gray-500" />;
+  };
+
+  const renderField = (field: DetailedTemplateField) => {
+    const value = getFieldValue(field);
+    const score = getFieldScore(field);
+    const fieldIcon = getFieldIcon(field);
+    
+    return (
+      <div key={field.id} className="group relative bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200 p-4">
+        <div className="flex items-start justify-between gap-4 pr-16">
+          <div className="flex items-start gap-3 flex-1">
+            <div className="flex-shrink-0 mt-0.5">
+              {fieldIcon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <label className="text-sm font-semibold text-gray-900 leading-tight">
+                  {field.label}
+                </label>
+                {field.isRequired && (
+                  <span className="text-red-500 text-xs font-medium">*</span>
+                )}
+              </div>
+              <div className="text-sm text-gray-700 leading-relaxed">
+                {value === 'Not provided' || value === 'Not selected' ? (
+                  <span className="text-gray-400 italic">{value}</span>
+                ) : (
+                  <span className="text-gray-900">{value}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        {field.weight > 0 && (
+          <div className="absolute top-3 right-3">
+            <Badge variant="secondary" className="text-xs font-bold bg-white text-gray-900 border-2 border-gray-500 px-3 py-1 shadow-md">
+              Weight: {field.weight}
+            </Badge>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSection = (section: any, icon: React.ReactNode) => {
+    if (!section.fields || section.fields.length === 0) return null;
+
+    return (
+      <Card key={section.id} className="mb-6 overflow-hidden shadow-sm border-0 bg-gradient-to-br from-white to-gray-50/30">
+        <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-b border-gray-200/60 px-6 py-4">
+          <CardTitle className="flex items-center gap-3 text-lg font-semibold text-gray-800">
+            <div className="p-2 rounded-lg bg-white shadow-sm border border-gray-200/50">
+              {icon}
+            </div>
+            <span className="flex-1">{section.title}</span>
+            <Badge variant="outline" className="text-xs font-medium">
+              {section.fields.length} field{section.fields.length !== 1 ? 's' : ''}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6 bg-white/50">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {section.fields.map((field: DetailedTemplateField) => renderField(field))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (loading) {
     return (
       <Container>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="animate-spin w-8 h-8 text-primary" />
+        <div className="space-y-6">
+          <Toolbar>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/records')}
+                className="p-1"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <ToolbarHeading>Record Details</ToolbarHeading>
+            </div>
+            <ToolbarActions>
+              <Button variant="outline" onClick={() => navigate('/records')}>
+                Back to Records
+              </Button>
+            </ToolbarActions>
+          </Toolbar>
+
+          {/* Loading Skeleton */}
+          <div className="space-y-6">
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-gray-100 to-gray-200 animate-pulse">
+                <div className="h-6 bg-gray-300 rounded w-48"></div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                      <div className="h-5 bg-gray-200 rounded w-32 animate-pulse"></div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            
+            {[...Array(3)].map((_, i) => (
+              <Card key={i} className="overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-gray-100 to-gray-200 animate-pulse">
+                  <div className="h-6 bg-gray-300 rounded w-40"></div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {[...Array(4)].map((_, j) => (
+                      <div key={j} className="bg-gray-100 rounded-lg p-4 animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                        <div className="h-5 bg-gray-200 rounded w-24"></div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </Container>
     );
@@ -299,636 +232,210 @@ const RecordDetailsPage = () => {
   if (!record) {
     return (
       <Container>
-        <div className="text-center py-16">
-          <h2 className="text-2xl font-semibold mb-2">Record Not Found</h2>
-          <p className="text-muted-foreground mb-4">
-            The record you are looking for does not exist.
-          </p>
-          <Button onClick={() => navigate('/records')} variant="outline">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Records
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Record not found</h2>
+          <p className="text-gray-600 mb-4">The record you're looking for doesn't exist or has been removed.</p>
+          <Button onClick={() => navigate('/records')}>
+            Back to Records
           </Button>
         </div>
       </Container>
     );
   }
 
-  // Helper to get field value from record.fieldResponses
-  const getFieldValue = (
-    fieldId: number,
-    fieldType: FieldType,
-    options?: ExtendedTemplateField['options']
-  ) => {
-    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId) as
-      | ExtendedFieldResponse
-      | undefined;
-    if (!response) return null;
-
-    switch (fieldType) {
-      case FieldType.Text:
-      case FieldType.TextArea:
-        return response.valueText;
-      case FieldType.Number:
-        return response.valueNumber;
-      case FieldType.Date:
-        return response.valueDate ? new Date(response.valueDate).toLocaleDateString() : null;
-      case FieldType.Dropdown:
-      case FieldType.Radio:
-      case FieldType.Checkbox:
-      case FieldType.Lookup:
-        // For debugging lookup fields
-        if (fieldType === FieldType.Lookup) {
-          console.log(`Lookup field ${fieldId}:`, {
-            valueText: response.valueText,
-            optionId: response.optionId,
-            availableOptions: options?.map((opt) => ({ id: opt.id, label: opt.label }))
-          });
-        }
-
-        // Try to get the value from optionId first, then valueText
-        const valueToMatch = response.optionId || response.valueText;
-
-        if (valueToMatch) {
-          // Try multiple matching strategies:
-          // 1. Match by option ID (string comparison)
-          const optionById = options?.find((opt) => opt.id?.toString() === valueToMatch);
-          // 2. Match by option ID (number comparison)
-          const optionByNumericId = options?.find((opt) => opt.id === parseInt(valueToMatch));
-          // 3. Match by label
-          const optionByLabel = options?.find((opt) => opt.label === valueToMatch);
-
-          const option = optionById || optionByNumericId || optionByLabel;
-
-          if (fieldType === FieldType.Lookup && !option) {
-            console.warn(
-              `No matching option found for lookup field ${fieldId} with value: ${valueToMatch}`,
-              {
-                optionId: response.optionId,
-                valueText: response.valueText,
-                availableOptions: options
-              }
-            );
-          }
-
-          return option?.label || valueToMatch;
-        }
-        return null;
-      default:
-        return response.valueText;
-    }
-  };
-
-  // Helper to get field icon based on field type
-  const getFieldIcon = (fieldType: FieldType) => {
-    switch (fieldType) {
-      case FieldType.Text:
-      case FieldType.TextArea:
-        return <FileType className="w-4 h-4" />;
-      case FieldType.Number:
-        return <Hash className="w-4 h-4" />;
-      case FieldType.Date:
-        return <Calendar className="w-4 h-4" />;
-      case FieldType.Dropdown:
-      case FieldType.Radio:
-      case FieldType.Checkbox:
-      case FieldType.Lookup:
-        return <FileText className="w-4 h-4" />;
-      default:
-        return <FileText className="w-4 h-4" />;
-    }
-  };
-
-  // Function to toggle account expansion and fetch field responses
-  const toggleAccountExpansion = async (accountId: number) => {
-    const isCurrentlyExpanded = expandedAccounts[accountId];
-
-    // Toggle expansion state
-    setExpandedAccounts((prev: { [key: number]: boolean }) => ({
-      ...prev,
-      [accountId]: !isCurrentlyExpanded
-    }));
-
-    // If expanding and we don't have data yet, fetch it
-    if (!isCurrentlyExpanded && !accountFieldResponses[accountId]) {
-      setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({
-        ...prev,
-        [accountId]: true
-      }));
-
-      try {
-        const responses = await fieldResponseService.getFieldResponses({ accountId });
-        setAccountFieldResponses((prev: { [key: number]: FieldResponseDetail[] }) => ({
-          ...prev,
-          [accountId]: responses
-        }));
-      } catch (error) {
-        console.error('Error fetching account field responses:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load account field responses',
-          variant: 'destructive'
-        });
-      } finally {
-        setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({
-          ...prev,
-          [accountId]: false
-        }));
-      }
-    }
-  };
-
-  // Function to render field response value
-  const renderFieldResponseValue = (response: FieldResponseDetail) => {
-    if (response.valueText) return response.valueText;
-    if (response.valueNumber !== null) return response.valueNumber.toString();
-    if (response.valueDate) return new Date(response.valueDate).toLocaleDateString();
-    if (response.optionValue) return response.optionValue;
-    return '-';
-  };
-
-  // Helper function to get bank country display value from CountryOfBirth lookup
-  const getBankCountryDisplayValue = (account: any) => {
-    console.log('Getting bank country for account:', account.id, {
-      bankOfCountryName: account.bankOfCountryName,
-      bankOfCountryId: account.bankOfCountryId,
-      bankOfCountryLookupValueId: account.bankOfCountryLookupValueId,
-      bankCountriesAvailable: bankCountries.length
-    });
-
-    // First, try to use the bankOfCountryName if it exists and is not empty
-    if (account.bankOfCountryName && account.bankOfCountryName.trim() !== '') {
-      console.log('Using bankOfCountryName:', account.bankOfCountryName);
-      return account.bankOfCountryName;
-    }
-
-    // If we have a bankOfCountryId, try to find it in the lookup values
-    if (account.bankOfCountryId && bankCountries.length > 0) {
-      const country = bankCountries.find(
-        (c) => c.id === account.bankOfCountryId || c.id === parseInt(account.bankOfCountryId)
-      );
-      if (country) {
-        console.log('Found country by bankOfCountryId:', country.value);
-        return country.value;
-      }
-    }
-
-    // If we have a bankOfCountryLookupValueId, try to find it in the lookup values
-    if (account.bankOfCountryLookupValueId && bankCountries.length > 0) {
-      const country = bankCountries.find(
-        (c) =>
-          c.id === account.bankOfCountryLookupValueId ||
-          c.id === parseInt(account.bankOfCountryLookupValueId)
-      );
-      if (country) {
-        console.log('Found country by bankOfCountryLookupValueId:', country.value);
-        return country.value;
-      }
-    }
-
-    console.log('No bank country found, returning -');
-    return '-';
-  };
-
   return (
     <Container>
       <div className="space-y-6">
         <Toolbar>
-          <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/records')}
+              className="p-1"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <ToolbarHeading>Record Details</ToolbarHeading>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-md">
-                <Hash className="w-4 h-4 text-primary" />
-                <span>ID: {record?.id || '-'}</span>
-              </div>
-              <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-md">
-                <IdCard className="w-4 h-4 text-primary" />
-                <span>Identification: {record?.identification || '-'}</span>
-              </div>
-              <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-md">
-                <FileText className="w-4 h-4 text-primary" />
-                <span>Template: {templateName || '-'}</span>
-              </div>
-            </div>
           </div>
           <ToolbarActions>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/records')}
-              className="hover:bg-primary/5"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Records
+            <Button variant="outline" onClick={() => navigate('/records')}>
+              Back to Records
             </Button>
           </ToolbarActions>
         </Toolbar>
 
-        {/* Personal Information Card */}
-        <Card className="shadow-sm border-primary/10">
-          <CardHeader className="bg-primary/5 border-b">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <UserRound className="w-5 h-5 text-primary" />
-              Personal Information
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Basic information about the record holder.
-            </p>
+        {/* Personal Information Section */}
+        <Card className="mb-6 overflow-hidden shadow-sm border-0 bg-gradient-to-br from-blue-50/30 to-indigo-50/20">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-100/50 border-b border-blue-200/60 px-6 py-5">
+            <CardTitle className="flex items-center gap-3 text-xl font-bold text-gray-800">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
+                <User className="h-6 w-6" />
+              </div>
+              <span className="flex-1">Personal Information</span>
+              <Badge variant="outline" className="bg-white/80 text-blue-700 border-blue-300">
+                ID: {record.id}
+              </Badge>
+            </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-6 bg-white/70">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <Hash className="w-4 h-4" />
-                  ID
+              <div className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200">
+                    <User className="h-4 w-4 text-purple-600" />
                 </div>
-                <div className="text-base font-medium">{record?.id || '-'}</div>
+                  <label className="text-sm font-semibold text-gray-700">Full Name</label>
+                </div>
+                <p className="text-lg font-semibold text-gray-900 leading-tight">
+                  {record.firstName} {record.middleName && `${record.middleName} `}
+                  {record.lastName}
+                </p>
               </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <IdCard className="w-4 h-4" />
-                  Identification
+              
+              <div className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200">
+                    <Calendar className="h-4 w-4 text-blue-600" />
                 </div>
-                <div className="text-base font-medium">{record?.identification || '-'}</div>
+                  <label className="text-sm font-semibold text-gray-700">Date of Birth</label>
+                </div>
+                <p className="text-lg font-semibold text-gray-900">
+                  {formatDate(record.dateOfBirth)}
+                </p>
               </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <CreditCard className="w-4 h-4" />
-                  Customer Reference ID
+              
+              <div className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-green-100 to-green-200">
+                    <Hash className="h-4 w-4 text-green-600" />
                 </div>
-                <div className="text-base font-medium">{record?.customerReferenceId || '-'}</div>
+                  <label className="text-sm font-semibold text-gray-700">Identification</label>
+                </div>
+                <p className="text-lg font-semibold text-gray-900 font-mono">{record.identification}</p>
               </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <FileText className="w-4 h-4" />
-                  Template
+              
+              <div className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-orange-100 to-orange-200">
+                    <Hash className="h-4 w-4 text-orange-600" />
                 </div>
-                <div className="text-base font-medium">{templateName || '-'}</div>
+                  <label className="text-sm font-semibold text-gray-700">Customer Reference ID</label>
+                </div>
+                <p className="text-lg font-semibold text-gray-900 font-mono">{record.customerReferenceId}</p>
               </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <User className="w-4 h-4" />
-                  First Name
+              
+              <div className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200 relative">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200">
+                    <MapPin className="h-4 w-4 text-purple-600" />
                 </div>
-                <div className="text-base font-medium">{record.firstName}</div>
+                  <label className="text-sm font-semibold text-gray-700">Country of Birth</label>
+                  {record.countryOfBirthWeight && (
+                    <Badge variant="secondary" className="text-xs font-bold bg-white text-purple-900 border-2 border-purple-500 px-3 py-1 ml-auto shadow-md">
+                      Weight: {record.countryOfBirthWeight}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-lg font-semibold text-gray-900">
+                  {record.countryOfBirthLookupValue?.value || 'Not provided'}
+                </p>
               </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <User className="w-4 h-4" />
-                  Middle Name
+              
+              <div className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200 relative">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-orange-100 to-orange-200">
+                    <Flag className="h-4 w-4 text-orange-600" />
                 </div>
-                <div className="text-base font-medium">{record.middleName || '-'}</div>
-              </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <User className="w-4 h-4" />
-                  Last Name
+                  <label className="text-sm font-semibold text-gray-700">Nationality</label>
+                  {record.nationalityWeight && (
+                    <Badge variant="secondary" className="text-xs font-bold bg-white text-orange-900 border-2 border-orange-500 px-3 py-1 ml-auto shadow-md">
+                      Weight: {record.nationalityWeight}
+                    </Badge>
+                  )}
                 </div>
-                <div className="text-base font-medium">{record.lastName}</div>
-              </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <Cake className="w-4 h-4" />
-                  Date of Birth
-                </div>
-                <div className="text-base font-medium">
-                  {new Date(record.dateOfBirth).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </div>
-              </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <Globe className="w-4 h-4" />
-                  Country of Birth
-                </div>
-                <div className="text-base font-medium">
-                  {record.countryOfBirthLookupValue?.value || '-'}
-                </div>
-              </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <Flag className="w-4 h-4" />
-                  Nationality
-                </div>
-                <div className="text-base font-medium">
-                  {record.nationalityLookupValue?.value || '-'}
-                </div>
+                <p className="text-lg font-semibold text-gray-900">
+                  {record.nationalityLookupValue?.value || 'Not provided'}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Template Fields organized by Sections */}
-        {sections.map((section) => (
-          <Card key={section.id} className="shadow-sm border-primary/10">
-            <CardHeader className="bg-primary/5 border-b">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                {section.title}
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Fields organized under the {section.title} section.
-              </p>
+        {/* Template Information */}
+        <Card className="mb-6 overflow-hidden shadow-sm border-0 bg-gradient-to-br from-emerald-50/30 to-teal-50/20">
+          <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-100/50 border-b border-emerald-200/60 px-6 py-4">
+            <CardTitle className="flex items-center gap-3 text-lg font-semibold text-gray-800">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md">
+                <FileText className="h-5 w-5" />
+              </div>
+              <span className="flex-1">Template Information</span>
+            </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
+          <CardContent className="p-6 bg-white/70">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {section.fields.map((field) => {
-                  const value = getFieldValue(field.id!, field.fieldType, field.options);
-                  return (
-                    <div
-                      key={field.id}
-                      className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                        {getFieldIcon(field.fieldType)}
-                        {field.label}
+              <div className="bg-white/80 rounded-xl p-4 border border-gray-200/50">
+                <label className="text-sm font-semibold text-gray-700 mb-2 block">Template Name</label>
+                <p className="text-lg font-semibold text-gray-900">{record.template.name}</p>
                       </div>
-                      <div className="text-base font-medium">
-                        {value !== null ? value : <span className="text-muted-foreground">-</span>}
-                      </div>
+              <div className="bg-white/80 rounded-xl p-4 border border-gray-200/50">
+                <label className="text-sm font-semibold text-gray-700 mb-2 block">Template Description</label>
+                <p className="text-lg font-semibold text-gray-900">{record.template.description}</p>
                     </div>
-                  );
-                })}
               </div>
             </CardContent>
           </Card>
-        ))}
 
-        {/* Fields without Section */}
-        {fieldsWithoutSection.length > 0 && (
-          <Card className="shadow-sm border-primary/10">
-            <CardHeader className="bg-primary/5 border-b">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                Additional Information
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Additional template fields not organized under specific sections.
-              </p>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {fieldsWithoutSection.map((field) => {
-                  const value = getFieldValue(field.id!, field.fieldType, field.options);
-                  return (
-                    <div
-                      key={field.id}
-                      className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                        {getFieldIcon(field.fieldType)}
-                        {field.label}
-                      </div>
-                      <div className="text-base font-medium">
-                        {value !== null ? value : <span className="text-muted-foreground">-</span>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Related Accounts Section */}
-        {accounts.length > 0 && (
-          <Card className="shadow-sm border-primary/10">
-            <CardHeader className="bg-primary/5 border-b">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Building className="w-5 h-5 text-primary" />
-                Related Accounts
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Account information associated with this record.
-              </p>
-            </CardHeader>
-            <CardContent className="p-6">
-              {accountsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="animate-spin w-8 h-8 text-primary" />
-                  <span className="ml-2 text-muted-foreground">Loading accounts...</span>
+        {/* Dynamic Sections */}
+        {record.sections.map((section) => {
+          // Determine icon and colors based on section title
+          let icon = <FileText className="h-5 w-5" />;
+          let iconBg = "from-gray-500 to-gray-600";
+          let headerBg = "from-gray-50 to-gray-100/50";
+          let cardBg = "from-gray-50/30 to-gray-50/20";
+          let borderColor = "border-gray-200/60";
+          
+          if (section.title.toLowerCase().includes('risk')) {
+            icon = <Shield className="h-5 w-5" />;
+            iconBg = "from-red-500 to-red-600";
+            headerBg = "from-red-50 to-red-100/50";
+            cardBg = "from-red-50/30 to-red-50/20";
+            borderColor = "border-red-200/60";
+          } else if (section.title.toLowerCase().includes('financial')) {
+            icon = <DollarSign className="h-5 w-5" />;
+            iconBg = "from-emerald-500 to-emerald-600";
+            headerBg = "from-emerald-50 to-emerald-100/50";
+            cardBg = "from-emerald-50/30 to-emerald-50/20";
+            borderColor = "border-emerald-200/60";
+          } else if (section.title.toLowerCase().includes('additional')) {
+            icon = <FileText className="h-5 w-5" />;
+            iconBg = "from-blue-500 to-blue-600";
+            headerBg = "from-blue-50 to-blue-100/50";
+            cardBg = "from-blue-50/30 to-blue-50/20";
+            borderColor = "border-blue-200/60";
+          }
+          
+          return (
+            <Card key={section.id} className={`mb-6 overflow-hidden shadow-sm border-0 bg-gradient-to-br ${cardBg}`}>
+              <CardHeader className={`bg-gradient-to-r ${headerBg} border-b ${borderColor} px-6 py-4`}>
+                <CardTitle className="flex items-center gap-3 text-lg font-semibold text-gray-800">
+                  <div className={`p-2 rounded-lg bg-gradient-to-br ${iconBg} text-white shadow-sm`}>
+                    {icon}
+                              </div>
+                  <span className="flex-1">{section.title}</span>
+                  <Badge variant="outline" className="text-xs font-medium bg-white/80">
+                    {section.fields.length} field{section.fields.length !== 1 ? 's' : ''}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 bg-white/50">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {section.fields.map((field: DetailedTemplateField) => renderField(field))}
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {accounts.map((account) => (
-                    <Card
-                      key={account.id}
-                      className="border bg-card hover:bg-accent/5 transition-colors"
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Account Name
-                                </div>
-                                <div className="text-base font-semibold">{account.name}</div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Account Number
-                                </div>
-                                <div className="text-base font-mono">{account.number}</div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Bank Country
-                                </div>
-                                <div className="text-base">
-                                  {getBankCountryDisplayValue(account)}
-                                </div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Bank City
-                                </div>
-                                <div className="text-base">{account.bankOfCity || '-'}</div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Status
-                                </div>
-                                <div className="text-base">
-                                  <span
-                                    className={cn(
-                                      'px-2 py-1 rounded-full text-xs font-medium',
-                                      account.accountStatus === 1
-                                        ? 'bg-green-100 text-green-800'
-                                        : account.accountStatus === 2
-                                          ? 'bg-yellow-100 text-yellow-800'
-                                          : account.accountStatus === 3
-                                            ? 'bg-red-100 text-red-800'
-                                            : account.accountStatus === 4
-                                              ? 'bg-orange-100 text-orange-800'
-                                              : 'bg-gray-100 text-gray-800'
-                                    )}
-                                  >
-                                    {account.accountStatus === 1
-                                      ? 'Active'
-                                      : account.accountStatus === 2
-                                        ? 'Inactive'
-                                        : account.accountStatus === 3
-                                          ? 'Closed'
-                                          : account.accountStatus === 4
-                                            ? 'Suspended'
-                                            : 'Unknown'}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Created
-                                </div>
-                                <div className="text-base">
-                                  {account.creationDate
-                                    ? new Date(account.creationDate).toLocaleDateString()
-                                    : '-'}
-                                </div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Account ID
-                                </div>
-                                <div className="text-base font-mono">{account.id}</div>
-                              </div>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => toggleAccountExpansion(account.id)}
-                            className="ml-4 p-2 hover:bg-gray-100 rounded transition-colors"
-                            aria-label={
-                              expandedAccounts[account.id] ? 'Collapse details' : 'Expand details'
-                            }
-                          >
-                            {expandedAccounts[account.id] ? (
-                              <ChevronDown className="h-4 w-4" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4" />
-                            )}
-                          </button>
-                        </div>
-
-                        {/* Expandable Field Responses Section */}
-                        {expandedAccounts[account.id] && (
-                          <div className="mt-4 pt-4 border-t">
-                            {loadingAccountResponses[account.id] ? (
-                              <div className="flex items-center justify-center py-4">
-                                <Loader2 className="animate-spin w-6 h-6 text-primary" />
-                                <span className="ml-2 text-sm text-muted-foreground">
-                                  Loading field responses...
-                                </span>
-                              </div>
-                            ) : accountFieldResponses[account.id] &&
-                              accountFieldResponses[account.id].length > 0 ? (
-                              <div className="space-y-3">
-                                <h4 className="font-medium text-sm text-muted-foreground">
-                                  Additional Account Information:
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {accountFieldResponses[account.id].map(
-                                    (response: FieldResponseDetail) => (
-                                      <div
-                                        key={response.id}
-                                        className="p-3 rounded border bg-gray-50/50"
-                                      >
-                                        <div className="text-sm font-medium text-gray-700 mb-1">
-                                          {response.fieldName}
-                                        </div>
-                                        <div className="text-sm text-gray-900">
-                                          {renderFieldResponseValue(response)}
-                                        </div>
-                                        {response.created && (
-                                          <div className="text-xs text-gray-500 mt-1">
-                                            Created:{' '}
-                                            {new Date(response.created).toLocaleDateString()}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-sm text-gray-500 py-2">
-                                No additional field responses found for this account.
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
-        )}
-
-        {cases.length > 0 && (
-          <Card className="shadow-sm border-primary/10 mt-6">
-            <CardHeader className="bg-primary/5 border-b">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                Related Cases
-              </h2>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="overflow-x-auto">
-                <table className="min-w-full border text-sm">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="border px-3 py-2 text-left">ID</th>
-                      <th className="border px-3 py-2 text-left">Full Name</th>
-                      <th className="border px-3 py-2 text-left">Score</th>
-                      <th className="border px-3 py-2 text-left">Target Threshold</th>
-                      <th className="border px-3 py-2 text-left">Exceeds Target</th>
-                      <th className="border px-3 py-2 text-left">Status</th>
-                      <th className="border px-3 py-2 text-left">Source</th>
-                      <th className="border px-3 py-2 text-left">Created</th>
-                      <th className="border px-3 py-2 text-left">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cases.map((c) => (
-                      <tr key={c.id}>
-                        <td className="border px-3 py-2">{c.id}</td>
-                        <td className="border px-3 py-2">{c.fullName}</td>
-                        <td className="border px-3 py-2">
-                          <span
-                            className="px-2 w-16 text-center py-1 rounded-md inline-block"
-                            style={{
-                              backgroundColor: c.riskLevelBGColor || c.scoreBGColor,
-                              color: c.riskLevelColor
-                            }}
-                          >
-                            {c.score}
-                          </span>
-                        </td>
-                        <td className="border px-3 py-2">{c.targetThreshold}</td>
-                        <td className="border px-3 py-2">
-                          {c.exceedsTargetThreshold ? 'Yes' : 'No'}
-                        </td>
-                        <td className="border px-3 py-2">{c.status}</td>
-                        <td className="border px-3 py-2">{c.source}</td>
-                        <td className="border px-3 py-2">{c.created}</td>
-                        <td className="border px-3 py-2">
-                          <Button
-                            variant="link"
-                            size="sm"
-                            onClick={() => navigate(`/cases/${c.id}`)}
-                          >
-                            View
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+          );
+        })}
       </div>
     </Container>
   );

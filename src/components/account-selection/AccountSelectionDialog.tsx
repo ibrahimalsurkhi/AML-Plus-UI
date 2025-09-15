@@ -1007,11 +1007,38 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
       setSelectedAccount({ ...accountData, id: res.id });
     } catch (error: any) {
       console.error('Error creating account:', error);
-      toast({
-        title: 'Error',
-        description: error?.response?.data?.message || 'Failed to create account',
-        variant: 'destructive'
-      });
+      console.error('Error response data:', error.response?.data);
+
+      // Handle validation errors from server
+      if (error.response?.data?.validationErrors) {
+        const validationErrors = error.response.data.validationErrors;
+        const errorMessages: string[] = [];
+
+        // Convert validation errors to user-friendly messages
+        Object.keys(validationErrors).forEach((field) => {
+          const fieldErrors = validationErrors[field];
+          if (Array.isArray(fieldErrors)) {
+            fieldErrors.forEach((errorMsg: string) => {
+              errorMessages.push(`${field}: ${errorMsg}`);
+            });
+          } else {
+            errorMessages.push(`${field}: ${fieldErrors}`);
+          }
+        });
+
+        toast({
+          title: 'Validation Error',
+          description: errorMessages.join('\n'),
+          variant: 'destructive'
+        });
+      } else {
+        // Handle other errors
+        toast({
+          title: 'Error',
+          description: error?.response?.data?.message || error?.response?.data?.details || 'Failed to create account',
+          variant: 'destructive'
+        });
+      }
     } finally {
       setAccountsLoading(false);
     }

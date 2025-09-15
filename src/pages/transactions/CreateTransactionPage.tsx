@@ -464,6 +464,7 @@ const CreateTransactionPage = () => {
       }, 2000); // Check status after 2 seconds
     } catch (error: any) {
       console.error('Error creating transaction:', error);
+      console.error('Error response data:', error.response?.data);
 
       // Handle validation errors from server
       if (error.response?.data?.validationErrors) {
@@ -473,9 +474,13 @@ const CreateTransactionPage = () => {
         // Convert validation errors to user-friendly messages
         Object.keys(validationErrors).forEach((field) => {
           const fieldErrors = validationErrors[field];
-          fieldErrors.forEach((errorMsg: string) => {
-            errorMessages.push(`${field}: ${errorMsg}`);
-          });
+          if (Array.isArray(fieldErrors)) {
+            fieldErrors.forEach((errorMsg: string) => {
+              errorMessages.push(`${field}: ${errorMsg}`);
+            });
+          } else {
+            errorMessages.push(`${field}: ${fieldErrors}`);
+          }
         });
 
         toast({
@@ -487,7 +492,7 @@ const CreateTransactionPage = () => {
         // Handle other errors
         toast({
           title: 'Error',
-          description: error.response?.data?.message || 'Failed to create transaction',
+          description: error.response?.data?.message || error.response?.data?.details || 'Failed to create transaction',
           variant: 'destructive'
         });
       }

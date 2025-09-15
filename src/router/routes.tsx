@@ -2,6 +2,7 @@ import { type RouteObject } from 'react-router-dom';
 import { SanctionSearchPage } from '@/pages/sanction-search';
 import { DashboardPage } from '@/pages/dashboard';
 import RecordsPage from '@/pages/records/RecordsPage';
+import RecordDetailsPage from '@/pages/records/RecordDetailsPage';
 import TransactionCasesPage from '@/pages/transaction-cases';
 import TransactionCaseDetailsPage from '@/pages/transaction-cases/TransactionCaseDetailsPage';
 
@@ -17,6 +18,10 @@ export const routes: RouteObject[] = [
   {
     path: '/records',
     element: <RecordsPage />
+  },
+  {
+    path: '/records/:id',
+    element: <RecordDetailsPage />
   },
   {
     path: '/transaction-cases',

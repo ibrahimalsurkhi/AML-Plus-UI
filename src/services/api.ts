@@ -407,6 +407,106 @@ export interface RecordQueryParams {
   customerRefId?: string;
 }
 
+// Detailed Record interfaces for the new API response
+export interface DetailedLookupValue {
+  id: number;
+  uuid: string;
+  value: string;
+  description: string | null;
+  displayOrder: number;
+  lookupId: number;
+  lookupName: string;
+}
+
+export interface DetailedLookup {
+  id: number;
+  uuid: string;
+  tenantId: number;
+  templateFieldId: number | null;
+  fieldType: number;
+  name: string;
+  key: string | null;
+  isShared: boolean;
+  values: DetailedLookupValue[];
+}
+
+export interface DetailedFieldResponse {
+  id: number;
+  fieldId: number;
+  optionId: number | null;
+  templateFieldScoreCriteriaId: number | null;
+  templateScoreCriteriaId: number | null;
+  score: number | null;
+  valueText: string | null;
+  valueNumber: number | null;
+  valueDate: string | null;
+  fieldName: string;
+  fieldLabel: string;
+  fieldType: number;
+  lookupValue: DetailedLookupValue | null;
+  scoreCriteria: any | null;
+}
+
+export interface DetailedTemplateField {
+  id: number;
+  uuid: string;
+  templateId: number;
+  sectionId: number;
+  lookupId: number | null;
+  label: string;
+  fieldType: number;
+  weight: number;
+  isRequired: boolean;
+  displayOrder: number;
+  placeholder: string | null;
+  minLength: number | null;
+  maxLength: number | null;
+  minValue: number | null;
+  maxValue: number | null;
+  minDate: string | null;
+  maxDate: string | null;
+  pattern: string | null;
+  lookup: DetailedLookup | null;
+  fieldResponse: DetailedFieldResponse | null;
+}
+
+export interface DetailedTemplateSection {
+  id: number;
+  uuid: string;
+  templateId: number;
+  title: string;
+  displayOrder: number;
+  fields: DetailedTemplateField[];
+}
+
+export interface DetailedTemplate {
+  id: number;
+  uuid: string;
+  name: string;
+  description: string;
+}
+
+export interface DetailedRecord {
+  uuid: string;
+  id: number;
+  templateId: number;
+  userId: string | null;
+  firstName: string;
+  middleName: string | null;
+  lastName: string;
+  dateOfBirth: string;
+  identification: string;
+  countryOfBirthLookupValueId: number;
+  nationalityLookupValueId: number;
+  customerReferenceId: string;
+  countryOfBirthWeight?: number;
+  nationalityWeight?: number;
+  countryOfBirthLookupValue: DetailedLookupValue;
+  nationalityLookupValue: DetailedLookupValue;
+  template: DetailedTemplate;
+  sections: DetailedTemplateSection[];
+}
+
 export const recordService = {
   getRecords: async (params: RecordQueryParams): Promise<PaginatedResponse<Record>> => {
     const { templateId, customerRefId, pageNumber, pageSize } = params;
@@ -428,6 +528,12 @@ export const recordService = {
   getRecordById: async (recordId: string): Promise<Record> => {
     const response = await api.get<Record>(
       `${API_CONFIG.endpoints.templates.list}/records/${recordId}`
+    );
+    return response.data;
+  },
+  getRecordDetails: async (recordUuid: string): Promise<DetailedRecord> => {
+    const response = await api.get<DetailedRecord>(
+      `${API_CONFIG.endpoints.templates.list}/records/${recordUuid}`
     );
     return response.data;
   },

@@ -77,7 +77,7 @@ const RecordsPage = () => {
     fetchRecords(page);
   };
 
-  const handleViewRecord = (id: number) => {
+  const handleViewRecord = (id: string) => {
     navigate(`/records/${id}`);
   };
 
@@ -131,7 +131,7 @@ const RecordsPage = () => {
                       <TableRow
                         key={record.id}
                         className="hover:bg-gray-50 cursor-pointer"
-                        onClick={() => handleViewRecord(record.id)}
+                        onClick={() => handleViewRecord(record.uuid)}
                       >
                         <TableCell className="font-medium">{record.id}</TableCell>
                         <TableCell>{record.templateName}</TableCell>
@@ -147,7 +147,7 @@ const RecordsPage = () => {
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleViewRecord(record.id);
+                              handleViewRecord(record.uuid);
                             }}
                           >
                             View
