@@ -150,6 +150,68 @@ export interface ScoreCriteriaRange {
   displayOrder: number;
 }
 
+// Prepare Record Response Interfaces
+export interface PrepareRecordTemplate {
+  id: number;
+  name: string;
+  description: string;
+  version: number;
+  scoreToOpenCase: number;
+  countryOfBirthWeight: number;
+  nationalityWeight: number;
+}
+
+export interface PrepareRecordOption {
+  id: number;
+  value: string;
+  displayOrder: number;
+}
+
+export interface PrepareRecordCustomField {
+  id: number;
+  templateId: number;
+  label: string;
+  fieldType: number;
+  weight: number;
+  isRequired: boolean;
+  displayOrder: number;
+  placeholder: string | null;
+  minLength: number | null;
+  maxLength: number | null;
+  minValue: number | null;
+  maxValue: number | null;
+  minDate: string | null;
+  maxDate: string | null;
+  pattern: string | null;
+  lookupId: number | null;
+  lookupName: string | null;
+  lookupOptions: PrepareRecordOption[];
+  scoreCriteria: any[];
+}
+
+export interface PrepareRecordScoreCriteria {
+  id: number;
+  key: string;
+  bgColor: string;
+  color: string;
+  score: number;
+}
+
+export interface PrepareRecordSection {
+  id: number;
+  title: string;
+  displayOrder: number;
+  fields: PrepareRecordCustomField[];
+}
+
+export interface PrepareRecordResponse {
+  template: PrepareRecordTemplate;
+  countryOfBirthOptions: PrepareRecordOption[];
+  nationalityOptions: PrepareRecordOption[];
+  sections: PrepareRecordSection[];
+  scoreCriteria: PrepareRecordScoreCriteria[];
+}
+
 export const templateService = {
   getTemplates: async (params: TemplateQueryParams): Promise<PaginatedResponse<Template>> => {
     const response = await api.get<PaginatedResponse<Template>>(
@@ -360,6 +422,10 @@ export const templateService = {
     await api.put(`${API_CONFIG.endpoints.templates.list}/${templateId}/default-score-criteria`, {
       defaultScoreCriteriaId
     });
+  },
+  prepareRecord: async (templateId: string): Promise<PrepareRecordResponse> => {
+    const response = await api.get<PrepareRecordResponse>(`${API_CONFIG.endpoints.templates.list}/${templateId}/prepare-record`);
+    return response.data;
   }
 };
 
@@ -614,8 +680,8 @@ export const caseService = {
     pageNumber: number;
     pageSize: number;
   }): Promise<PaginatedResponse<Case>> {
-    const response = await api.get<PaginatedResponse<Case>>('/cases', {
-      params: { pageNumber, pageSize }
+    const response = await api.post<PaginatedResponse<Case>>('/cases/search', {
+      pageNumber, pageSize
     });
     return response.data;
   },

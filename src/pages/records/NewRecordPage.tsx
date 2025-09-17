@@ -14,7 +14,11 @@ import {
   FieldType,
   ScoreCriteriaRange,
   TemplateType,
-  type TemplateSection
+  type TemplateSection,
+  type PrepareRecordResponse,
+  type PrepareRecordCustomField,
+  type PrepareRecordOption,
+  type PrepareRecordSection
 } from '@/services/api';
 import type { Record as ApiRecord } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
@@ -31,7 +35,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { HelpCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { lookupService } from '@/services/api';
 import { uniqueID } from '@/lib/helpers';
 
 // Define the base form values type
@@ -116,12 +119,9 @@ const NewRecordPage = () => {
   const [fieldsWithoutSection, setFieldsWithoutSection] = useState<ExtendedTemplateField[]>([]);
   const [validationSchema, setValidationSchema] =
     useState<Yup.ObjectSchema<BaseFormValues>>(baseValidationSchema);
-  const [countryOfBirthOptions, setCountryOfBirthOptions] = useState<
-    Array<{ id: number; value: string }>
-  >([]);
-  const [nationalityOptions, setNationalityOptions] = useState<
-    Array<{ id: number; value: string }>
-  >([]);
+  const [countryOfBirthOptions, setCountryOfBirthOptions] = useState<PrepareRecordOption[]>([]);
+  const [nationalityOptions, setNationalityOptions] = useState<PrepareRecordOption[]>([]);
+  const [prepareRecordData, setPrepareRecordData] = useState<PrepareRecordResponse | null>(null);
 
   // Fetch templates
   useEffect(() => {
@@ -154,234 +154,119 @@ const NewRecordPage = () => {
     fetchTemplates();
   }, []);
 
-  // Fetch lookup values for country of birth and nationality
-  useEffect(() => {
-    const fetchLookupValues = async () => {
-      try {
-        // Fetch country of birth lookup values by key
-        const countryOfBirthData = await lookupService.getLookupValuesByKey('CountryOfBirth', {
-          pageNumber: 1,
-          pageSize: 100
-        });
-        setCountryOfBirthOptions(
-          countryOfBirthData.items.map((item) => ({ id: item.id, value: item.value }))
-        );
-
-        // Fetch nationality lookup values by key
-        const nationalityData = await lookupService.getLookupValuesByKey('Nationality', {
-          pageNumber: 1,
-          pageSize: 100
-        });
-        setNationalityOptions(
-          nationalityData.items.map((item) => ({ id: item.id, value: item.value }))
-        );
-      } catch (error) {
-        console.error('Error fetching lookup values:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch lookup values. Please try again.',
-          variant: 'destructive'
-        });
-      }
-    };
-
-    fetchLookupValues();
-  }, []);
-
-  // Fetch template fields when template is selected
-  const fetchTemplateFields = async (templateId: number) => {
+  // Helper function to call prepare-record API and populate form data
+  const loadTemplateData = async (templateId: number, isAutoCall = false) => {
     try {
-      const fieldsResponse = await templateService.getTemplateFields(templateId.toString());
-
+      const logPrefix = isAutoCall ? 'Auto-calling' : 'Calling';
+      console.log(`${logPrefix} prepare-record API for template:`, templateId);
+      const prepareResponse = await templateService.prepareRecord(templateId.toString());
+      console.log('Prepare-record response:', prepareResponse);
+      
+      // Store the prepare-record response
+      setPrepareRecordData(prepareResponse);
+      
+      // Populate country of birth and nationality options
+      setCountryOfBirthOptions(prepareResponse.countryOfBirthOptions);
+      setNationalityOptions(prepareResponse.nationalityOptions);
+      
       // Process sections with their fields
-      const sectionsWithExtendedFields = await Promise.all(
-        fieldsResponse.sections.map(async (section) => {
-          const extendedFields = await Promise.all(
-            section.fields.map(async (field) => {
-              const extendedField: ExtendedTemplateField = { ...field };
+      const processedSections: ExtendedTemplateSection[] = prepareResponse.sections.map(section => ({
+        id: section.id,
+        title: section.title,
+        displayOrder: section.displayOrder,
+        fields: section.fields.map(field => ({
+          id: field.id,
+          templateId: field.templateId,
+          label: field.label,
+          fieldType: field.fieldType as FieldType,
+          weight: field.weight,
+          isRequired: field.isRequired,
+          displayOrder: field.displayOrder,
+          placeholder: field.placeholder || undefined,
+          minLength: field.minLength || undefined,
+          maxLength: field.maxLength || undefined,
+          minValue: field.minValue || undefined,
+          maxValue: field.maxValue || undefined,
+          minDate: field.minDate || undefined,
+          maxDate: field.maxDate || undefined,
+          pattern: field.pattern || undefined,
+          lookupId: field.lookupId || undefined,
+          options: field.lookupOptions.map((opt, index) => ({
+            id: opt.id,
+            fieldId: field.id,
+            label: opt.value,
+            scoreCriteriaId: 0,
+            displayOrder: opt.displayOrder || index,
+            value: opt.value
+          })),
+          ranges: field.scoreCriteria.map(criteria => ({
+            id: criteria.id,
+            fieldId: criteria.fieldId,
+            minValue: criteria.minValue,
+            maxValue: criteria.maxValue,
+            scoreCriteriaId: criteria.scoreCriteriaId,
+            displayOrder: 0
+          }))
+        }))
+      }));
+      
+      // Set the processed sections and clear fields without section
+      setTemplateSections(processedSections);
+      setFieldsWithoutSection([]);
+      
+      // Update validation schema for custom fields
+      const allFields = processedSections.flatMap(section => section.fields);
+      const dynamicSchema = allFields.reduce<Yup.ObjectSchema<BaseFormValues>>(
+        (schema, field) => {
+          const fieldName = `field_${field.id}`;
+          let fieldSchema: Yup.Schema<any>;
 
-              // Fetch options for option-based fields
-              if (
-                field.fieldType === FieldType.Dropdown ||
-                field.fieldType === FieldType.Radio ||
-                field.fieldType === FieldType.Checkbox
-              ) {
-                const options = await templateService.getFieldOptions(
-                  templateId.toString(),
-                  field.id!
-                );
-                extendedField.options = options.map((opt) => ({
-                  ...opt,
-                  value: opt.label
-                }));
+          switch (field.fieldType) {
+            case FieldType.Text:
+            case FieldType.TextArea:
+            case FieldType.Dropdown:
+            case FieldType.Radio:
+            case FieldType.Lookup:
+              fieldSchema = Yup.string();
+              break;
+            case FieldType.Number:
+              let numberSchema = Yup.number()
+                .nullable()
+                .transform((value) => (isNaN(value) ? null : value));
+              if (field.minValue !== undefined && field.minValue !== null) {
+                numberSchema = numberSchema.min(field.minValue, `Value must be at least ${field.minValue}`);
               }
-
-              // Fetch lookup values for Lookup fields
-              if (field.fieldType === FieldType.Lookup && field.lookupId) {
-                try {
-                  const lookupValues = await lookupService.getLookupValues(field.lookupId, {
-                    pageNumber: 1,
-                    pageSize: 100
-                  });
-                  extendedField.options = lookupValues.items.map((lookupValue, index) => ({
-                    id: lookupValue.id,
-                    fieldId: field.id!,
-                    label: lookupValue.value,
-                    scoreCriteriaId: 0,
-                    displayOrder: index + 1,
-                    value: lookupValue.value
-                  }));
-                } catch (error) {
-                  console.error(`Error fetching lookup values for field ${field.id}:`, error);
-                  extendedField.options = [];
-                }
+              if (field.maxValue !== undefined && field.maxValue !== null) {
+                numberSchema = numberSchema.max(field.maxValue, `Value must be at most ${field.maxValue}`);
               }
+              fieldSchema = numberSchema;
+              break;
+            case FieldType.Date:
+              fieldSchema = Yup.string().nullable();
+              break;
+            case FieldType.Checkbox:
+              fieldSchema = Yup.boolean();
+              break;
+            default:
+              fieldSchema = Yup.string();
+          }
 
-              // Fetch ranges for number fields
-              if (field.fieldType === FieldType.Number) {
-                const ranges = await templateService.getTemplateScoreCriteriaRanges(
-                  templateId.toString(),
-                  field.id!
-                );
-                extendedField.ranges = ranges;
-              }
+          if (field.isRequired) {
+            fieldSchema = fieldSchema.required(`${field.label} is required`);
+          }
 
-              return extendedField;
-            })
-          );
-
-          return {
-            ...section,
-            fields: extendedFields
-          } as ExtendedTemplateSection;
-        })
+          return schema.shape({ [fieldName]: fieldSchema });
+        },
+        baseValidationSchema
       );
 
-      // Process fields without section
-      const fieldsWithoutSectionExtended = await Promise.all(
-        fieldsResponse.fieldsWithoutSection.map(async (field) => {
-          const extendedField: ExtendedTemplateField = { ...field };
-
-          // Fetch options for option-based fields
-          if (
-            field.fieldType === FieldType.Dropdown ||
-            field.fieldType === FieldType.Radio ||
-            field.fieldType === FieldType.Checkbox
-          ) {
-            const options = await templateService.getFieldOptions(templateId.toString(), field.id!);
-            extendedField.options = options.map((opt) => ({
-              ...opt,
-              value: opt.label
-            }));
-          }
-
-          // Fetch lookup values for Lookup fields
-          if (field.fieldType === FieldType.Lookup && field.lookupId) {
-            try {
-              const lookupValues = await lookupService.getLookupValues(field.lookupId, {
-                pageNumber: 1,
-                pageSize: 100
-              });
-              extendedField.options = lookupValues.items.map((lookupValue, index) => ({
-                id: lookupValue.id,
-                fieldId: field.id!,
-                label: lookupValue.value,
-                scoreCriteriaId: 0,
-                displayOrder: index + 1,
-                value: lookupValue.value
-              }));
-            } catch (error) {
-              console.error(`Error fetching lookup values for field ${field.id}:`, error);
-              extendedField.options = [];
-            }
-          }
-
-          // Fetch ranges for number fields
-          if (field.fieldType === FieldType.Number) {
-            const ranges = await templateService.getTemplateScoreCriteriaRanges(
-              templateId.toString(),
-              field.id!
-            );
-            extendedField.ranges = ranges;
-          }
-
-          return extendedField;
-        })
-      );
-
-      setTemplateSections(sectionsWithExtendedFields);
-      setFieldsWithoutSection(fieldsWithoutSectionExtended);
-
-      // Get all fields for validation schema
-      const allFields = [
-        ...sectionsWithExtendedFields.flatMap((section) => section.fields),
-        ...fieldsWithoutSectionExtended
-      ];
-
-      // Update the validation schema when template fields change
-      if (allFields.length > 0) {
-        const dynamicSchema = allFields.reduce<Yup.ObjectSchema<BaseFormValues>>(
-          (schema, field) => {
-            const fieldName = `field_${field.id}`;
-            let fieldSchema: Yup.Schema<any>;
-
-            switch (field.fieldType) {
-              case FieldType.Text:
-              case FieldType.TextArea:
-              case FieldType.Dropdown:
-              case FieldType.Radio:
-              case FieldType.Lookup:
-                fieldSchema = Yup.string();
-                break;
-              case FieldType.Number:
-                // Get the overall min and max from ranges
-                const { min, max } = getRangeBounds(field.ranges);
-                fieldSchema = Yup.number()
-                  .nullable()
-                  .transform((value) => (isNaN(value) ? null : value))
-                  .test('range', 'Value must be within the valid range', function (value) {
-                    if (value === null || value === undefined) return true; // Skip validation if no value
-                    if (min !== undefined && value < min) {
-                      return this.createError({
-                        message: `Value must be at least ${min}`
-                      });
-                    }
-                    if (max !== undefined && value > max) {
-                      return this.createError({
-                        message: `Value must be at most ${max}`
-                      });
-                    }
-                    return true;
-                  });
-                break;
-              case FieldType.Date:
-                fieldSchema = Yup.string().nullable();
-                break;
-              case FieldType.Checkbox:
-                fieldSchema = Yup.boolean();
-                break;
-              default:
-                fieldSchema = Yup.string();
-            }
-
-            if (field.isRequired) {
-              fieldSchema = fieldSchema.required(`${field.label} is required`);
-            }
-
-            return schema.shape({ [fieldName]: fieldSchema });
-          },
-          baseValidationSchema
-        );
-
-        setValidationSchema(dynamicSchema);
-      } else {
-        setValidationSchema(baseValidationSchema);
-      }
+      setValidationSchema(dynamicSchema);
+      
     } catch (error) {
-      console.error('Error fetching template fields:', error);
+      console.error('Error calling prepare-record API:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch template fields. Please try again.',
+        description: 'Failed to load template data. Please try again.',
         variant: 'destructive'
       });
     }
@@ -641,30 +526,12 @@ const NewRecordPage = () => {
     }
   });
 
-  // Update form values when template changes
+  // Call prepare-record API automatically when templates are loaded and there's a default template
   useEffect(() => {
-    if (formik.values.templateId) {
-      fetchTemplateFields(formik.values.templateId);
-
-      // Reset dynamic field values
-      const newValues: BaseFormValues = {
-        ...formik.values,
-        ...[
-          ...templateSections.flatMap((section) => section.fields),
-          ...fieldsWithoutSection
-        ].reduce((acc, field) => {
-          const key = `field_${field.id}`;
-          // Do not overwrite static fields like dateOfBirth
-          if (key === 'dateOfBirth') return acc;
-          return {
-            ...acc,
-            [key]: field.fieldType === FieldType.Checkbox ? false : ''
-          };
-        }, {})
-      };
-      formik.setValues(newValues);
+    if (templates.length > 0 && formik.values.templateId > 0) {
+      loadTemplateData(formik.values.templateId, true);
     }
-  }, [formik.values.templateId]);
+  }, [templates, formik.values.templateId]); // Depend on templates and templateId
 
   // Helper function to render field help text
   const renderFieldHelp = (field: ExtendedTemplateField) => {
@@ -990,20 +857,14 @@ const NewRecordPage = () => {
         </Toolbar>
 
         {/* Template Selection Card */}
-        <Card className="shadow-md border-2 border-primary/20">
-          <CardHeader className="bg-primary/5 border-b rounded-t-lg">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <span role="img" aria-label="template">
-                📄
-              </span>{' '}
-              Select a Template
-            </h2>
+        <Card>
+          <CardHeader className="bg-gray-50 border-b">
+            <h2 className="text-xl font-semibold">Select a Template</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Choose an <span className="font-semibold text-primary">Active</span> template to start
-              creating a record.
+              Choose an active template to start creating a record
             </p>
           </CardHeader>
-          <CardContent className="p-8 flex flex-col gap-4">
+          <CardContent className="p-6">
             {templates.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
                 <p className="text-lg font-medium mb-2">No active templates available</p>
@@ -1011,12 +872,16 @@ const NewRecordPage = () => {
               </div>
             ) : (
               <Select
-                onValueChange={(value) => {
-                  formik.setFieldValue('templateId', parseInt(value));
+                onValueChange={async (value) => {
+                  const templateId = parseInt(value);
+                  formik.setFieldValue('templateId', templateId);
+                  
+                  // Call prepare-record API when template is selected
+                  await loadTemplateData(templateId);
                 }}
                 value={formik.values.templateId ? formik.values.templateId.toString() : ''}
               >
-                <SelectTrigger className="w-full h-14 text-lg border-2 border-primary/40 focus:border-primary rounded-lg shadow-sm">
+                <SelectTrigger className="w-full h-12">
                   <SelectValue placeholder="Select a template..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -1024,7 +889,6 @@ const NewRecordPage = () => {
                     <SelectItem
                       key={template.id}
                       value={template.id.toString()}
-                      className="text-base"
                     >
                       {template.name}
                     </SelectItem>
@@ -1040,15 +904,16 @@ const NewRecordPage = () => {
           <form onSubmit={formik.handleSubmit} className="space-y-6 animate-fade-in">
             {/* Personal Information Card */}
             <Card>
-              <CardHeader className="bg-gray-50/50 border-b">
+              <CardHeader className="bg-gray-50 border-b">
                 <h2 className="text-xl font-semibold">Personal Information</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Enter the basic information about the record holder.
+                  Enter the basic information about the record holder
                 </p>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
+                  {/* First Name */}
+                  <div className="space-y-2">
                     <Label htmlFor="firstName" className="flex items-center">
                       First Name <span className="text-red-500 ml-1">*</span>
                     </Label>
@@ -1068,7 +933,9 @@ const NewRecordPage = () => {
                       </div>
                     ) : null}
                   </div>
-                  <div>
+
+                  {/* Middle Name */}
+                  <div className="space-y-2">
                     <Label htmlFor="middleName">Middle Name</Label>
                     <Input
                       id="middleName"
@@ -1078,7 +945,9 @@ const NewRecordPage = () => {
                       onBlur={formik.handleBlur}
                     />
                   </div>
-                  <div>
+
+                  {/* Last Name */}
+                  <div className="space-y-2">
                     <Label htmlFor="lastName" className="flex items-center">
                       Last Name <span className="text-red-500 ml-1">*</span>
                     </Label>
@@ -1098,7 +967,9 @@ const NewRecordPage = () => {
                       </div>
                     ) : null}
                   </div>
-                  <div>
+
+                  {/* Identification */}
+                  <div className="space-y-2">
                     <Label htmlFor="identification" className="flex items-center">
                       Identification <span className="text-red-500 ml-1">*</span>
                     </Label>
@@ -1120,7 +991,9 @@ const NewRecordPage = () => {
                       </div>
                     ) : null}
                   </div>
-                  <div>
+
+                  {/* Date of Birth */}
+                  <div className="space-y-2">
                     <Label htmlFor="dateOfBirth" className="flex items-center">
                       Date of Birth <span className="text-red-500 ml-1">*</span>
                     </Label>
@@ -1143,7 +1016,9 @@ const NewRecordPage = () => {
                       </div>
                     ) : null}
                   </div>
-                  <div>
+
+                  {/* Country of Birth */}
+                  <div className="space-y-2">
                     <Label htmlFor="countryOfBirthLookupValueId" className="flex items-center">
                       Country of Birth <span className="text-red-500 ml-1">*</span>
                     </Label>
@@ -1186,7 +1061,9 @@ const NewRecordPage = () => {
                       </div>
                     ) : null}
                   </div>
-                  <div>
+
+                  {/* Nationality */}
+                  <div className="space-y-2">
                     <Label htmlFor="nationalityLookupValueId" className="flex items-center">
                       Nationality <span className="text-red-500 ml-1">*</span>
                     </Label>
@@ -1229,7 +1106,9 @@ const NewRecordPage = () => {
                       </div>
                     ) : null}
                   </div>
-                  <div>
+
+                  {/* Customer Reference ID */}
+                  <div className="space-y-2">
                     <Label htmlFor="customerReferenceId" className="flex items-center">
                       Customer Reference ID <span className="text-red-500 ml-1">*</span>
                     </Label>
