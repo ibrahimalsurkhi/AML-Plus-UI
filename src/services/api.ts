@@ -638,7 +638,10 @@ export interface Case {
   targetThreshold: number;
   exceedsTargetThreshold: boolean;
   status: string;
+  statusString?: string;
   source: string;
+  sourceString?: string;
+  templateName?: string;
   created?: string;
   noCaseNeed?: boolean;
   templateScoreCriteriaId?: number;
@@ -675,14 +678,18 @@ export interface ActivityLog {
 export const caseService = {
   async getCases({
     pageNumber,
-    pageSize
+    pageSize,
+    recordUuid
   }: {
     pageNumber: number;
     pageSize: number;
+    recordUuid?: string;
   }): Promise<PaginatedResponse<Case>> {
-    const response = await api.post<PaginatedResponse<Case>>('/cases/search', {
-      pageNumber, pageSize
-    });
+    const requestBody: any = { pageNumber, pageSize };
+    if (recordUuid) {
+      requestBody.recordUuid = recordUuid;
+    }
+    const response = await api.post<PaginatedResponse<Case>>('/cases/search', requestBody);
     return response.data;
   },
   async getCaseById(id: number): Promise<Case> {

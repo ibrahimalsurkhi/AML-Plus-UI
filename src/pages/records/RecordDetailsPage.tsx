@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { recordService, type DetailedRecord, type DetailedFieldResponse, type DetailedTemplateField } from '@/services/api';
+import { recordService, caseService, type DetailedRecord, type DetailedFieldResponse, type DetailedTemplateField, type Case, type PaginatedResponse } from '@/services/api';
+import { DataPagination, extractPaginationData } from '@/components/common/DataPagination';
 import { toast } from '@/components/ui/use-toast';
 import { formatDate } from '@/lib/utils';
 import {
@@ -24,7 +25,9 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Star
+  Star,
+  FileSearch,
+  Eye
 } from 'lucide-react';
 
 const RecordDetailsPage = () => {
@@ -32,12 +35,30 @@ const RecordDetailsPage = () => {
   const navigate = useNavigate();
   const [record, setRecord] = useState<DetailedRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cases, setCases] = useState<Case[]>([]);
+  const [casesLoading, setCasesLoading] = useState(false);
+  const [casesError, setCasesError] = useState<string | null>(null);
+  const [casesPagination, setCasesPagination] = useState<PaginatedResponse<Case> | null>(null);
+  const [casesCurrentPage, setCasesCurrentPage] = useState(1);
+  const [casesPageSize] = useState(10);
 
   useEffect(() => {
     if (id) {
       fetchRecordDetails(id);
+      // Reset to page 1 when record changes
+      if (casesCurrentPage !== 1) {
+        setCasesCurrentPage(1);
+      } else {
+        fetchCases(id, 1);
+      }
     }
   }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchCases(id, casesCurrentPage);
+    }
+  }, [casesCurrentPage]);
 
   const fetchRecordDetails = async (recordUuid: string) => {
       try {
@@ -55,6 +76,34 @@ const RecordDetailsPage = () => {
         setLoading(false);
       }
     };
+
+  const fetchCases = async (recordUuid: string, page: number = 1) => {
+    try {
+      setCasesLoading(true);
+      setCasesError(null);
+      const response = await caseService.getCases({
+        pageNumber: page,
+        pageSize: casesPageSize,
+        recordUuid
+      });
+      setCases(response.items);
+      setCasesPagination(response);
+    } catch (error) {
+      console.error('Error fetching cases:', error);
+      setCasesError('Failed to fetch cases');
+      toast({
+        title: 'Warning',
+        description: 'Failed to fetch linked cases for this record.',
+        variant: 'default'
+      });
+    } finally {
+      setCasesLoading(false);
+    }
+  };
+
+  const handleCasesPageChange = (page: number) => {
+    setCasesCurrentPage(page);
+  };
 
   const getFieldValue = (field: DetailedTemplateField): string => {
     if (!field.fieldResponse) return 'Not provided';
@@ -385,6 +434,163 @@ const RecordDetailsPage = () => {
               </div>
             </CardContent>
           </Card>
+
+        {/* Linked Cases Section */}
+        <Card className="mb-6 overflow-hidden shadow-sm border-0 bg-gradient-to-br from-amber-50/30 to-orange-50/20">
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-100/50 border-b border-amber-200/60 px-6 py-5">
+            <CardTitle className="flex items-center gap-3 text-xl font-bold text-gray-800">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg">
+                <FileSearch className="h-6 w-6" />
+              </div>
+              <span className="flex-1">Linked Cases</span>
+              <Badge variant="outline" className="bg-white/80 text-amber-700 border-amber-300">
+                {casesLoading 
+                  ? 'Loading...' 
+                  : casesPagination 
+                    ? `${casesPagination.totalCount} case${casesPagination.totalCount !== 1 ? 's' : ''} (Page ${casesPagination.pageNumber} of ${casesPagination.totalPages})`
+                    : `${cases.length} case${cases.length !== 1 ? 's' : ''}`
+                }
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 bg-white/70">
+            {casesLoading && (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+                <span className="ml-3 text-gray-600">Loading cases...</span>
+              </div>
+            )}
+            
+            {!casesLoading && casesError && (
+              <div className="flex items-center justify-center py-8 text-gray-500">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                {casesError}
+              </div>
+            )}
+            
+            {!casesLoading && !casesError && cases.length === 0 && (
+              <div className="flex items-center justify-center py-8 text-gray-500">
+                <FileSearch className="h-5 w-5 mr-2" />
+                No cases linked to this record
+              </div>
+            )}
+            
+            {!casesLoading && !casesError && cases.length > 0 && (
+              <div className="space-y-4">
+                {cases.map((caseItem) => (
+                  <div
+                    key={caseItem.id}
+                    className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200 cursor-pointer"
+                    onClick={() => navigate(`/cases/${caseItem.id}`)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-amber-100 to-orange-200">
+                          <Shield className="h-4 w-4 text-amber-600" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-gray-900">{caseItem.fullName}</h4>
+                            <Badge variant="outline" className="text-xs">
+                              ID: {caseItem.id}
+                            </Badge>
+                            {caseItem.riskLevel && (
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs"
+                                style={{ 
+                                  backgroundColor: caseItem.riskLevelBGColor || '#f3f4f6',
+                                  color: caseItem.riskLevelColor || '#374151'
+                                }}
+                              >
+                                {caseItem.riskLevel}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs font-medium">
+                                  Status
+                                </span>
+                                <span className="text-gray-900 font-medium">
+                                  {caseItem.statusString || caseItem.status || 'N/A'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center px-2 py-1 rounded-md bg-purple-100 text-purple-800 text-xs font-medium">
+                                  Source
+                                </span>
+                                <span className="text-gray-900 font-medium">
+                                  {caseItem.sourceString || caseItem.source || 'N/A'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center px-2 py-1 rounded-md bg-emerald-100 text-emerald-800 text-xs font-medium">
+                                  Template
+                                </span>
+                                <span className="text-gray-900 font-medium">
+                                  {caseItem.templateName || 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <Clock className="h-4 w-4" />
+                                <span>Created: {caseItem.created ? formatDate(caseItem.created) : 'N/A'}</span>
+                              </div>
+                              {caseItem.score && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-500">Score:</span>
+                                  <Badge 
+                                    variant="outline" 
+                                    className="text-xs"
+                                    style={{ 
+                                      backgroundColor: caseItem.scoreBGColor || '#f3f4f6',
+                                      color: '#374151'
+                                    }}
+                                  >
+                                    {caseItem.score}
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/cases/${caseItem.id}`);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Case
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Pagination for Cases */}
+            {!casesLoading && !casesError && casesPagination && casesPagination.totalPages > 1 && (
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <DataPagination
+                  paginationData={extractPaginationData(casesPagination)}
+                  onPageChange={handleCasesPageChange}
+                  showPageInfo={true}
+                  maxVisiblePages={5}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Dynamic Sections */}
         {record.sections.map((section) => {
