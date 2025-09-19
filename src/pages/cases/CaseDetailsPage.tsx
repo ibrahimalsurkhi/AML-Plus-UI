@@ -207,24 +207,32 @@ const CaseDetailsPage = () => {
                           <div className="bg-white/80 rounded-lg p-4 border">
                             <div className="text-sm font-medium text-gray-700 mb-2">Country of Birth</div>
                             <div className="space-y-1">
-                              <div className="flex justify-between">
-                                <span>{calculation.countryOfBirthValue}</span>
-                                <Badge variant="outline">Weight: {calculation.countryOfBirthWeight}</Badge>
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium text-gray-900">{calculation.countryOfBirthValue}</span>
+                                <Badge 
+                                  className="text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 px-4 py-1.5 shadow-lg ring-2 ring-blue-200 ring-offset-1"
+                                >
+                                  Weight: {calculation.countryOfBirthWeight}
+                                </Badge>
                               </div>
                               <div className="text-sm text-gray-600">
-                                Score: {calculation.countryOfBirthScore} • Weighted: {calculation.countryOfBirthWeightedScore}
+                                Score: <span className="font-medium text-gray-900">{calculation.countryOfBirthScore}</span>
                               </div>
                             </div>
                           </div>
                           <div className="bg-white/80 rounded-lg p-4 border">
                             <div className="text-sm font-medium text-gray-700 mb-2">Nationality</div>
                             <div className="space-y-1">
-                              <div className="flex justify-between">
-                                <span>{calculation.nationalityValue}</span>
-                                <Badge variant="outline">Weight: {calculation.nationalityWeight}</Badge>
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium text-gray-900">{calculation.nationalityValue}</span>
+                                <Badge 
+                                  className="text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 px-4 py-1.5 shadow-lg ring-2 ring-blue-200 ring-offset-1"
+                                >
+                                  Weight: {calculation.nationalityWeight}
+                                </Badge>
                               </div>
                               <div className="text-sm text-gray-600">
-                                Score: {calculation.nationalityScore} • Weighted: {calculation.nationalityWeightedScore}
+                                Score: <span className="font-medium text-gray-900">{calculation.nationalityScore}</span>
                               </div>
                             </div>
                           </div>
@@ -238,19 +246,16 @@ const CaseDetailsPage = () => {
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {calculation.fieldResults.map((fieldResult) => (
                               <div key={fieldResult.id} className="bg-gray-50/50 rounded-lg p-4 border">
-                                <div className="flex items-center justify-between mb-2">
-                                  <h5 className="font-medium text-gray-800">{fieldResult.fieldLabel}</h5>
-                                  <Badge variant="secondary">Weight: {fieldResult.fieldWeight}</Badge>
+                                <div className="flex items-center justify-between mb-3">
+                                  <h5 className="font-semibold text-gray-800">{fieldResult.fieldLabel}</h5>
+                                  <Badge 
+                                    className="text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 px-4 py-1.5 shadow-lg ring-2 ring-blue-200 ring-offset-1"
+                                  >
+                                    Weight: {fieldResult.fieldWeight}
+                                  </Badge>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                  <div>
-                                    <span className="text-gray-600">Score:</span>
-                                    <span className="ml-1 font-medium">{fieldResult.fieldScore}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-600">Weighted:</span>
-                                    <span className="ml-1 font-medium">{fieldResult.weightedScore}</span>
-                                  </div>
+                                <div className="text-sm text-gray-600">
+                                  Score: <span className="font-medium text-gray-900">{fieldResult.fieldScore}</span>
                                 </div>
                               </div>
                             ))}
@@ -354,7 +359,7 @@ const CaseDetailsPage = () => {
                 </div>
                     <label className="text-sm font-semibold text-gray-700">Country of Birth</label>
                     {caseData.recordDetails.lastCountryOfBirthWeight && caseData.recordDetails.lastCountryOfBirthWeight > 0 && (
-                      <Badge variant="secondary" className="text-xs font-bold bg-white text-purple-900 border-2 border-purple-500 px-3 py-1 ml-auto shadow-md">
+                      <Badge className="text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 px-4 py-1.5 ml-auto shadow-lg ring-2 ring-blue-200 ring-offset-1">
                         Weight: {caseData.recordDetails.lastCountryOfBirthWeight}
                       </Badge>
                     )}
@@ -371,7 +376,7 @@ const CaseDetailsPage = () => {
                   </div>
                     <label className="text-sm font-semibold text-gray-700">Nationality</label>
                     {caseData.recordDetails.lastNationalityWeight && caseData.recordDetails.lastNationalityWeight > 0 && (
-                      <Badge variant="secondary" className="text-xs font-bold bg-white text-orange-900 border-2 border-orange-500 px-3 py-1 ml-auto shadow-md">
+                      <Badge className="text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 px-4 py-1.5 ml-auto shadow-lg ring-2 ring-blue-200 ring-offset-1">
                         Weight: {caseData.recordDetails.lastNationalityWeight}
                       </Badge>
                     )}
