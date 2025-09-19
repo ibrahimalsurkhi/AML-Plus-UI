@@ -681,6 +681,7 @@ export const recordService = {
 
 export interface Case {
   id: number;
+  uuid: string;
   recordId: number;
   fullName: string;
   score: number;

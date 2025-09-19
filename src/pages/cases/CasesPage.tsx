@@ -115,7 +115,7 @@ const CasesPage = () => {
     fetchCases(page);
   };
 
-  const handleViewCase = (id: number) => {
+  const handleViewCase = (id: string) => {
     navigate(`/cases/${id}`);
   };
 
@@ -194,7 +194,7 @@ const CasesPage = () => {
                           className={`hover:bg-gray-50 cursor-pointer ${
                             isHighRisk ? 'border-l-2 border-l-red-500' : ''
                           }`}
-                          onClick={() => handleViewCase(item.id)}
+                          onClick={() => handleViewCase(item.uuid)}
                         >
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
@@ -289,7 +289,7 @@ const CasesPage = () => {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleViewCase(item.id);
+                                handleViewCase(item.uuid);
                               }}
                             >
                               View

@@ -20,7 +20,8 @@ import {
   ChevronRight,
   Clock,
   FileSearch,
-  Calculator
+  Calculator,
+  Eye
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
@@ -64,7 +65,7 @@ const CaseDetailsPage = () => {
 
         // Fetch detailed case data using UUID
         try {
-          const detailedCaseData = await caseService.getCaseDetailsByUuid('48c5cc58-0fb3-4638-be6a-06fa67487fbc');
+          const detailedCaseData = await caseService.getCaseDetailsByUuid(id);
           console.log('Case Details API Response:', detailedCaseData);
           setCaseData(detailedCaseData);
         } catch (caseDetailsError) {
@@ -132,11 +133,27 @@ const CaseDetailsPage = () => {
               </div>
               <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-md">
                 <FileText className="w-4 h-4 text-primary" />
-                <span>Record ID: {caseData.recordId}</span>
+                <span>Record ID: </span>
+                <button
+                  onClick={() => navigate(`/records/${caseData.recordDetails?.uuid}`)}
+                  className="inline-flex items-center gap-1 text-primary hover:text-primary/80 hover:bg-primary/10 underline font-bold px-2 py-1 rounded transition-all duration-200 border border-primary/20 hover:border-primary/40"
+                  title="Click to view record details"
+                >
+                  {caseData.recordId}
+                  <Eye className="w-3 h-3" />
+                </button>
               </div>
               <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-md">
                 <User className="w-4 h-4 text-primary" />
-                <span>Name: {caseData.fullName}</span>
+                <span>Name: </span>
+                <button
+                  onClick={() => navigate(`/records/${caseData.recordDetails?.uuid}`)}
+                  className="inline-flex items-center gap-1 text-primary hover:text-primary/80 hover:bg-primary/10 underline font-bold px-2 py-1 rounded transition-all duration-200 border border-primary/20 hover:border-primary/40"
+                  title="Click to view record details"
+                >
+                  {caseData.fullName}
+                  <Eye className="w-3 h-3" />
+                </button>
               </div>
             </div>
           </div>
@@ -244,21 +261,52 @@ const CaseDetailsPage = () => {
                         <div className="space-y-4">
                           <h4 className="font-semibold text-gray-800 text-lg">Field Results</h4>
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {calculation.fieldResults.map((fieldResult) => (
-                              <div key={fieldResult.id} className="bg-gray-50/50 rounded-lg p-4 border">
-                                <div className="flex items-center justify-between mb-3">
-                                  <h5 className="font-semibold text-gray-800">{fieldResult.fieldLabel}</h5>
-                                  <Badge 
-                                    className="text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 px-4 py-1.5 shadow-lg ring-2 ring-blue-200 ring-offset-1"
-                                  >
-                                    Weight: {fieldResult.fieldWeight}
-                                  </Badge>
+                            {calculation.fieldResults.map((fieldResult) => {
+                              // Find the corresponding field response to get the actual value
+                              let fieldValue = 'Not provided';
+                              if (caseData.recordDetails?.sections) {
+                                for (const section of caseData.recordDetails.sections) {
+                                  const field = section.fields.find((f: any) => f.id === fieldResult.fieldId);
+                                  if (field?.fieldResponse) {
+                                    const response = field.fieldResponse;
+                                    if (response.valueText) {
+                                      fieldValue = response.valueText;
+                                    } else if (response.valueNumber !== null && response.valueNumber !== undefined) {
+                                      fieldValue = response.valueNumber.toString();
+                                    } else if (response.valueDate) {
+                                      fieldValue = formatDate(response.valueDate);
+                                    } else if (response.lookupValue) {
+                                      fieldValue = response.lookupValue.value;
+                                    } else if (response.optionId && field.lookup?.values) {
+                                      const lookupValue = field.lookup.values.find((lv: any) => lv.id === response.optionId);
+                                      fieldValue = lookupValue?.value || 'Unknown option';
+                                    }
+                                    break;
+                                  }
+                                }
+                              }
+
+                              return (
+                                <div key={fieldResult.id} className="bg-gray-50/50 rounded-lg p-4 border hover:bg-gray-50 transition-colors">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <h5 className="font-semibold text-gray-800">{fieldResult.fieldLabel}</h5>
+                                    <Badge 
+                                      className="text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 px-4 py-1.5 shadow-lg ring-2 ring-blue-200 ring-offset-1"
+                                    >
+                                      Weight: {fieldResult.fieldWeight}
+                                    </Badge>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="text-sm text-gray-600">
+                                      Value: <span className="font-medium text-gray-900">{fieldValue}</span>
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                      Score: <span className="font-medium text-gray-900">{fieldResult.fieldScore}</span>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="text-sm text-gray-600">
-                                  Score: <span className="font-medium text-gray-900">{fieldResult.fieldScore}</span>
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -389,10 +437,6 @@ const CaseDetailsPage = () => {
             </CardContent>
           </Card>
         )}
-
-
-
-
 
         {/* Screening Histories Card */}
         {caseData?.screeningHistories && caseData.screeningHistories.length > 0 && (

@@ -665,7 +665,7 @@ const RecordDetailsPage = () => {
                           className="opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/cases/${caseItem.id}`);
+                            navigate(`/cases/${caseItem.uuid}`);
                           }}
                         >
                           <Eye className="h-4 w-4 mr-1" />
