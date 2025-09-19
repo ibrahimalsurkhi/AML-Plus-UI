@@ -4,21 +4,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   caseService,
-  Case,
-  ScreeningHistory,
-  ActivityLog,
-  CaseScreening,
-  recordService,
-  type Record as RecordType,
-  type TemplateField,
-  templateService,
-  FieldType,
-  type Template,
-  lookupService,
-  type LookupValue,
-  accountService,
-  fieldResponseService,
-  type FieldResponseDetail
+  ExtendedCase
 } from '@/services/api';
 import { Container } from '@/components/container';
 import {
@@ -28,65 +14,19 @@ import {
   User,
   FileText,
   Calendar,
-  IdCard,
-  FileType,
-  UserRound,
-  Cake,
-  Globe,
+  MapPin,
   Flag,
-  CreditCard,
   ChevronDown,
   ChevronRight,
-  Building
+  Clock,
+  FileSearch,
+  Calculator
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Toolbar, ToolbarHeading, ToolbarActions } from '@/partials/toolbar';
-import { cn } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
-// Extend TemplateField type to include options and ranges
-interface ExtendedTemplateField extends TemplateField {
-  options?: Array<{
-    id?: number;
-    fieldId?: number;
-    label: string;
-    scoreCriteriaId: number;
-    displayOrder: number;
-  }>;
-}
-
-// Extended section interface with processed fields
-interface ExtendedTemplateSection {
-  id: number;
-  title: string;
-  displayOrder: number;
-  fields: ExtendedTemplateField[];
-}
-
-// Extended field response to handle optionId field, score, and templateScoreCriteriaId
-interface ExtendedFieldResponse {
-  id: number;
-  fieldId: number;
-  valueText: string | null;
-  valueNumber: number | null;
-  valueDate: string | null;
-  optionId?: string | null;
-  templateScoreCriteriaId?: number | null;
-  score?: number | null;
-  templateScoreCriteria?: {
-    id: number;
-    templateId: number;
-    key: string;
-    bgColor: string;
-    color: string;
-    score: number;
-  } | null;
-}
-
-// Extended Record interface to include lookup value objects
-interface ExtendedRecord extends RecordType {
-  countryOfBirthLookupValue?: LookupValue;
-  nationalityLookupValue?: LookupValue;
-}
 
 const CaseStatusMap: Record<string, string> = {
   New: 'New',
@@ -106,30 +46,15 @@ const SourceTypeMap: Record<string, string> = {
 const CaseDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [caseData, setCaseData] = useState<Case | null>(null);
+  const [caseData, setCaseData] = useState<ExtendedCase | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<{ [id: number]: boolean }>({});
 
-  // Record details state
-  const [record, setRecord] = useState<ExtendedRecord | null>(null);
-  const [templateName, setTemplateName] = useState<string>('');
-  const [sections, setSections] = useState<ExtendedTemplateSection[]>([]);
-  const [fieldsWithoutSection, setFieldsWithoutSection] = useState<ExtendedTemplateField[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [accountsLoading, setAccountsLoading] = useState(false);
-  const [bankCountries, setBankCountries] = useState<any[]>([]);
-  const [bankCountriesLoading, setBankCountriesLoading] = useState(false);
-  const [expandedAccounts, setExpandedAccounts] = useState<{ [key: number]: boolean }>({});
-  const [accountFieldResponses, setAccountFieldResponses] = useState<{
-    [key: number]: FieldResponseDetail[];
-  }>({});
-  const [loadingAccountResponses, setLoadingAccountResponses] = useState<{
-    [key: number]: boolean;
-  }>({});
 
   const toggleExpand = (id: number) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -137,147 +62,23 @@ const CaseDetailsPage = () => {
         setLoading(true);
         if (!id) throw new Error('Invalid case ID');
 
-        // Fetch case data
-        const caseData = await caseService.getCaseById(Number(id));
-        setCaseData(caseData);
-
-        // Fetch record details if recordId exists
-        if (caseData.recordId) {
+        // Fetch detailed case data using UUID
+        try {
+          const detailedCaseData = await caseService.getCaseDetailsByUuid('48c5cc58-0fb3-4638-be6a-06fa67487fbc');
+          console.log('Case Details API Response:', detailedCaseData);
+          setCaseData(detailedCaseData);
+        } catch (caseDetailsError) {
+          console.error('Error fetching case details:', caseDetailsError);
+          // Fall back to basic case data if detailed fetch fails
           try {
-            const recordData = await recordService.getRecordById(caseData.recordId.toString());
-            setRecord(recordData as ExtendedRecord);
-
-            // Get the template name
-            const templateDetails = await templateService.getTemplateById(
-              recordData.templateId.toString()
-            );
-            setTemplateName(templateDetails.name);
-
-            // Get the template fields and their options
-            const fieldsResponse = await templateService.getTemplateFields(
-              recordData.templateId.toString()
-            );
-
-            // Process sections with their fields
-            const processedSections = await Promise.all(
-              fieldsResponse.sections.map(async (section) => {
-                const fieldsWithOptions = await Promise.all(
-                  section.fields.map(async (field) => {
-                    const extendedField: ExtendedTemplateField = { ...field };
-
-                    // Fetch options for option-based fields
-                    if (
-                      field.fieldType === FieldType.Dropdown ||
-                      field.fieldType === FieldType.Radio ||
-                      field.fieldType === FieldType.Checkbox
-                    ) {
-                      const options = await templateService.getFieldOptions(
-                        recordData.templateId.toString(),
-                        field.id!
-                      );
-                      extendedField.options = options;
-                    }
-
-                    // Fetch lookup values for Lookup fields
-                    if (field.fieldType === FieldType.Lookup && field.lookupId) {
-                      try {
-                        const lookupValues = await lookupService.getLookupValues(field.lookupId, {
-                          pageNumber: 1,
-                          pageSize: 100
-                        });
-                        extendedField.options = lookupValues.items.map(
-                          (lookupValue: LookupValue, index: number) => ({
-                            id: lookupValue.id,
-                            fieldId: field.id!,
-                            label: lookupValue.value,
-                            scoreCriteriaId: lookupValue.scoreCriteriaId || 0,
-                            displayOrder: index + 1
-                          })
-                        );
-                      } catch (error) {
-                        console.error(`Error fetching lookup values for field ${field.id}:`, error);
-                        extendedField.options = [];
-                      }
-                    }
-
-                    return extendedField;
-                  })
-                );
-
-                return {
-                  ...section,
-                  fields: fieldsWithOptions
-                };
-              })
-            );
-
-            // Process fields without section
-            const processedFieldsWithoutSection = await Promise.all(
-              fieldsResponse.fieldsWithoutSection.map(async (field) => {
-                const extendedField: ExtendedTemplateField = { ...field };
-
-                // Fetch options for option-based fields
-                if (
-                  field.fieldType === FieldType.Dropdown ||
-                  field.fieldType === FieldType.Radio ||
-                  field.fieldType === FieldType.Checkbox
-                ) {
-                  const options = await templateService.getFieldOptions(
-                    recordData.templateId.toString(),
-                    field.id!
-                  );
-                  extendedField.options = options;
-                }
-
-                // Fetch lookup values for Lookup fields
-                if (field.fieldType === FieldType.Lookup && field.lookupId) {
-                  try {
-                    const lookupValues = await lookupService.getLookupValues(field.lookupId, {
-                      pageNumber: 1,
-                      pageSize: 100
-                    });
-                    extendedField.options = lookupValues.items.map(
-                      (lookupValue: LookupValue, index: number) => ({
-                        id: lookupValue.id,
-                        fieldId: field.id!,
-                        label: lookupValue.value,
-                        scoreCriteriaId: lookupValue.scoreCriteriaId || 0,
-                        displayOrder: index + 1
-                      })
-                    );
-                  } catch (error) {
-                    console.error(`Error fetching lookup values for field ${field.id}:`, error);
-                    extendedField.options = [];
-                  }
-                }
-
-                return extendedField;
-              })
-            );
-
-            setSections(processedSections);
-            setFieldsWithoutSection(processedFieldsWithoutSection);
-
-            // Fetch accounts by recordId
-            setAccountsLoading(true);
-            accountService
-              .getAccountsByRecordId({
-                recordId: recordData.id,
-                pageNumber: 1,
-                pageSize: 100
-              })
-              .then((accountsData) => {
-                setAccounts(accountsData);
-              })
-              .catch((error) => {
-                console.error('Error fetching accounts:', error);
-              })
-              .finally(() => setAccountsLoading(false));
-          } catch (recordError) {
-            console.error('Error fetching record details:', recordError);
-            // Don't show error toast for record details as case data is more important
+            const basicCaseData = await caseService.getCaseById(Number(id));
+            setCaseData(basicCaseData as ExtendedCase);
+          } catch (basicCaseError) {
+            console.error('Error fetching basic case data:', basicCaseError);
+            throw new Error('Failed to fetch case data');
           }
         }
+
       } catch (error) {
         toast({
           title: 'Error',
@@ -291,255 +92,8 @@ const CaseDetailsPage = () => {
     fetchData();
   }, [id]);
 
-  // Fetch bank countries from lookup service using "CountryOfBirth" key
-  useEffect(() => {
-    const fetchBankCountries = async () => {
-      setBankCountriesLoading(true);
-      try {
-        const values = await lookupService.getLookupValuesByKey('CountryOfBirth', {
-          pageNumber: 1,
-          pageSize: 100
-        });
-        setBankCountries(values.items);
-      } catch (err) {
-        console.error('Error fetching bank countries from CountryOfBirth lookup:', err);
-      } finally {
-        setBankCountriesLoading(false);
-      }
-    };
-    fetchBankCountries();
-  }, []);
 
-  // Helper to get field value from record.fieldResponses
-  const getFieldValue = (
-    fieldId: number,
-    fieldType: FieldType,
-    options?: ExtendedTemplateField['options']
-  ) => {
-    if (!record) return null;
 
-    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId) as
-      | ExtendedFieldResponse
-      | undefined;
-    if (!response) return null;
-
-    switch (fieldType) {
-      case FieldType.Text:
-      case FieldType.TextArea:
-        return response.valueText;
-      case FieldType.Number:
-        return response.valueNumber;
-      case FieldType.Date:
-        return response.valueDate ? new Date(response.valueDate).toLocaleDateString() : null;
-      case FieldType.Dropdown:
-      case FieldType.Radio:
-      case FieldType.Checkbox:
-      case FieldType.Lookup:
-        // Try to get the value from optionId first, then valueText
-        const valueToMatch = response.optionId || response.valueText;
-
-        if (valueToMatch) {
-          // Try multiple matching strategies:
-          const optionById = options?.find((opt) => opt.id?.toString() === valueToMatch);
-          const optionByNumericId = options?.find((opt) => opt.id === parseInt(valueToMatch));
-          const optionByLabel = options?.find((opt) => opt.label === valueToMatch);
-
-          const option = optionById || optionByNumericId || optionByLabel;
-          return option?.label || valueToMatch;
-        }
-        return null;
-      default:
-        return response.valueText;
-    }
-  };
-
-  // Helper to render field value with score and templateScoreCriteria if available
-  const renderFieldValue = (
-    fieldId: number,
-    fieldType: FieldType,
-    options?: ExtendedTemplateField['options']
-  ) => {
-    if (!record) return null;
-
-    const response = record.fieldResponses.find((fr) => fr.fieldId === fieldId) as
-      | ExtendedFieldResponse
-      | undefined;
-    if (!response) return <span className="text-muted-foreground">-</span>;
-
-    const basicValue = getFieldValue(fieldId, fieldType, options);
-
-    // Check if we have score and templateScoreCriteria information
-    const hasScore = response.score !== null && response.score !== undefined;
-    const hasTemplateCriteria =
-      response.templateScoreCriteria !== null && response.templateScoreCriteria !== undefined;
-
-    if (!hasScore && !hasTemplateCriteria) {
-      return basicValue !== null ? basicValue : <span className="text-muted-foreground">-</span>;
-    }
-
-    return (
-      <div className="space-y-2">
-        {basicValue !== null && <div className="text-base font-medium">{basicValue}</div>}
-
-        {hasTemplateCriteria && response.templateScoreCriteria && (
-          <div className="flex items-center gap-2">
-            <span
-              className="px-2 py-1 rounded-md text-sm font-medium"
-              style={{
-                backgroundColor: response.templateScoreCriteria.bgColor,
-                color: response.templateScoreCriteria.color
-              }}
-            >
-              {response.templateScoreCriteria.key}
-            </span>
-            {hasScore && (
-              <span className="text-sm text-muted-foreground">Score: {response.score}</span>
-            )}
-          </div>
-        )}
-
-        {hasScore && !hasTemplateCriteria && (
-          <div className="text-sm text-muted-foreground">Score: {response.score}</div>
-        )}
-
-        {response.templateScoreCriteriaId && !hasTemplateCriteria && (
-          <div className="text-xs text-muted-foreground">
-            Template Criteria ID: {response.templateScoreCriteriaId}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Helper to get field icon based on field type
-  const getFieldIcon = (fieldType: FieldType) => {
-    switch (fieldType) {
-      case FieldType.Text:
-      case FieldType.TextArea:
-        return <FileType className="w-4 h-4" />;
-      case FieldType.Number:
-        return <Hash className="w-4 h-4" />;
-      case FieldType.Date:
-        return <Calendar className="w-4 h-4" />;
-      case FieldType.Dropdown:
-      case FieldType.Radio:
-      case FieldType.Checkbox:
-      case FieldType.Lookup:
-        return <FileText className="w-4 h-4" />;
-      default:
-        return <FileText className="w-4 h-4" />;
-    }
-  };
-
-  // Function to toggle account expansion and fetch field responses
-  const toggleAccountExpansion = async (accountId: number) => {
-    const isCurrentlyExpanded = expandedAccounts[accountId];
-
-    setExpandedAccounts((prev: { [key: number]: boolean }) => ({
-      ...prev,
-      [accountId]: !isCurrentlyExpanded
-    }));
-
-    if (!isCurrentlyExpanded && !accountFieldResponses[accountId]) {
-      setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({
-        ...prev,
-        [accountId]: true
-      }));
-
-      try {
-        const responses = await fieldResponseService.getFieldResponses({ accountId });
-        setAccountFieldResponses((prev: { [key: number]: FieldResponseDetail[] }) => ({
-          ...prev,
-          [accountId]: responses
-        }));
-      } catch (error) {
-        console.error('Error fetching account field responses:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load account field responses',
-          variant: 'destructive'
-        });
-      } finally {
-        setLoadingAccountResponses((prev: { [key: number]: boolean }) => ({
-          ...prev,
-          [accountId]: false
-        }));
-      }
-    }
-  };
-
-  // Function to render field response value with score and templateScoreCriteria
-  const renderFieldResponseValue = (response: FieldResponseDetail) => {
-    let basicValue = '-';
-    if (response.valueText) basicValue = response.valueText;
-    else if (response.valueNumber !== null) basicValue = response.valueNumber.toString();
-    else if (response.valueDate) basicValue = new Date(response.valueDate).toLocaleDateString();
-    else if (response.optionValue) basicValue = response.optionValue;
-
-    const hasScore = response.score !== null && response.score !== undefined;
-    const hasTemplateCriteria =
-      response.templateScoreCriteria !== null && response.templateScoreCriteria !== undefined;
-
-    if (!hasScore && !hasTemplateCriteria) {
-      return basicValue;
-    }
-
-    return (
-      <div className="space-y-1">
-        <div className="text-sm text-gray-900">{basicValue}</div>
-
-        {hasTemplateCriteria && response.templateScoreCriteria && (
-          <div className="flex items-center gap-2">
-            <span
-              className="px-2 py-0.5 rounded text-xs font-medium"
-              style={{
-                backgroundColor: response.templateScoreCriteria.bgColor,
-                color: response.templateScoreCriteria.color
-              }}
-            >
-              {response.templateScoreCriteria.key}
-            </span>
-            {hasScore && <span className="text-xs text-gray-500">Score: {response.score}</span>}
-          </div>
-        )}
-
-        {hasScore && !hasTemplateCriteria && (
-          <div className="text-xs text-gray-500">Score: {response.score}</div>
-        )}
-
-        {response.templateScoreCriteriaId && !hasTemplateCriteria && (
-          <div className="text-xs text-gray-400">
-            Criteria ID: {response.templateScoreCriteriaId}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Helper function to get bank country display value from CountryOfBirth lookup
-  const getBankCountryDisplayValue = (account: any) => {
-    if (account.bankOfCountryName && account.bankOfCountryName.trim() !== '') {
-      return account.bankOfCountryName;
-    }
-
-    if (account.bankOfCountryId && bankCountries.length > 0) {
-      const country = bankCountries.find(
-        (c) => c.id === account.bankOfCountryId || c.id === parseInt(account.bankOfCountryId)
-      );
-      if (country) return country.value;
-    }
-
-    if (account.bankOfCountryLookupValueId && bankCountries.length > 0) {
-      const country = bankCountries.find(
-        (c) =>
-          c.id === account.bankOfCountryLookupValueId ||
-          c.id === parseInt(account.bankOfCountryLookupValueId)
-      );
-      if (country) return country.value;
-    }
-
-    return '-';
-  };
 
   if (loading) {
     return (
@@ -597,356 +151,289 @@ const CaseDetailsPage = () => {
           </ToolbarActions>
         </Toolbar>
 
-        {/* Case Information Card */}
-        <Card className="shadow-sm border-primary/10">
-          <CardHeader className="bg-primary/5 border-b">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" />
-              Case Information
+        {/* Case Information & Record Calculations Card */}
+        <Card className="mb-6 overflow-hidden shadow-sm border-0 bg-gradient-to-br from-purple-50/30 to-violet-50/20">
+          <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-100/50 border-b border-purple-200/60 px-6 py-5">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-lg">
+                <Calculator className="h-6 w-6" />
+              </div>
+              <span className="flex-1">Case Information</span>
+              <Badge variant="outline" className="bg-white/80 text-purple-700 border-purple-300">
+                ID: {caseData.id}
+              </Badge>
             </h2>
-            <p className="text-sm text-muted-foreground mt-1">Basic information about the case.</p>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <Hash className="w-4 h-4" />
-                  Case ID
-                </div>
-                <div className="text-base font-medium">{caseData.id}</div>
+          <CardContent className="p-6 bg-white/70">
+            {/* Record Calculations */}
+            {caseData?.recordCalculations && caseData.recordCalculations.length > 0 && (
+              <div className="space-y-6">
+                {caseData.recordCalculations.map((calculation) => (
+                  <Card key={calculation.id} className="border bg-card">
+                    <CardContent className="p-6">
+                      {/* Combined Case Overview & Calculation Summary */}
+                      <div className="mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                          <div className="bg-white/80 rounded-lg p-4 border">
+                            <div className="text-sm font-medium text-gray-700 mb-1">Final Score</div>
+                            <div className="text-2xl font-bold text-gray-900">{calculation.finalScore}</div>
+                          </div>
+                          <div className="bg-white/80 rounded-lg p-4 border">
+                            <div className="text-sm font-medium text-gray-700 mb-1">Target Threshold</div>
+                            <div className="text-lg font-semibold text-gray-900">{caseData.targetThreshold}</div>
+                          </div>
+                          <div className="bg-white/80 rounded-lg p-4 border">
+                            <div className="text-sm font-medium text-gray-700 mb-1">Exceeds Threshold</div>
+                            <div className="text-lg font-semibold text-gray-900">
+                              {caseData.exceedsTargetThreshold ? 'Yes' : 'No'}
+                            </div>
+                          </div>
+                          
+                          <div className="bg-white/80 rounded-lg p-4 border">
+                            <div className="text-sm font-medium text-gray-700 mb-1">Risk Level</div>
+                            <Badge 
+                              className="text-sm font-bold px-4 py-2"
+                              style={{ 
+                                backgroundColor: calculation.riskLevelBGColor,
+                                color: calculation.riskLevelColor
+                              }}
+                            >
+                              {calculation.riskLevel}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-white/80 rounded-lg p-4 border">
+                            <div className="text-sm font-medium text-gray-700 mb-2">Country of Birth</div>
+                            <div className="space-y-1">
+                              <div className="flex justify-between">
+                                <span>{calculation.countryOfBirthValue}</span>
+                                <Badge variant="outline">Weight: {calculation.countryOfBirthWeight}</Badge>
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                Score: {calculation.countryOfBirthScore} • Weighted: {calculation.countryOfBirthWeightedScore}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="bg-white/80 rounded-lg p-4 border">
+                            <div className="text-sm font-medium text-gray-700 mb-2">Nationality</div>
+                            <div className="space-y-1">
+                              <div className="flex justify-between">
+                                <span>{calculation.nationalityValue}</span>
+                                <Badge variant="outline">Weight: {calculation.nationalityWeight}</Badge>
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                Score: {calculation.nationalityScore} • Weighted: {calculation.nationalityWeightedScore}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Field Results */}
+                      {calculation.fieldResults && calculation.fieldResults.length > 0 && (
+                        <div className="space-y-4">
+                          <h4 className="font-semibold text-gray-800 text-lg">Field Results</h4>
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {calculation.fieldResults.map((fieldResult) => (
+                              <div key={fieldResult.id} className="bg-gray-50/50 rounded-lg p-4 border">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h5 className="font-medium text-gray-800">{fieldResult.fieldLabel}</h5>
+                                  <Badge variant="secondary">Weight: {fieldResult.fieldWeight}</Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <div>
+                                    <span className="text-gray-600">Score:</span>
+                                    <span className="ml-1 font-medium">{fieldResult.fieldScore}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-600">Weighted:</span>
+                                    <span className="ml-1 font-medium">{fieldResult.weightedScore}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Calculation Metadata */}
+                      <div className="mt-6 pt-4 border-t border-gray-200">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                          <div>
+                            <span className="font-medium">Calculated:</span>
+                            <span className="ml-2">{formatDate(calculation.calculatedAt)}</span>
+                          </div>
+                          <div>
+                            <span className="font-medium">Created:</span>
+                            <span className="ml-2">{formatDate(calculation.created)}</span>
+                          </div>
+                          {calculation.notes && (
+                            <div className="md:col-span-2">
+                              <span className="font-medium">Notes:</span>
+                              <span className="ml-2">{calculation.notes}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <FileText className="w-4 h-4" />
-                  Source
-                </div>
-                <div className="text-base font-medium">
-                  {SourceTypeMap[caseData.source] || caseData.source}
-                </div>
-              </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <FileText className="w-4 h-4" />
-                  Score
-                </div>
-                <div className="text-base font-medium">
-                  <span
-                    className="px-2 w-16 text-center py-1 rounded-md inline-block"
-                    style={{
-                      backgroundColor: caseData.riskLevelBGColor || caseData.scoreBGColor,
-                      color: caseData.riskLevelColor
-                    }}
-                  >
-                    {caseData.score}
-                  </span>
-                </div>
-              </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <FileText className="w-4 h-4" />
-                  Target Threshold
-                </div>
-                <div className="text-base font-medium">{caseData.targetThreshold}</div>
-              </div>
-              <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                  <FileText className="w-4 h-4" />
-                  Exceeds Target Threshold
-                </div>
-                <div className="text-base font-medium">
-                  {caseData.exceedsTargetThreshold ? 'Yes' : 'No'}
-                </div>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
+
         {/* Personal Information Card */}
-        {record && (
-          <Card className="shadow-sm border-primary/10">
-            <CardHeader className="bg-primary/5 border-b">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <UserRound className="w-5 h-5 text-primary" />
-                Personal Information
+        {caseData?.recordDetails && (
+          <Card className="mb-6 overflow-hidden shadow-sm border-0 bg-gradient-to-br from-blue-50/30 to-indigo-50/20">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-100/50 border-b border-blue-200/60 px-6 py-5">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
+                  <User className="h-6 w-6" />
+                </div>
+                <span className="flex-1">Personal Information</span>
+                <Badge variant="outline" className="bg-white/80 text-blue-700 border-blue-300">
+                  ID: {caseData.recordDetails.id}
+                </Badge>
               </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Basic information about the record holder.
-              </p>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-6 bg-white/70">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                    <Hash className="w-4 h-4" />
-                    Record ID
+                <div className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200">
+                      <User className="h-4 w-4 text-purple-600" />
                   </div>
-                  <div className="text-base font-medium">
-                    <button
-                      onClick={() => navigate(`/records/${caseData.recordId}`)}
-                      className="text-primary hover:text-primary/80 hover:underline font-medium transition-colors"
-                    >
-                      {caseData.recordId}
-                    </button>
+                    <label className="text-sm font-semibold text-gray-700">Full Name</label>
                   </div>
+                  <p className="text-lg font-semibold text-gray-900 leading-tight">
+                    {caseData.recordDetails.firstName} {caseData.recordDetails.middleName && `${caseData.recordDetails.middleName} `}
+                    {caseData.recordDetails.lastName}
+                  </p>
                 </div>
-                <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                    <IdCard className="w-4 h-4" />
-                    Identification
+                
+                <div className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200">
+                      <Calendar className="h-4 w-4 text-blue-600" />
                   </div>
-                  <div className="text-base font-medium">{record?.identification || '-'}</div>
+                    <label className="text-sm font-semibold text-gray-700">Date of Birth</label>
                 </div>
-                <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                    <CreditCard className="w-4 h-4" />
-                    Customer Reference ID
+                  <p className="text-lg font-semibold text-gray-900">
+                    {formatDate(caseData.recordDetails.dateOfBirth)}
+                  </p>
                   </div>
-                  <div className="text-base font-medium">{record?.customerReferenceId || '-'}</div>
+                
+                <div className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-green-100 to-green-200">
+                      <Hash className="h-4 w-4 text-green-600" />
                 </div>
-                <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                    <FileText className="w-4 h-4" />
-                    Template
+                    <label className="text-sm font-semibold text-gray-700">Identification</label>
                   </div>
-                  <div className="text-base font-medium">{templateName || '-'}</div>
+                  <p className="text-lg font-semibold text-gray-900 font-mono">{caseData.recordDetails.identification}</p>
                 </div>
-                <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                    <User className="w-4 h-4" />
-                    First Name
+                
+                <div className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-orange-100 to-orange-200">
+                      <Hash className="h-4 w-4 text-orange-600" />
                   </div>
-                  <div className="text-base font-medium">{record.firstName}</div>
+                    <label className="text-sm font-semibold text-gray-700">Customer Reference ID</label>
                 </div>
-                <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                    <User className="w-4 h-4" />
-                    Middle Name
+                  <p className="text-lg font-semibold text-gray-900 font-mono">{caseData.recordDetails.customerReferenceId}</p>
                   </div>
-                  <div className="text-base font-medium">{record.middleName || '-'}</div>
+                
+                <div className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200 relative">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200">
+                      <MapPin className="h-4 w-4 text-purple-600" />
                 </div>
-                <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                    <User className="w-4 h-4" />
-                    Last Name
+                    <label className="text-sm font-semibold text-gray-700">Country of Birth</label>
+                    {caseData.recordDetails.lastCountryOfBirthWeight && caseData.recordDetails.lastCountryOfBirthWeight > 0 && (
+                      <Badge variant="secondary" className="text-xs font-bold bg-white text-purple-900 border-2 border-purple-500 px-3 py-1 ml-auto shadow-md">
+                        Weight: {caseData.recordDetails.lastCountryOfBirthWeight}
+                      </Badge>
+                    )}
                   </div>
-                  <div className="text-base font-medium">{record.lastName}</div>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {caseData.recordDetails.countryOfBirthLookupValue?.value || 'Not provided'}
+                  </p>
                 </div>
-                <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                    <Cake className="w-4 h-4" />
-                    Date of Birth
+                
+                <div className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200 relative">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-orange-100 to-orange-200">
+                      <Flag className="h-4 w-4 text-orange-600" />
                   </div>
-                  <div className="text-base font-medium">
-                    {new Date(record.dateOfBirth).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </div>
-                </div>
-                <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                    <Globe className="w-4 h-4" />
-                    Country of Birth
-                  </div>
-                  <div className="text-base font-medium">
-                    {record.countryOfBirthLookupValue?.value || '-'}
-                  </div>
-                </div>
-                <div className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                    <Flag className="w-4 h-4" />
-                    Nationality
-                  </div>
-                  <div className="text-base font-medium">
-                    {record.nationalityLookupValue?.value || '-'}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Template Fields organized by Sections */}
-        {record &&
-          sections.map((section) => (
-            <Card key={section.id} className="shadow-sm border-primary/10">
-              <CardHeader className="bg-primary/5 border-b">
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-primary" />
-                  {section.title}
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Fields organized under the {section.title} section.
-                </p>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {section.fields.map((field) => {
-                    return (
-                      <div
-                        key={field.id}
-                        className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
-                      >
-                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                          {getFieldIcon(field.fieldType)}
-                          {field.label}
+                    <label className="text-sm font-semibold text-gray-700">Nationality</label>
+                    {caseData.recordDetails.lastNationalityWeight && caseData.recordDetails.lastNationalityWeight > 0 && (
+                      <Badge variant="secondary" className="text-xs font-bold bg-white text-orange-900 border-2 border-orange-500 px-3 py-1 ml-auto shadow-md">
+                        Weight: {caseData.recordDetails.lastNationalityWeight}
+                      </Badge>
+                    )}
                         </div>
-                        <div>{renderFieldValue(field.id!, field.fieldType, field.options)}</div>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {caseData.recordDetails.nationalityLookupValue?.value || 'Not provided'}
+                  </p>
                       </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-        {/* Fields without Section */}
-        {record && fieldsWithoutSection.length > 0 && (
-          <Card className="shadow-sm border-primary/10">
-            <CardHeader className="bg-primary/5 border-b">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                Additional Information
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Additional template fields not organized under specific sections.
-              </p>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {fieldsWithoutSection.map((field) => {
-                  return (
-                    <div
-                      key={field.id}
-                      className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-                        {getFieldIcon(field.fieldType)}
-                        {field.label}
-                      </div>
-                      <div>{renderFieldValue(field.id!, field.fieldType, field.options)}</div>
-                    </div>
-                  );
-                })}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Related Accounts Section */}
-        {record && accounts.length > 0 && (
-          <Card className="shadow-sm border-primary/10">
-            <CardHeader className="bg-primary/5 border-b">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Building className="w-5 h-5 text-primary" />
-                Related Accounts
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Account information associated with this record.
-              </p>
-            </CardHeader>
-            <CardContent className="p-6">
-              {accountsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="animate-spin w-8 h-8 text-primary" />
-                  <span className="ml-2 text-muted-foreground">Loading accounts...</span>
+
+
+
+
+        {/* Screening Histories Card */}
+        {caseData?.screeningHistories && caseData.screeningHistories.length > 0 && (
+          <Card className="mb-6 overflow-hidden shadow-sm border-0 bg-gradient-to-br from-amber-50/30 to-orange-50/20">
+            <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-100/50 border-b border-amber-200/60 px-6 py-5">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg">
+                  <FileSearch className="h-6 w-6" />
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {accounts.map((account) => (
-                    <Card
-                      key={account.id}
-                      className="border bg-card hover:bg-accent/5 transition-colors"
-                    >
+                <span className="flex-1">Screening Histories</span>
+                <Badge variant="outline" className="bg-white/80 text-amber-700 border-amber-300">
+                  {caseData.screeningHistories.length} historie{caseData.screeningHistories.length !== 1 ? 's' : ''}
+                </Badge>
+              </h2>
+            </CardHeader>
+            <CardContent className="p-6 bg-white/70">
+              <div className="space-y-4">
+                {caseData.screeningHistories.map((history) => (
+                  <Card key={history.id} className="border bg-card hover:bg-accent/5 transition-colors">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Account Name
-                                </div>
-                                <div className="text-base font-semibold">{account.name}</div>
+                              <div className="text-sm font-medium text-muted-foreground">History ID</div>
+                              <div className="text-base font-semibold">{history.id}</div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Account Number
-                                </div>
-                                <div className="text-base font-mono">{account.number}</div>
+                              <div className="text-sm font-medium text-muted-foreground">Number of Matches</div>
+                              <div className="text-base font-semibold">{history.noOfMatches}</div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Bank Country
-                                </div>
+                              <div className="text-sm font-medium text-muted-foreground">Created</div>
                                 <div className="text-base">
-                                  {getBankCountryDisplayValue(account)}
+                                {history.created ? formatDate(history.created) : 'N/A'}
                                 </div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Bank City
-                                </div>
-                                <div className="text-base">{account.bankOfCity || '-'}</div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Status
-                                </div>
-                                <div className="text-base">
-                                  <span
-                                    className={cn(
-                                      'px-2 py-1 rounded-full text-xs font-medium',
-                                      account.accountStatus === 1
-                                        ? 'bg-green-100 text-green-800'
-                                        : account.accountStatus === 2
-                                          ? 'bg-yellow-100 text-yellow-800'
-                                          : account.accountStatus === 3
-                                            ? 'bg-red-100 text-red-800'
-                                            : account.accountStatus === 4
-                                              ? 'bg-orange-100 text-orange-800'
-                                              : 'bg-gray-100 text-gray-800'
-                                    )}
-                                  >
-                                    {account.accountStatus === 1
-                                      ? 'Active'
-                                      : account.accountStatus === 2
-                                        ? 'Inactive'
-                                        : account.accountStatus === 3
-                                          ? 'Closed'
-                                          : account.accountStatus === 4
-                                            ? 'Suspended'
-                                            : 'Unknown'}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Created
-                                </div>
-                                <div className="text-base">
-                                  {account.creationDate
-                                    ? new Date(account.creationDate).toLocaleDateString()
-                                    : '-'}
-                                </div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                  Account ID
-                                </div>
-                                <div className="text-base font-mono">{account.id}</div>
                               </div>
                             </div>
                           </div>
                           <button
                             type="button"
-                            onClick={() => toggleAccountExpansion(account.id)}
+                          onClick={() => toggleExpand(history.id)}
                             className="ml-4 p-2 hover:bg-gray-100 rounded transition-colors"
-                            aria-label={
-                              expandedAccounts[account.id] ? 'Collapse details' : 'Expand details'
-                            }
+                          aria-label={expanded[history.id] ? 'Collapse details' : 'Expand details'}
                           >
-                            {expandedAccounts[account.id] ? (
+                          {expanded[history.id] ? (
                               <ChevronDown className="h-4 w-4" />
                             ) : (
                               <ChevronRight className="h-4 w-4" />
@@ -954,47 +441,47 @@ const CaseDetailsPage = () => {
                           </button>
                         </div>
 
-                        {/* Expandable Field Responses Section */}
-                        {expandedAccounts[account.id] && (
+                      {/* Expandable Screening Details */}
+                      {expanded[history.id] && (
                           <div className="mt-4 pt-4 border-t">
-                            {loadingAccountResponses[account.id] ? (
-                              <div className="flex items-center justify-center py-4">
-                                <Loader2 className="animate-spin w-6 h-6 text-primary" />
-                                <span className="ml-2 text-sm text-muted-foreground">
-                                  Loading field responses...
-                                </span>
-                              </div>
-                            ) : accountFieldResponses[account.id] &&
-                              accountFieldResponses[account.id].length > 0 ? (
+                          {history.caseScreenings && history.caseScreenings.length > 0 ? (
                               <div className="space-y-3">
                                 <h4 className="font-medium text-sm text-muted-foreground">
-                                  Additional Account Information:
+                                Screening Results ({history.caseScreenings.length}):
                                 </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {accountFieldResponses[account.id].map(
-                                    (response: FieldResponseDetail) => (
-                                      <div
-                                        key={response.id}
-                                        className="p-3 rounded border bg-gray-50/50"
-                                      >
-                                        <div className="text-sm font-medium text-gray-700 mb-1">
-                                          {response.fieldName}
-                                        </div>
-                                        <div>{renderFieldResponseValue(response)}</div>
-                                        {response.created && (
-                                          <div className="text-xs text-gray-500 mt-1">
-                                            Created:{' '}
-                                            {new Date(response.created).toLocaleDateString()}
-                                          </div>
-                                        )}
+                              <div className="grid grid-cols-1 gap-3">
+                                {history.caseScreenings.map((screening) => (
+                                  <div key={screening.id} className="p-3 rounded border bg-gray-50/50">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                                      <div>
+                                        <div className="font-medium text-gray-700 mb-1">External Name</div>
+                                        <div className="text-gray-900">{screening.externalName || 'N/A'}</div>
                                       </div>
-                                    )
-                                  )}
+                                      <div>
+                                        <div className="font-medium text-gray-700 mb-1">External ID</div>
+                                        <div className="text-gray-900 font-mono">{screening.externalId || 'N/A'}</div>
+                                      </div>
+                                      <div>
+                                        <div className="font-medium text-gray-700 mb-1">Match Score</div>
+                                        <Badge 
+                                          variant="outline" 
+                                          className={`text-xs ${screening.matchScore >= 0.9 ? 'bg-red-100 text-red-800' : screening.matchScore >= 0.7 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}
+                                        >
+                                          {(screening.matchScore * 100).toFixed(0)}%
+                                        </Badge>
+                                        </div>
+                                      <div>
+                                        <div className="font-medium text-gray-700 mb-1">Source</div>
+                                        <div className="text-gray-900">{screening.externalSource || 'N/A'}</div>
+                                          </div>
+                                      </div>
+                                  </div>
+                                ))}
                                 </div>
                               </div>
                             ) : (
                               <div className="text-sm text-gray-500 py-2">
-                                No additional field responses found for this account.
+                              No screening results found for this history.
                               </div>
                             )}
                           </div>
@@ -1003,127 +490,49 @@ const CaseDetailsPage = () => {
                     </Card>
                   ))}
                 </div>
-              )}
             </CardContent>
           </Card>
         )}
 
-        {/* Screening Histories Card */}
-        {caseData.screeningHistories && caseData.screeningHistories.length > 0 && (
-          <Card className="shadow-sm border-primary/10">
-            <CardHeader className="bg-primary/5 border-b">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                Screening Histories
-              </h2>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="overflow-x-auto">
-                <table className="min-w-full border text-sm">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="border px-3 py-2 text-left">ID</th>
-                      <th className="border px-3 py-2 text-left">No. of Matches</th>
-                      <th className="border px-3 py-2 text-left">Case Screenings</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {caseData.screeningHistories.map((history) => (
-                      <React.Fragment key={history.id}>
-                        <tr className="bg-white">
-                          <td className="border px-3 py-2">
-                            <button
-                              className="text-primary font-bold focus:outline-none"
-                              onClick={() => toggleExpand(history.id)}
-                              aria-label={expanded[history.id] ? 'Collapse' : 'Expand'}
-                            >
-                              {expanded[history.id] ? '−' : '+'}
-                            </button>
-                            <span className="ml-2">{history.id}</span>
-                          </td>
-                          <td className="border px-3 py-2">{history.noOfMatches}</td>
-                          <td className="border px-3 py-2">
-                            {history.caseScreenings && history.caseScreenings.length > 0 ? (
-                              <span>{history.caseScreenings.length} screening(s)</span>
-                            ) : (
-                              <span className="text-muted-foreground">No screenings</span>
-                            )}
-                          </td>
-                        </tr>
-                        {expanded[history.id] && (
-                          <tr>
-                            <td colSpan={3} className="border px-3 py-2 bg-gray-50">
-                              <table className="min-w-full border text-xs">
-                                <thead>
-                                  <tr>
-                                    <th className="border px-2 py-1">Screening ID</th>
-                                    <th className="border px-2 py-1">Individual ID</th>
-                                    <th className="border px-2 py-1">Individual Name</th>
-                                    <th className="border px-2 py-1">Entity ID</th>
-                                    <th className="border px-2 py-1">Match Score</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {history.caseScreenings.map((screening) => (
-                                    <tr key={screening.id}>
-                                      <td className="border px-2 py-1">{screening.id}</td>
-                                      <td className="border px-2 py-1">
-                                        {screening.individualId ?? '-'}
-                                      </td>
-                                      <td className="border px-2 py-1">
-                                        {screening.individualName ?? '-'}
-                                      </td>
-                                      <td className="border px-2 py-1">
-                                        {screening.entityId ?? '-'}
-                                      </td>
-                                      <td className="border px-2 py-1">{screening.matchScore}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Activity Logs Card */}
-        {caseData.activityLogs && caseData.activityLogs.length > 0 && (
-          <Card className="shadow-sm border-primary/10">
-            <CardHeader className="bg-primary/5 border-b">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                Activity Logs
+        {caseData?.activityLogs && caseData.activityLogs.length > 0 && (
+          <Card className="mb-6 overflow-hidden shadow-sm border-0 bg-gradient-to-br from-slate-50/30 to-gray-50/20">
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-100/50 border-b border-slate-200/60 px-6 py-5">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-slate-500 to-gray-600 text-white shadow-lg">
+                  <Clock className="h-6 w-6" />
+                </div>
+                <span className="flex-1">Activity Logs</span>
+                <Badge variant="outline" className="bg-white/80 text-slate-700 border-slate-300">
+                  {caseData.activityLogs.length} log{caseData.activityLogs.length !== 1 ? 's' : ''}
+                </Badge>
               </h2>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="overflow-x-auto">
-                <table className="min-w-full border text-sm">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="border px-3 py-2 text-left">Description</th>
-                      <th className="border px-3 py-2 text-left">Action</th>
-                      <th className="border px-3 py-2 text-left">Module</th>
-                      <th className="border px-3 py-2 text-left">Created</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+            <CardContent className="p-6 bg-white/70">
+              <div className="space-y-3">
                     {caseData.activityLogs.map((log) => (
-                      <tr key={log.id}>
-                        <td className="border px-3 py-2">{log.description}</td>
-                        <td className="border px-3 py-2">{log.action}</td>
-                        <td className="border px-3 py-2">{log.module}</td>
-                        <td className="border px-3 py-2">{log.created}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  <div key={log.id} className="bg-white/80 rounded-lg p-4 border border-gray-200/50 hover:shadow-sm transition-all duration-200">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900 mb-1">{log.description}</div>
+                        <div className="flex items-center gap-4 text-xs text-gray-600">
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">Action:</span>
+                            <Badge variant="outline" className="text-xs">{log.action}</Badge>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">Module:</span>
+                            <Badge variant="outline" className="text-xs">{log.module}</Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {formatDate(log.created)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

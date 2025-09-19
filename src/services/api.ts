@@ -702,18 +702,75 @@ export interface Case {
   activityLogs?: ActivityLog[];
 }
 
+// Extended Case interface for detailed API response
+export interface ExtendedCase extends Case {
+  uuid: string;
+  recordCalculationId?: number;
+  createdBy: string;
+  lastModified: string;
+  lastModifiedBy: string;
+  recordDetails?: DetailedRecord;
+  recordCalculations?: RecordCalculation[];
+}
+
+export interface RecordCalculation {
+  id: number;
+  recordId: number;
+  templateId: number;
+  templateName: string;
+  countryOfBirthWeight: number;
+  nationalityWeight: number;
+  countryOfBirthScore: number;
+  countryOfBirthWeightedScore: number;
+  countryOfBirthLookupValueId: number;
+  countryOfBirthValue: string;
+  nationalityScore: number;
+  nationalityWeightedScore: number;
+  nationalityLookupValueId: number;
+  nationalityValue: string;
+  totalScore: number;
+  totalWeight: number;
+  finalScore: number;
+  scoreToOpenCase: number;
+  templateScoreCriteriaId: number;
+  riskLevel: string;
+  riskLevelBGColor: string;
+  riskLevelColor: string;
+  calculatedAt: string;
+  notes: string;
+  created: string;
+  createdBy: string;
+  fieldResults: FieldResult[];
+}
+
+export interface FieldResult {
+  id: number;
+  recordCalculationId: number;
+  fieldId: number;
+  fieldLabel: string;
+  fieldType: number;
+  fieldWeight: number;
+  fieldScore: number;
+  weightedScore: number;
+}
+
 export interface ScreeningHistory {
   id: number;
   noOfMatches: number;
+  created?: string;
   caseScreenings: CaseScreening[];
 }
 
 export interface CaseScreening {
   id: number;
   individualId: number | null;
-  individualName?: string;
+  individualName?: string | null;
   entityId: number | null;
+  entityName?: string | null;
   matchScore: number;
+  externalId?: string;
+  externalName?: string;
+  externalSource?: string;
 }
 
 export interface ActivityLog {
@@ -748,6 +805,10 @@ export const caseService = {
   },
   async getCasesByRecordId(recordId: number): Promise<Case[]> {
     const response = await api.get<Case[]>(`/cases/by-record/${recordId}`);
+    return response.data;
+  },
+  async getCaseDetailsByUuid(uuid: string): Promise<ExtendedCase> {
+    const response = await api.get<ExtendedCase>(`/cases/${uuid}/details`);
     return response.data;
   }
 };
