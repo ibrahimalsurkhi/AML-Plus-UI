@@ -110,6 +110,7 @@ const RecordDetailsPage = () => {
     
     const response = field.fieldResponse;
     
+    
     // Handle different field types
     switch (field.fieldType) {
       case 1: // Dropdown
@@ -119,7 +120,7 @@ const RecordDetailsPage = () => {
       case 4: // Date
         return response.valueDate ? formatDate(response.valueDate) : 'Not provided';
       case 5: // Number
-        return response.valueNumber?.toString() || 'Not provided';
+        return response.valueNumber !== null && response.valueNumber !== undefined ? response.valueNumber.toString() : 'Not provided';
       case 6: // TextArea
       case 0: // Text
         return response.valueText || 'Not provided';
@@ -128,9 +129,6 @@ const RecordDetailsPage = () => {
     }
   };
 
-  const getFieldScore = (field: DetailedTemplateField): number | null => {
-    return field.fieldResponse?.score || null;
-  };
 
   const getFieldIcon = (field: DetailedTemplateField) => {
     const label = field.label.toLowerCase();
@@ -149,8 +147,8 @@ const RecordDetailsPage = () => {
 
   const renderField = (field: DetailedTemplateField) => {
     const value = getFieldValue(field);
-    const score = getFieldScore(field);
     const fieldIcon = getFieldIcon(field);
+    
     
     return (
       <div key={field.id} className="group relative bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200 p-4">
@@ -178,13 +176,13 @@ const RecordDetailsPage = () => {
             </div>
           </div>
         </div>
-        {field.weight > 0 && (
+        {(field.lastCalculatedWeight && field.lastCalculatedWeight > 0) ? (
           <div className="absolute top-3 right-3">
             <Badge variant="secondary" className="text-xs font-bold bg-white text-gray-900 border-2 border-gray-500 px-3 py-1 shadow-md">
-              Weight: {field.weight}
+              Weight: {field.lastCalculatedWeight}
             </Badge>
           </div>
-        )}
+        ) : null}
       </div>
     );
   };
@@ -380,9 +378,9 @@ const RecordDetailsPage = () => {
                     <MapPin className="h-4 w-4 text-purple-600" />
                 </div>
                   <label className="text-sm font-semibold text-gray-700">Country of Birth</label>
-                  {record.countryOfBirthWeight && (
+                  {record.lastCountryOfBirthWeight && record.lastCountryOfBirthWeight > 0 && (
                     <Badge variant="secondary" className="text-xs font-bold bg-white text-purple-900 border-2 border-purple-500 px-3 py-1 ml-auto shadow-md">
-                      Weight: {record.countryOfBirthWeight}
+                      Weight: {record.lastCountryOfBirthWeight}
                     </Badge>
                   )}
                 </div>
@@ -397,9 +395,9 @@ const RecordDetailsPage = () => {
                     <Flag className="h-4 w-4 text-orange-600" />
                 </div>
                   <label className="text-sm font-semibold text-gray-700">Nationality</label>
-                  {record.nationalityWeight && (
+                  {record.lastNationalityWeight && record.lastNationalityWeight > 0 && (
                     <Badge variant="secondary" className="text-xs font-bold bg-white text-orange-900 border-2 border-orange-500 px-3 py-1 ml-auto shadow-md">
-                      Weight: {record.nationalityWeight}
+                      Weight: {record.lastNationalityWeight}
                     </Badge>
                   )}
                 </div>

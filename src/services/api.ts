@@ -503,6 +503,7 @@ export interface DetailedFieldResponse {
   templateFieldScoreCriteriaId: number | null;
   templateScoreCriteriaId: number | null;
   score: number | null;
+  lastCalculatedWeight?: number;
   valueText: string | null;
   valueNumber: number | null;
   valueDate: string | null;
@@ -522,6 +523,7 @@ export interface DetailedTemplateField {
   label: string;
   fieldType: number;
   weight: number;
+  lastCalculatedWeight?: number;
   isRequired: boolean;
   displayOrder: number;
   placeholder: string | null;
@@ -567,6 +569,11 @@ export interface DetailedRecord {
   customerReferenceId: string;
   countryOfBirthWeight?: number;
   nationalityWeight?: number;
+  lastCountryOfBirthWeight?: number;
+  lastNationalityWeight?: number;
+  lastCalculationScore?: number;
+  lastCalculatedAt?: string;
+  lastRecordCalculationId?: number;
   countryOfBirthLookupValue: DetailedLookupValue;
   nationalityLookupValue: DetailedLookupValue;
   template: DetailedTemplate;
