@@ -1,6 +1,6 @@
 import { ReactElement } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
-import { DefaultPage, Demo1DarkSidebarPage } from '@/pages/dashboards';
+import { Demo1DarkSidebarPage } from '@/pages/dashboards';
 import {
   ProfileActivityPage,
   ProfileBloggerPage,
