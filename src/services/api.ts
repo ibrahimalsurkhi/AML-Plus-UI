@@ -580,6 +580,39 @@ export interface DetailedRecord {
   sections: DetailedTemplateSection[];
 }
 
+export interface RecalculationFieldResult {
+  fieldId: number;
+  fieldLabel: string;
+  weight: number;
+  score: number;
+  // Add other field result properties as needed
+}
+
+export interface RecalculationDetails {
+  id: number;
+  recordId: number;
+  finalScore: number;
+  totalScore: number;
+  fieldResults: RecalculationFieldResult[];
+  // Add other calculation fields as needed
+}
+
+export interface RecalculationCase {
+  id: number;
+  fullName: string;
+  score: number;
+  exceedsTargetThreshold: boolean;
+  // Add other case fields as needed
+}
+
+export interface RecalculationResponse {
+  calculation: RecalculationDetails;
+  case?: RecalculationCase;
+  caseCreated: boolean;
+  exceedsTargetThreshold: boolean;
+  targetThreshold: number;
+}
+
 export const recordService = {
   getRecords: async (params: RecordQueryParams): Promise<PaginatedResponse<Record>> => {
     const { templateId, customerRefId, pageNumber, pageSize } = params;
@@ -633,6 +666,16 @@ export const recordService = {
   },
   deleteRecord: async (templateId: number, recordId: number): Promise<void> => {
     await api.delete(`${API_CONFIG.endpoints.templates.list}/${templateId}/records/${recordId}`);
+  },
+  recalculateRecord: async (recordId: number, notes: string = ''): Promise<RecalculationResponse> => {
+    const response = await api.post<RecalculationResponse>(
+      `${API_CONFIG.endpoints.templates.list}/records/${recordId}/calculations`,
+      {
+        recordId,
+        notes
+      }
+    );
+    return response.data;
   }
 };
 

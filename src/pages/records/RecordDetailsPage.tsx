@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { recordService, caseService, type DetailedRecord, type DetailedFieldResponse, type DetailedTemplateField, type Case, type PaginatedResponse } from '@/services/api';
+import { recordService, caseService, type DetailedRecord, type DetailedFieldResponse, type DetailedTemplateField, type Case, type PaginatedResponse, type RecalculationResponse } from '@/services/api';
 import { DataPagination, extractPaginationData } from '@/components/common/DataPagination';
 import { toast } from '@/components/ui/use-toast';
 import { formatDate } from '@/lib/utils';
@@ -27,7 +27,8 @@ import {
   Clock,
   Star,
   FileSearch,
-  Eye
+  Eye,
+  Calculator
 } from 'lucide-react';
 
 const RecordDetailsPage = () => {
@@ -40,7 +41,9 @@ const RecordDetailsPage = () => {
   const [casesError, setCasesError] = useState<string | null>(null);
   const [casesPagination, setCasesPagination] = useState<PaginatedResponse<Case> | null>(null);
   const [casesCurrentPage, setCasesCurrentPage] = useState(1);
-  const [casesPageSize] = useState(10);
+  const [casesPageSize] = useState(3);
+  const [recalculating, setRecalculating] = useState(false);
+  const [newlyCreatedCaseId, setNewlyCreatedCaseId] = useState<number | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -103,6 +106,56 @@ const RecordDetailsPage = () => {
 
   const handleCasesPageChange = (page: number) => {
     setCasesCurrentPage(page);
+  };
+
+  const handleRecalculate = async () => {
+    if (!record) return;
+    
+    try {
+      setRecalculating(true);
+      const result = await recordService.recalculateRecord(record.id);
+      
+      // Refresh the record data to get updated weights
+      await fetchRecordDetails(record.uuid);
+      
+      // Refresh linked cases to show newly created cases (especially if a new case was created)
+      if (id && result.caseCreated && result.case) {
+        await fetchCases(id, casesCurrentPage);
+        
+        // Clear the highlight after 10 seconds
+        
+      }
+      
+      // Show detailed success message with score and case information
+      const successMessage = `Score: ${result.calculation.finalScore} (Threshold: ${result.targetThreshold})${result.caseCreated ? ' • New case created' : ''}`;
+      
+      toast({
+        title: 'Recalculation Complete',
+        description: successMessage,
+        variant: 'default'
+      });
+
+      // If a case was created and exceeds threshold, offer to navigate to it
+      if (result.caseCreated && result.case && result.exceedsTargetThreshold) {
+        // Additional notification for high-risk cases
+        setTimeout(() => {
+          toast({
+            title: 'High Risk Alert',
+            description: `Score ${result.calculation.finalScore} exceeds threshold ${result.targetThreshold}. Case #${result.case!.id} created. Click here to review the case.`,
+            variant: 'destructive'
+          });
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error recalculating record:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to recalculate record. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setRecalculating(false);
+    }
   };
 
   const getFieldValue = (field: DetailedTemplateField): string => {
@@ -229,6 +282,24 @@ const RecordDetailsPage = () => {
               <ToolbarHeading>Record Details</ToolbarHeading>
             </div>
             <ToolbarActions>
+              <Button 
+                variant="outline" 
+                onClick={handleRecalculate}
+                disabled={recalculating}
+                className="mr-2"
+              >
+                {recalculating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                    Recalculating...
+                  </>
+                ) : (
+                  <>
+                    <Calculator className="h-4 w-4 mr-2" />
+                    Recalculate
+                  </>
+                )}
+              </Button>
               <Button variant="outline" onClick={() => navigate('/records')}>
                 Back to Records
               </Button>
@@ -306,6 +377,24 @@ const RecordDetailsPage = () => {
             <ToolbarHeading>Record Details</ToolbarHeading>
           </div>
           <ToolbarActions>
+            <Button 
+              variant="outline" 
+              onClick={handleRecalculate}
+              disabled={recalculating}
+              className="mr-2"
+            >
+              {recalculating ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  Recalculating...
+                </>
+              ) : (
+                <>
+                  <Calculator className="h-4 w-4 mr-2" />
+                  Recalculate
+                </>
+              )}
+            </Button>
             <Button variant="outline" onClick={() => navigate('/records')}>
               Back to Records
             </Button>
@@ -475,12 +564,25 @@ const RecordDetailsPage = () => {
             
             {!casesLoading && !casesError && cases.length > 0 && (
               <div className="space-y-4">
-                {cases.map((caseItem) => (
-                  <div
-                    key={caseItem.id}
-                    className="group bg-white/80 rounded-xl p-4 border border-gray-200/50 hover:shadow-md transition-all duration-200 cursor-pointer"
-                    onClick={() => navigate(`/cases/${caseItem.id}`)}
-                  >
+                {cases.map((caseItem) => {
+                  const isNewlyCreated = newlyCreatedCaseId === caseItem.id;
+                  return (
+                    <div
+                      key={caseItem.id}
+                      className={`group rounded-xl p-4 border transition-all duration-200 cursor-pointer ${
+                        isNewlyCreated 
+                          ? 'bg-green-50/80 border-green-300 shadow-md ring-2 ring-green-200 animate-pulse' 
+                          : 'bg-white/80 border-gray-200/50 hover:shadow-md'
+                      }`}
+                      onClick={() => navigate(`/cases/${caseItem.id}`)}
+                    >
+                      {isNewlyCreated && (
+                        <div className="mb-2">
+                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs">
+                            ✨ Just Created
+                          </Badge>
+                        </div>
+                      )}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="p-2 rounded-lg bg-gradient-to-br from-amber-100 to-orange-200">
@@ -571,8 +673,9 @@ const RecordDetailsPage = () => {
                         </Button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
             
