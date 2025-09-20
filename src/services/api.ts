@@ -1480,9 +1480,9 @@ export const transactionService = {
     const response = await api.get<TransactionPrepareResponse>('/transactions/prepare');
     return response.data;
   },
-  createTransaction: async (data: TransactionCreate): Promise<number> => {
+  createTransaction: async (data: TransactionCreate): Promise<string> => {
     console.log('Creating transaction with data:', data);
-    const response = await api.post<number>(API_CONFIG.endpoints.transactions.create, data);
+    const response = await api.post<string>(API_CONFIG.endpoints.transactions.create, data);
     console.log('Transaction creation response:', response.data);
     return response.data;
   },
@@ -1505,7 +1505,7 @@ export const transactionService = {
     return response.data;
   },
   getTransactionProcessingStatus: async (
-    id: number
+    id: string
   ): Promise<TransactionProcessingStatusResponse> => {
     const response = await api.get<TransactionProcessingStatusResponse>(
       `/Transactions/${id}/processing-status`
@@ -1516,13 +1516,13 @@ export const transactionService = {
     pageNumber: number;
     pageSize: number;
     accountId?: number;
+    transactionUuid?: string;
   }): Promise<PaginatedResponse<TransactionCase>> => {
-    const response = await api.get<PaginatedResponse<TransactionCase>>('/Transactions/cases', {
-      params: {
-        pageNumber: params.pageNumber,
-        pageSize: params.pageSize,
-        accountId: params.accountId
-      }
+    const response = await api.post<PaginatedResponse<TransactionCase>>('/Transactions/cases/search', {
+      pageNumber: params.pageNumber,
+      pageSize: params.pageSize,
+      accountId: params.accountId,
+      transactionUuid: params.transactionUuid
     });
     return response.data;
   },

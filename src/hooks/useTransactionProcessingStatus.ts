@@ -7,7 +7,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 
 interface UseTransactionProcessingStatusOptions {
-  transactionId: number;
+  transactionId: string;
   pollInterval?: number; // in milliseconds
   maxPollAttempts?: number;
   onComplete?: (result: TransactionProcessingStatusResponse) => void;
@@ -19,7 +19,7 @@ interface UseTransactionProcessingStatusReturn {
   loading: boolean;
   error: string | null;
   isPolling: boolean;
-  startPolling: () => void;
+  startPolling: (transactionId?: string) => void;
   stopPolling: () => void;
 }
 
@@ -40,9 +40,10 @@ export const useTransactionProcessingStatus = ({
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchStatus = useCallback(async (): Promise<TransactionProcessingStatusResponse> => {
-    if (!transactionId || transactionId <= 0) {
+    if (!transactionId || transactionId.trim() === '') {
       throw new Error('Invalid transaction ID. Please provide a valid transaction ID.');
     }
+    
     const response = await transactionService.getTransactionProcessingStatus(transactionId);
     return response;
   }, [transactionId]);
@@ -60,11 +61,17 @@ export const useTransactionProcessingStatus = ({
     }
   }, []);
 
-  const startPolling = useCallback(() => {
+  const startPolling = useCallback((overrideTransactionId?: string) => {
     if (isPolling) {
       return;
     }
-
+    
+    const idToUse = overrideTransactionId || transactionId;
+    if (!idToUse || idToUse.trim() === '') {
+      console.warn('Cannot start polling: Invalid transaction ID', { overrideTransactionId, transactionId });
+      return;
+    }
+    
     setIsPolling(true);
     setPollAttempts(0);
     setError(null);
@@ -72,7 +79,20 @@ export const useTransactionProcessingStatus = ({
 
     const poll = async () => {
       try {
-        const result = await fetchStatus();
+        // Use the override ID if provided, otherwise use the hook's transactionId
+        const idToUse = overrideTransactionId || transactionId;
+        if (!idToUse || idToUse.trim() === '') {
+          console.warn('Cannot poll: Invalid transaction ID');
+          return;
+        }
+        
+        const numericId = parseInt(idToUse, 10);
+        if (isNaN(numericId) || numericId <= 0) {
+          console.warn('Cannot poll: Invalid numeric transaction ID');
+          return;
+        }
+        
+        const result = await transactionService.getTransactionProcessingStatus(idToUse);
         setStatus(result);
         setLoading(false);
 
@@ -152,6 +172,7 @@ export const useTransactionProcessingStatus = ({
     intervalRef.current = setInterval(poll, pollInterval);
   }, [
     isPolling,
+    transactionId,
     fetchStatus,
     checkForRuleMatches,
     maxPollAttempts,

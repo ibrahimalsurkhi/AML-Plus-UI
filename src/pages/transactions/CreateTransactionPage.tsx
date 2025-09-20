@@ -364,7 +364,7 @@ const CreateTransactionPage = () => {
       console.log('About to create transaction with data:', transactionData);
       console.log('Transaction service:', transactionService);
 
-      let createdTransaction: number;
+      let createdTransaction: string;
       try {
         // Create transaction with field responses included
         const transactionDataWithFields = {
@@ -400,7 +400,7 @@ const CreateTransactionPage = () => {
 
       // Get the transaction ID and check processing status
       // Handle both object response and direct ID response
-      let transactionId: number;
+      let transactionId: string;
 
       // API returned just the ID number
       transactionId = createdTransaction;
@@ -408,7 +408,7 @@ const CreateTransactionPage = () => {
       console.log('Extracted transaction ID:', transactionId);
 
       // Validate that we have a valid transaction ID
-      if (!transactionId || transactionId <= 0) {
+      if (!transactionId) {
         console.error('Invalid transaction ID received:', transactionId);
         setSuccess(true);
         toast({ title: 'Success', description: 'Transaction created successfully!' });

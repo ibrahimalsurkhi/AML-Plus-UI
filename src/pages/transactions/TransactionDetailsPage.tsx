@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,9 +6,13 @@ import { Container } from '@/components/container';
 import { Toolbar, ToolbarHeading } from '@/partials/toolbar';
 import {
   transactionService,
+  transactionTypeService,
   type Transaction,
   type TransactionParticipant,
-  type TransactionFieldResponse
+  type TransactionFieldResponse,
+  type TransactionCase,
+  type PaginatedResponse,
+  type TransactionType
 } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { KeenIcon } from '@/components/keenicons';
@@ -27,6 +31,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import TransactionCasesTable from '@/components/transactions/TransactionCasesTable';
+import { useTransactionProcessingStatus } from '@/hooks/useTransactionProcessingStatus';
 
 interface TransactionDetails extends Transaction {
   // The Transaction interface now includes sender, recipient, and fieldResponses
@@ -39,6 +45,12 @@ const TransactionDetailsPage = () => {
   const [transaction, setTransaction] = useState<TransactionDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [reExecuting, setReExecuting] = useState(false);
+  const [transactionCases, setTransactionCases] = useState<PaginatedResponse<TransactionCase> | null>(null);
+  const [transactionTypes, setTransactionTypes] = useState<TransactionType[]>([]);
+  const [casesLoading, setCasesLoading] = useState(false);
+  const [casesError, setCasesError] = useState<string | null>(null);
+  const [casesPageNumber, setCasesPageNumber] = useState(1);
+  const [processingTransactionId, setProcessingTransactionId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchTransactionDetails = async () => {
@@ -63,30 +75,138 @@ const TransactionDetailsPage = () => {
     fetchTransactionDetails();
   }, [id]);
 
+  // Fetch transaction cases
+  const fetchTransactionCases = async (page = 1) => {
+    if (!transaction?.uuid) return;
+    
+    try {
+      setCasesLoading(true);
+      setCasesError(null);
+      const data = await transactionService.getTransactionCases({
+        pageNumber: page,
+        pageSize: 10,
+        transactionUuid: transaction.uuid
+      });
+      setTransactionCases(data);
+    } catch (error) {
+      console.error('Error fetching transaction cases:', error);
+      setCasesError('Failed to fetch transaction cases');
+    } finally {
+      setCasesLoading(false);
+    }
+  };
+
+  // Fetch transaction types
+  const fetchTransactionTypes = async () => {
+    try {
+      const response = await transactionTypeService.getTransactionTypes({ page: 1, pageSize: 100 });
+      setTransactionTypes(response.items);
+    } catch (err) {
+      console.error('Failed to fetch transaction types:', err);
+    }
+  };
+
+  // Fetch cases when transaction is loaded
+  useEffect(() => {
+    if (transaction?.uuid) {
+      fetchTransactionCases(casesPageNumber);
+    }
+  }, [transaction?.uuid, casesPageNumber]);
+
+  // Fetch transaction types on component mount
+  useEffect(() => {
+    fetchTransactionTypes();
+  }, []);
+
+  // Callback when processing completes
+  const handleProcessingComplete = useCallback(async (result: any) => {
+    console.log('Transaction re-execution completed:', result);
+    
+    // Refresh transaction details to get updated status
+    if (id) {
+      try {
+        const updatedData = await transactionService.getTransactionById(id);
+        setTransaction(updatedData as TransactionDetails);
+      } catch (error) {
+        console.error('Error refreshing transaction details:', error);
+      }
+    }
+    
+    // Refresh transaction cases to show any new cases created
+    if (transaction?.uuid) {
+      await fetchTransactionCases(casesPageNumber);
+    }
+    
+    // Reset processing state
+    setProcessingTransactionId(null);
+    setReExecuting(false);
+  }, [id, transaction?.uuid, casesPageNumber]);
+
+  // Callback when processing encounters an error
+  const handleProcessingError = useCallback((error: string) => {
+    console.error('Transaction re-execution error:', error);
+    setProcessingTransactionId(null);
+    setReExecuting(false);
+  }, []);
+
+  // Use the transaction processing status hook
+  const {
+    status: processingStatus,
+    loading: processingLoading,
+    error: processingError,
+    isPolling,
+    startPolling,
+    stopPolling
+  } = useTransactionProcessingStatus({
+    transactionId: processingTransactionId || '', // Use empty string as invalid ID to prevent hook from running
+    pollInterval: 2000,
+    maxPollAttempts: 150,
+    onComplete: handleProcessingComplete,
+    onError: handleProcessingError
+  });
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, [stopPolling]);
+
+
   const handleReExecute = async () => {
     if (!id) return;
     
+    console.log('Starting re-execution for transaction:', id);
     setReExecuting(true);
+    
     try {
+      console.log('Calling reExecuteTransaction API...');
       await transactionService.reExecuteTransaction(id);
+      
+      console.log('Re-execution API call successful, setting processing transaction ID:', id);
+      
+      // Set the transaction ID for processing status monitoring
+      setProcessingTransactionId(id);
+      
+      // Start polling after a short delay to ensure state is updated
+      setTimeout(() => {
+        console.log('Starting polling for re-executed transaction:', id);
+        startPolling(id); // Pass the transaction ID directly
+      }, 200);
+      
       toast({
         title: 'Success',
-        description: 'Transaction re-executed successfully',
+        description: 'Transaction re-execution started successfully',
         variant: 'default'
       });
-      
-      // Optionally refresh the transaction details to see updated processing status
-      const updatedData = await transactionService.getTransactionById(id);
-      setTransaction(updatedData as TransactionDetails);
     } catch (error) {
       console.error('Error re-executing transaction:', error);
+      setReExecuting(false);
       toast({
         title: 'Error',
         description: 'Failed to re-execute transaction. Please try again.',
         variant: 'destructive'
       });
-    } finally {
-      setReExecuting(false);
     }
   };
 
@@ -270,13 +390,13 @@ const TransactionDetailsPage = () => {
             <div className="flex items-center gap-3">
               <Button
                 onClick={handleReExecute}
-                disabled={reExecuting}
+                disabled={reExecuting || isPolling}
                 variant="outline"
                 size="sm"
                 className="bg-white hover:bg-gray-50"
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${reExecuting ? 'animate-spin' : ''}`} />
-                {reExecuting ? 'Re-executing...' : 'Re-execute'}
+                <RefreshCw className={`w-4 h-4 mr-2 ${(reExecuting || isPolling) ? 'animate-spin' : ''}`} />
+                {reExecuting || isPolling ? 'Processing...' : 'Re-execute'}
               </Button>
               <Badge
                 className={`px-4 py-2 text-sm font-medium ${getStatusColor(transaction.transactionStatus)}`}
@@ -288,6 +408,12 @@ const TransactionDetailsPage = () => {
                   className={`px-4 py-2 text-sm font-medium ${getProcessingStatusColor(transaction.processingStatus)}`}
                 >
                   {getProcessingStatusLabel(transaction.processingStatus)}
+                </Badge>
+              )}
+              {(reExecuting || isPolling) && (
+                <Badge className="px-4 py-2 text-sm font-medium bg-blue-50 text-blue-700 border-blue-200">
+                  <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                  Processing...
                 </Badge>
               )}
             </div>
@@ -678,6 +804,64 @@ const TransactionDetailsPage = () => {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Processing Status Section */}
+          {(reExecuting || isPolling) && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <RefreshCw className="w-5 h-5 text-blue-600 animate-spin" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Processing Transaction</h3>
+                  <p className="text-sm text-gray-600">
+                    Re-executing transaction and monitoring rule execution results...
+                  </p>
+                </div>
+              </div>
+              
+              {processingStatus && (
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-blue-900">
+                        Status: {processingStatus.processingStatus === 1 ? 'Processing' : 'Completed'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-blue-900">
+                        Rules Matched: {processingStatus.matchedRulesCount || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-blue-900">
+                        Processing Time: {processingStatus.processingCompletedAt ? 'Completed' : 'In Progress'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Transaction Cases Section */}
+          {transaction && (
+            <div className="space-y-4">
+              <TransactionCasesTable
+                cases={transactionCases}
+                transactionTypes={transactionTypes}
+                loading={casesLoading}
+                error={casesError}
+                pageNumber={casesPageNumber}
+                onPageChange={setCasesPageNumber}
+                showPagination={true}
+                compact={false}
+              />
+            </div>
           )}
         </div>
       </div>

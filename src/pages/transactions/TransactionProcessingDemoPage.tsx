@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/container';
@@ -11,7 +12,8 @@ import { toast } from '@/components/ui/use-toast';
 import { testSpecificTransaction } from '@/utils/testTransactionAPI';
 
 const TransactionProcessingDemoPage = () => {
-  const [transactionId, setTransactionId] = useState<number>(123);
+  const { id } = useParams<{ id: string }>();
+  const [transactionId, setTransactionId] = useState<string>(id || "");
   const [isMonitoring, setIsMonitoring] = useState(false);
 
   const {
@@ -43,7 +45,7 @@ const TransactionProcessingDemoPage = () => {
   });
 
   const handleStartMonitoring = () => {
-    if (transactionId > 0) {
+    if (transactionId && transactionId.trim() !== '' && parseInt(transactionId, 10) > 0) {
       setIsMonitoring(true);
       startPolling();
       toast({
@@ -69,9 +71,9 @@ const TransactionProcessingDemoPage = () => {
   };
 
   const handleTestAPI = async () => {
-    if (transactionId > 0) {
+    if (transactionId && transactionId.trim() !== '' && parseInt(transactionId, 10) > 0) {
       try {
-        const result = await testSpecificTransaction(transactionId);
+        const result = await testSpecificTransaction(parseInt(transactionId, 10));
         if (result.success) {
           toast({
             title: 'API Test Successful',
@@ -127,8 +129,7 @@ const TransactionProcessingDemoPage = () => {
                   min="1"
                   value={transactionId}
                   onChange={(e) => {
-                    const value = Number(e.target.value);
-                    setTransactionId(value > 0 ? value : 0);
+                    setTransactionId(e.target.value);
                   }}
                   placeholder="Enter transaction ID"
                   disabled={isPolling}
