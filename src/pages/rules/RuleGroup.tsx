@@ -24,6 +24,7 @@ interface RuleGroupProps {
   isRoot?: boolean;
   operatorDropdownClassName?: string; // NEW: for custom dropdown style
   readOnly?: boolean;
+  fullRuleContext?: RuleGroupType; // NEW: for template restrictions
 }
 
 const defaultCondition = (): Condition => ({
@@ -58,7 +59,8 @@ const RuleGroup: React.FC<RuleGroupProps> = ({
   onRemove,
   isRoot,
   operatorDropdownClassName,
-  readOnly
+  readOnly,
+  fullRuleContext
 }) => {
   const handleOperatorChange = (value: string) => {
     if (readOnly || !onChange) return;
@@ -157,6 +159,7 @@ const RuleGroup: React.FC<RuleGroupProps> = ({
                 onRemove={() => handleRemoveChild(idx)}
                 conditionIndex={idx}
                 readOnly={readOnly}
+                fullRuleContext={fullRuleContext || group}
               />
             );
           } else if ('operator' in child && child.children) {
@@ -167,6 +170,7 @@ const RuleGroup: React.FC<RuleGroupProps> = ({
                 onChange={(g) => handleChildChange(idx, { ...g })}
                 onRemove={() => handleRemoveChild(idx)}
                 readOnly={readOnly}
+                fullRuleContext={fullRuleContext || group}
               />
             );
           }

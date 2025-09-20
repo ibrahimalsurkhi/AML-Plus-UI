@@ -10,158 +10,18 @@ import {
   TransactionStatusOptions,
   AggregateFieldId,
   FilterByOptions,
+  RiskStatusOptions,
+  RiskStatusOperatorOptions,
   isCustomField,
   getCustomFieldId
 } from '../pages/rules/enums';
-import { customValueService, templateService, FieldType } from './api';
+import { FieldType } from './api';
+import { templateDataService } from './templateDataService';
 
-// Cache for custom values to avoid multiple API calls
-let customValuesCache: { id: number; title: string }[] = [];
-let customValuesCacheLoaded = false;
-
-// Cache for custom fields
-let customFieldsCache: {
-  id: number;
-  label: string;
-  fieldType: number;
-  lookupId?: number;
-  templateId?: string;
-}[] = [];
-let customFieldsCacheLoaded = false;
-
-// Cache for custom field options (dropdown/radio/checkbox)
-let customFieldOptionsCache: { [fieldId: number]: { id: number; label: string }[] } = {};
-
-// Cache for lookup values
-let lookupValuesCache: { [lookupId: number]: { id: number; value: string }[] } = {};
-
-// Function to reset caches (useful for development/testing)
-export function resetRulePreviewCaches() {
-  customValuesCacheLoaded = false;
-  customFieldsCacheLoaded = false;
-  customValuesCache = [];
-  customFieldsCache = [];
-  customFieldOptionsCache = {};
-  lookupValuesCache = {};
-  console.log('Rule preview caches reset');
-}
-
-// Auto-reset caches on load for development
-resetRulePreviewCaches();
-
-// Load custom values once
-async function loadCustomValues() {
-  if (!customValuesCacheLoaded) {
-    try {
-      console.log('Debug - Loading custom values...');
-      customValuesCache = await customValueService.getCustomValueOptions();
-      console.log('Debug - Loaded custom values:', customValuesCache);
-      customValuesCacheLoaded = true;
-    } catch (error) {
-      console.error('Failed to load custom values for preview:', error);
-    }
-  }
-}
-
-// Load custom fields once and pre-load their options
-async function loadCustomFields() {
-  if (!customFieldsCacheLoaded) {
-    try {
-      console.log('Debug - Loading custom fields from all templates...');
-
-      // Template IDs to load
-      const TRANSACTION_TEMPLATE_ID = '15'; // Old custom fields
-      const INDIVIDUAL_TEMPLATE_ID = '17';
-      const ORGANIZATION_TEMPLATE_ID = '18';
-
-      const allFields: any[] = [];
-
-      // Load fields from all three templates
-      for (const templateId of [
-        TRANSACTION_TEMPLATE_ID,
-        INDIVIDUAL_TEMPLATE_ID,
-        ORGANIZATION_TEMPLATE_ID
-      ]) {
-        try {
-          console.log(`Debug - Loading fields from template ${templateId}...`);
-          const fieldsResponse = await templateService.getTemplateFields(templateId);
-
-          // Get all fields from sections and fields without section
-          const templateFields = [
-            ...fieldsResponse.sections.flatMap((section) => section.fields),
-            ...fieldsResponse.fieldsWithoutSection
-          ];
-
-          // Add template info to each field for context
-          templateFields.forEach((field: any) => {
-            field.templateId = templateId;
-          });
-
-          allFields.push(...templateFields);
-          console.log(`Debug - Loaded ${templateFields.length} fields from template ${templateId}`);
-        } catch (error) {
-          console.error(`Failed to load fields from template ${templateId}:`, error);
-        }
-      }
-
-      // Filter fields by allowed types and cache them
-      const allowedFields = allFields.filter(
-        (field) =>
-          field.fieldType === FieldType.Dropdown ||
-          field.fieldType === FieldType.Lookup ||
-          field.fieldType === FieldType.Radio ||
-          field.fieldType === FieldType.Checkbox ||
-          field.fieldType === FieldType.Number
-      );
-
-      customFieldsCache = allowedFields.map((field) => ({
-        id: field.id!,
-        label: field.label,
-        fieldType: field.fieldType,
-        lookupId: field.lookupId || undefined,
-        templateId: field.templateId // Store template ID for context
-      }));
-
-      // Pre-load field options for dropdown/radio/checkbox fields
-      for (const field of allowedFields) {
-        try {
-          if (
-            field.fieldType === FieldType.Dropdown ||
-            field.fieldType === FieldType.Radio ||
-            field.fieldType === FieldType.Checkbox
-          ) {
-            const options = await templateService.getFieldOptions(field.templateId, field.id!);
-            customFieldOptionsCache[field.id!] = options.map((opt) => ({
-              id: opt.id!,
-              label: opt.label
-            }));
-          } else if (field.fieldType === FieldType.Lookup && field.lookupId) {
-            const { lookupService } = await import('./api');
-            const lookupValues = await lookupService.getLookupValues(field.lookupId, {
-              pageNumber: 1,
-              pageSize: 100
-            });
-            lookupValuesCache[field.lookupId] = lookupValues.items.map((val: any) => ({
-              id: val.id,
-              value: val.value
-            }));
-          }
-        } catch (error) {
-          console.error(
-            `Failed to load options for field ${field.id} from template ${field.templateId}:`,
-            error
-          );
-        }
-      }
-
-      console.log('Debug - Loaded custom fields from all templates:', customFieldsCache);
-      console.log('Debug - Loaded field options cache:', customFieldOptionsCache);
-      console.log('Debug - Loaded lookup values cache:', lookupValuesCache);
-      customFieldsCacheLoaded = true;
-    } catch (error) {
-      console.error('Failed to load custom fields for preview:', error);
-    }
-  }
+// Load data using centralized service
+async function ensureDataLoaded() {
+  // The templateDataService will handle all the loading and caching
+  await templateDataService.loadAllTemplateData();
 }
 
 // Helper to get custom value title
@@ -172,64 +32,18 @@ function getCustomValueTitle(customValueId: number): string {
     'type:',
     typeof customValueId
   );
-  console.log('Debug - customValuesCache:', customValuesCache);
-  console.log('Debug - customValuesCacheLoaded:', customValuesCacheLoaded);
-
-  // Try both exact match and loose match in case of type mismatch
-  const customValue = customValuesCache.find(
-    (cv) => cv.id === customValueId || cv.id == customValueId
-  );
-  console.log('Debug - found customValue:', customValue);
-
-  return customValue ? `"${customValue.title}"` : `Custom Value #${customValueId}`;
+  
+  return templateDataService.getCustomValueTitle(customValueId);
 }
 
 // Helper to get custom field name
 function getCustomFieldLabel(customFieldId: number): string {
-  const customField = customFieldsCache.find((cf) => cf.id === customFieldId);
-  return customField ? customField.label : `Custom Field #${customFieldId}`;
+  return templateDataService.getCustomFieldLabel(customFieldId);
 }
 
 // Helper to get custom field options labels (synchronous using cache)
 function getCustomFieldValueLabels(customFieldId: number, jsonValue: string): string {
-  try {
-    const customField = customFieldsCache.find((cf) => cf.id === customFieldId);
-    if (!customField) return jsonValue;
-
-    const parsedValues = JSON.parse(jsonValue);
-    if (!Array.isArray(parsedValues)) return jsonValue;
-
-    if (
-      customField.fieldType === FieldType.Dropdown ||
-      customField.fieldType === FieldType.Radio ||
-      customField.fieldType === FieldType.Checkbox
-    ) {
-      // Use cached field options
-      const options = customFieldOptionsCache[customField.id] || [];
-      const labels = parsedValues
-        .map((id: number) => {
-          const option = options.find((opt) => opt.id === id);
-          return option ? option.label : id.toString();
-        })
-        .join(', ');
-      return labels || jsonValue;
-    } else if (customField.fieldType === FieldType.Lookup && customField.lookupId) {
-      // Use cached lookup values
-      const lookupValues = lookupValuesCache[customField.lookupId] || [];
-      const labels = parsedValues
-        .map((id: number) => {
-          const value = lookupValues.find((val) => val.id === id);
-          return value ? value.value : id.toString();
-        })
-        .join(', ');
-      return labels || jsonValue;
-    }
-
-    return parsedValues.join(', ');
-  } catch (error) {
-    console.error('Error getting custom field value labels:', error);
-    return jsonValue;
-  }
+  return templateDataService.getCustomFieldValueLabels(customFieldId, jsonValue);
 }
 
 // Helper to get label from options
@@ -238,36 +52,6 @@ function getLabel(options: { label: string; value: any }[], value: any) {
   return found ? found.label : value;
 }
 
-function getOperatorLabel(value: any, fieldId: any, operatorProp?: any) {
-  // First check for ComparisonOperator (new field from backend)
-  if (operatorProp !== undefined && operatorProp !== null) {
-    if (fieldId === AggregateFieldId.TransactionStatus) {
-      return getLabel(StatusOperatorOptions, operatorProp) || '[Operator]';
-    }
-    if (
-      fieldId === AggregateFieldId.Amount ||
-      fieldId === AggregateFieldId.TransactionCount ||
-      fieldId === AggregateFieldId.TransactionTime ||
-      fieldId === AggregateFieldId.CurrencyAmount
-    ) {
-      return getLabel(ComparisonOperatorOptions, operatorProp) || '[Operator]';
-    }
-  }
-
-  // Fallback to aggregateFunction for legacy data
-  if (fieldId === AggregateFieldId.TransactionStatus) {
-    return getLabel(StatusOperatorOptions, value) || '[Operator]';
-  }
-  if (
-    fieldId === AggregateFieldId.Amount ||
-    fieldId === AggregateFieldId.TransactionCount ||
-    fieldId === AggregateFieldId.TransactionTime ||
-    fieldId === AggregateFieldId.CurrencyAmount
-  ) {
-    return getLabel(ComparisonOperatorOptions, value) || '[Operator]';
-  }
-  return getLabel(AggregateFunctionOptions, value) || '[Operator]';
-}
 
 function getDurationTypeLabel(value: any) {
   return getLabel(DurationTypeOptions, value) || '[Duration Type]';
@@ -288,203 +72,384 @@ export async function getRulePreview(group: RuleGroupType | any): Promise<string
   if (!group) return '';
   if (!group.children || group.children.length === 0) return '';
 
-  // Load custom values and fields if not already loaded
-  await loadCustomValues();
-  await loadCustomFields();
+  // Ensure template data is loaded
+  await ensureDataLoaded();
 
   const op = group.operator === OperatorId.And ? 'AND' : 'OR';
-  return group.children
-    .map((child: any) => {
-      if ('condition' in child && child.condition) {
-        const cond = child.condition;
-
-        // Debug logging to see what data we're working with
-        console.log('Condition data:', {
-          aggregateFieldId: cond.aggregateFieldId,
-          customFieldId: cond.customFieldId,
-          selectedFieldId: cond.selectedFieldId,
-          isAggregatedCustomField: cond.isAggregatedCustomField,
-          ComparisonOperator: cond.ComparisonOperator,
-          operator: cond.operator,
-          logicalOperator: cond.logicalOperator,
-          aggregateFunction: cond.aggregateFunction,
-          isAggregated: cond.isAggregated,
-          jsonValue: cond.jsonValue
-        });
-
-        // Determine the field name - custom field or static field
-        let metric = '[Metric]';
-        if (cond.customFieldId) {
-          metric = getCustomFieldLabel(cond.customFieldId);
-        } else if (cond.selectedFieldId && isCustomField(cond.selectedFieldId)) {
-          const customFieldId = getCustomFieldId(cond.selectedFieldId);
-          metric = getCustomFieldLabel(customFieldId);
-        } else if (cond.aggregateFieldId) {
-          metric = getLabel(AggregateFieldIdOptions, cond.aggregateFieldId) || '[Metric]';
-        }
-
-        // Check multiple possible field names for the operator
-        const operatorValue =
-          cond.ComparisonOperator ??
-          cond.comparisonOperator ?? // <-- add this
-          cond.operator ??
-          cond.logicalOperator;
-
-        // Use the operator value if available, otherwise fallback to aggregateFunction
-        let operator = '[Operator]';
-        if (cond.customFieldId || (cond.selectedFieldId && isCustomField(cond.selectedFieldId))) {
-          // For custom fields, use ComparisonOperator
-          if (operatorValue !== undefined && operatorValue !== null) {
-            const customField = customFieldsCache.find(
-              (cf) =>
-                cf.id === cond.customFieldId ||
-                cf.id ===
-                  (cond.selectedFieldId && isCustomField(cond.selectedFieldId)
-                    ? getCustomFieldId(cond.selectedFieldId)
-                    : null)
-            );
-
-            if (customField) {
-              if (
-                customField.fieldType === FieldType.Dropdown ||
-                customField.fieldType === FieldType.Radio ||
-                customField.fieldType === FieldType.Checkbox ||
-                customField.fieldType === FieldType.Lookup
-              ) {
-                operator = getLabel(StatusOperatorOptions, operatorValue) || '[Operator]';
-              } else if (customField.fieldType === FieldType.Number) {
-                operator = getLabel(ComparisonOperatorOptions, operatorValue) || '[Operator]';
-              }
-            }
-          }
-        } else {
-          // For static fields, use existing logic
-          operator =
-            operatorValue !== undefined && operatorValue !== null
-              ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId, operatorValue)
-              : cond.aggregateFunction && !cond.isAggregated
-                ? getOperatorLabel(cond.aggregateFunction, cond.aggregateFieldId)
-                : '[Operator]';
-        }
-
-        console.log('Operator result:', operator);
-
-        let aggregateFn = '';
-        if (cond.isAggregated && cond.aggregateFunction) {
-          aggregateFn =
-            getLabel(AggregateFunctionOptions, cond.aggregateFunction) || '[Aggregate Function]';
-        }
-
-        let value = '[Value]';
-
-        // Check if custom value is selected for Amount field
-        console.log('Debug - Checking condition:', {
-          aggregateFieldId: cond.aggregateFieldId,
-          isAmount: cond.aggregateFieldId === AggregateFieldId.Amount,
-          customValueId: cond.customValueId,
-          hasCustomValueId: !!cond.customValueId,
-          customFieldId: cond.customFieldId,
-          selectedFieldId: cond.selectedFieldId
-        });
-
-        if (cond.aggregateFieldId === AggregateFieldId.Amount && cond.customValueId) {
-          console.log('Debug - Getting custom value title for ID:', cond.customValueId);
-          value = getCustomValueTitle(cond.customValueId);
-          console.log('Debug - Got custom value title:', value);
-        } else if (cond.customFieldId && cond.jsonValue) {
-          // Handle custom field values using pre-loaded cache
-          console.log(
-            'Debug - Resolving custom field values for customFieldId:',
-            cond.customFieldId
-          );
-          value = getCustomFieldValueLabels(cond.customFieldId, cond.jsonValue);
-          console.log('Debug - Resolved value:', value);
-        } else if (cond.selectedFieldId && isCustomField(cond.selectedFieldId) && cond.jsonValue) {
-          // Handle custom field values using selectedFieldId with pre-loaded cache
-          console.log(
-            'Debug - Resolving custom field values for selectedFieldId:',
-            cond.selectedFieldId
-          );
-          const customFieldId = getCustomFieldId(cond.selectedFieldId);
-          value = getCustomFieldValueLabels(customFieldId, cond.jsonValue);
-          console.log('Debug - Resolved value:', value);
-        } else if (cond.jsonValue) {
-          try {
-            if (cond.aggregateFieldId === AggregateFieldId.TransactionTime) {
-              const date = new Date(cond.jsonValue);
-              value = isNaN(date.getTime()) ? '[Value]' : format(date, 'yyyy-MM-dd');
-            } else {
-              const parsed = JSON.parse(cond.jsonValue);
-              if (Array.isArray(parsed)) {
-                if (cond.aggregateFieldId === AggregateFieldId.TransactionStatus) {
-                  const labels = parsed
-                    .map((v: number) => getLabel(TransactionStatusOptions, v) || v)
-                    .join(', ');
-                  value = labels ? labels : '[Value]';
-                } else {
-                  value = parsed.length > 1 ? parsed.join(', ') : parsed.join(', ');
-                }
-              } else {
-                value = parsed;
-              }
-            }
-          } catch {
-            value = cond.jsonValue;
-          }
-        }
-
-        const duration = cond.duration ? cond.duration : '[Duration]';
-        const durationType = cond.durationType
-          ? getDurationTypeLabel(cond.durationType)
-          : '[Duration Type]';
-        const transferType = cond.accountType
-          ? getAccountTypeLabel(cond.accountType)
-          : '[Account Type]';
-
-        let preview = '';
-        preview += metric !== '[Metric]' ? metric : '[Metric]';
-        preview +=
-          operator !== '[Operator]' ? ` ${operator}` : cond.isAggregated ? '' : ' [Operator]';
-        preview += aggregateFn
-          ? ` ${aggregateFn}`
-          : cond.isAggregated
-            ? ' [Aggregate Function]'
-            : '';
-        preview += value !== '[Value]' ? ` ${value}` : ' [Value]';
-
-        // Only show Filter By if aggregation is enabled
-        if (cond.isAggregated && cond.filterBy) {
-          const filterByLabel = getLabel(FilterByOptions, cond.filterBy);
-          preview += filterByLabel ? ` by ${filterByLabel}` : '';
-        }
-
-        if (cond.duration) {
-          preview += ' in last';
-          preview += cond.duration ? ` ${cond.duration}` : ' [Duration]';
-          preview += cond.durationType
-            ? ` ${getDurationTypeLabel(cond.durationType)}`
-            : ' [Duration Type]';
-        } else if (cond.lastTransactionCount) {
-          preview += ` in last [${cond.lastTransactionCount}] transactions`;
-        }
-
-        // Only show Account Type if aggregation is enabled
-        if (cond.isAggregated) {
-          if (transferType !== '[Account Type]') {
-            preview += ` for ${transferType}`;
-          } else {
-            preview += ' for [Account Type]';
-          }
-        }
-
-        return preview.trim();
-      } else if ('operator' in child && 'children' in child) {
-        // For nested groups, we'll need to handle this recursively
-        // For now, let's return a placeholder
-        return `(${child.operator === OperatorId.And ? 'AND' : 'OR'} Group)`;
-      }
-      return '';
-    })
+  
+  // Process children with proper async handling
+  const childPromises = group.children.map(async (child: any) => {
+    if ('condition' in child && child.condition) {
+      return buildConditionPreview(child.condition);
+    } else if ('operator' in child && 'children' in child) {
+      // Recursive handling of nested groups with proper async/await
+      const nestedPreview = await getRulePreview(child);
+      return nestedPreview ? `(${nestedPreview})` : '';
+    }
+    return '';
+  });
+  
+  // Wait for all child previews to complete
+  const childPreviews = await Promise.all(childPromises);
+  
+  return childPreviews
     .filter(Boolean)
     .join(` ${op} `);
+}
+
+function buildConditionPreview(cond: any): string {
+  console.log('🔍 Building preview for condition:', {
+    aggregateFieldId: cond.aggregateFieldId,
+    customFieldId: cond.customFieldId,
+    selectedFieldId: cond.selectedFieldId,
+    isAggregated: cond.isAggregated,
+    isAggregatedCustomField: cond.isAggregatedCustomField,
+    ComparisonOperator: cond.ComparisonOperator,
+    aggregateFunction: cond.aggregateFunction,
+    customValueId: cond.customValueId,
+    jsonValue: cond.jsonValue,
+    duration: cond.duration,
+    durationType: cond.durationType,
+    filterBy: cond.filterBy,
+    accountType: cond.accountType
+  });
+
+  // Step 1: Determine the field/metric
+  const metric = getFieldLabel(cond);
+  
+  // Step 2: Determine the operator
+  const operator = getOperatorLabel(cond, metric);
+  
+  // Step 3: Handle aggregation function (if applicable)
+  const aggregateFunction = getAggregateFunctionLabel(cond);
+  
+  // Step 4: Determine the value
+  const value = getValueLabel(cond);
+  
+  // Step 5: Handle time-based conditions
+  const timeClause = getTimeClause(cond);
+  
+  // Step 6: Handle aggregation-specific clauses
+  const aggregationClauses = getAggregationClauses(cond);
+
+  // Build the preview string
+  let preview = buildPreviewString({
+    metric,
+    operator,
+    aggregateFunction,
+    value,
+    timeClause,
+    aggregationClauses,
+    isAggregated: cond.isAggregated
+  });
+
+  console.log('✅ Generated preview:', preview);
+  return preview;
+}
+
+function getFieldLabel(cond: any): string {
+  // Priority order: selectedFieldId > customFieldId > aggregateFieldId
+  
+  if (cond.selectedFieldId && isCustomField(cond.selectedFieldId)) {
+    // Custom field via selectedFieldId (new approach)
+    const customFieldId = getCustomFieldId(cond.selectedFieldId);
+    return getCustomFieldLabel(customFieldId) || '[Custom Field]';
+  }
+  
+  if (cond.customFieldId) {
+    // Custom field via customFieldId (legacy approach)
+    return getCustomFieldLabel(cond.customFieldId) || '[Custom Field]';
+  }
+  
+  if (cond.aggregateFieldId) {
+    // Static/system field
+    return getLabel(AggregateFieldIdOptions, cond.aggregateFieldId) || '[Field]';
+  }
+  
+  return '[Field]';
+}
+
+function getOperatorLabel(cond: any, fieldLabel: string): string {
+  // Get the operator value from various possible properties
+  const operatorValue = cond.ComparisonOperator ?? 
+                       cond.comparisonOperator ?? 
+                       cond.operator ?? 
+                       cond.logicalOperator;
+
+  console.log('🔧 Operator detection:', {
+    operatorValue,
+    ComparisonOperator: cond.ComparisonOperator,
+    comparisonOperator: cond.comparisonOperator,
+    operator: cond.operator,
+    logicalOperator: cond.logicalOperator,
+    aggregateFunction: cond.aggregateFunction,
+    isAggregated: cond.isAggregated
+  });
+
+  // Handle custom fields
+  if (cond.selectedFieldId && isCustomField(cond.selectedFieldId)) {
+    const customFieldId = getCustomFieldId(cond.selectedFieldId);
+    const customField = templateDataService.getCustomField(customFieldId);
+    
+    if (customField && operatorValue !== undefined && operatorValue !== null) {
+      return getOperatorForFieldType(customField.fieldType, operatorValue);
+    }
+  }
+  
+  if (cond.customFieldId) {
+    const customField = templateDataService.getCustomField(cond.customFieldId);
+    
+    if (customField && operatorValue !== undefined && operatorValue !== null) {
+      return getOperatorForFieldType(customField.fieldType, operatorValue);
+    }
+  }
+
+  // Handle static/system fields
+  if (cond.aggregateFieldId && operatorValue !== undefined && operatorValue !== null) {
+    return getOperatorForAggregateField(cond.aggregateFieldId, operatorValue);
+  }
+
+  // Fallback to aggregateFunction if no explicit operator
+  if (cond.aggregateFunction && !cond.isAggregated) {
+    return getOperatorForAggregateField(cond.aggregateFieldId, cond.aggregateFunction);
+  }
+
+  return '[Operator]';
+}
+
+function getOperatorForFieldType(fieldType: number, operatorValue: number): string {
+  switch (fieldType) {
+    case FieldType.Dropdown:
+    case FieldType.Radio:
+    case FieldType.Checkbox:
+    case FieldType.Lookup:
+      // For selection-based fields, use status operators (In/Not In)
+      return getLabel(StatusOperatorOptions, operatorValue) || '[Operator]';
+    
+    case FieldType.Number:
+    case FieldType.Date:
+      // For numeric/comparable fields, use comparison operators
+      return getLabel(ComparisonOperatorOptions, operatorValue) || '[Operator]';
+    
+    case FieldType.Text:
+    case FieldType.TextArea:
+      // For text fields, use comparison operators (Contains, Equal, etc.)
+      return getLabel(ComparisonOperatorOptions, operatorValue) || '[Operator]';
+    
+    default:
+      return getLabel(ComparisonOperatorOptions, operatorValue) || '[Operator]';
+  }
+}
+
+function getOperatorForAggregateField(aggregateFieldId: number, operatorValue: number): string {
+  switch (aggregateFieldId) {
+    case AggregateFieldId.TransactionStatus:
+      // Transaction status uses In/Not In operators
+      return getLabel(StatusOperatorOptions, operatorValue) || '[Operator]';
+    
+    case AggregateFieldId.RiskStatus:
+      // Risk status uses special operators (AtLeastOne/All)
+      return getLabel(RiskStatusOperatorOptions, operatorValue) || '[Operator]';
+    
+    case AggregateFieldId.Amount:
+    case AggregateFieldId.TransactionCount:
+    case AggregateFieldId.TransactionTime:
+    case AggregateFieldId.CurrencyAmount:
+      // Numeric/comparable fields use comparison operators
+      return getLabel(ComparisonOperatorOptions, operatorValue) || '[Operator]';
+    
+    default:
+      // Fallback to comparison operators
+      return getLabel(ComparisonOperatorOptions, operatorValue) || '[Operator]';
+  }
+}
+
+function getAggregateFunctionLabel(cond: any): string {
+  if (cond.isAggregated && cond.aggregateFunction) {
+    return getLabel(AggregateFunctionOptions, cond.aggregateFunction) || '[Aggregate Function]';
+  }
+  return '';
+}
+
+function getValueLabel(cond: any): string {
+  console.log('💰 Value detection:', {
+    customValueId: cond.customValueId,
+    jsonValue: cond.jsonValue,
+    aggregateFieldId: cond.aggregateFieldId,
+    customFieldId: cond.customFieldId,
+    selectedFieldId: cond.selectedFieldId
+  });
+
+  // Priority 1: Custom value (for Amount field)
+  if (cond.aggregateFieldId === AggregateFieldId.Amount && cond.customValueId) {
+    return getCustomValueTitle(cond.customValueId);
+  }
+
+  // Priority 2: Custom field values (via selectedFieldId)
+  if (cond.selectedFieldId && isCustomField(cond.selectedFieldId) && cond.jsonValue) {
+    const customFieldId = getCustomFieldId(cond.selectedFieldId);
+    return getCustomFieldValueLabels(customFieldId, cond.jsonValue);
+  }
+
+  // Priority 3: Custom field values (via customFieldId)
+  if (cond.customFieldId && cond.jsonValue) {
+    return getCustomFieldValueLabels(cond.customFieldId, cond.jsonValue);
+  }
+
+  // Priority 4: JSON value parsing for system fields
+  if (cond.jsonValue) {
+    return parseJsonValue(cond.jsonValue, cond.aggregateFieldId);
+  }
+
+  return '[Value]';
+}
+
+function parseJsonValue(jsonValue: string, aggregateFieldId?: number): string {
+  console.log('🔍 Parsing JSON value:', { jsonValue, aggregateFieldId });
+  
+  try {
+    // Handle date fields
+    if (aggregateFieldId === AggregateFieldId.TransactionTime) {
+      const date = new Date(jsonValue);
+      return isNaN(date.getTime()) ? jsonValue : format(date, 'yyyy-MM-dd');
+    }
+
+    // Try to parse as JSON first
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonValue);
+    } catch {
+      // If JSON parsing fails, try to handle space-separated values
+      if (jsonValue.includes(' ')) {
+        const values = jsonValue.split(' ').map(v => {
+          const num = parseInt(v.trim());
+          return isNaN(num) ? v.trim() : num;
+        });
+        parsed = values;
+      } else {
+        // Try to parse as a single number
+        const num = parseInt(jsonValue);
+        parsed = isNaN(num) ? jsonValue : num;
+      }
+    }
+    
+    console.log('📊 Parsed value:', parsed);
+    
+    if (Array.isArray(parsed)) {
+      // Handle array values with proper formatting
+      if (aggregateFieldId === AggregateFieldId.TransactionStatus) {
+        const labels = parsed
+          .map((v: number) => getLabel(TransactionStatusOptions, v) || v);
+        return labels.length > 1 ? `[${labels.join(', ')}]` : labels[0] || jsonValue;
+      }
+      
+      if (aggregateFieldId === AggregateFieldId.RiskStatus) {
+        const labels = parsed
+          .map((v: number) => getLabel(RiskStatusOptions, v) || v);
+        return labels.length > 1 ? `[${labels.join(', ')}]` : labels[0] || jsonValue;
+      }
+      
+      // For other array values, format as multiple selection
+      return parsed.length > 1 ? `[${parsed.join(', ')}]` : String(parsed[0] || jsonValue);
+    }
+    
+    // Handle single values
+    if (aggregateFieldId === AggregateFieldId.RiskStatus && typeof parsed === 'number') {
+      return getLabel(RiskStatusOptions, parsed) || String(parsed);
+    }
+    
+    if (aggregateFieldId === AggregateFieldId.TransactionStatus && typeof parsed === 'number') {
+      return getLabel(TransactionStatusOptions, parsed) || String(parsed);
+    }
+    
+    return String(parsed);
+  } catch (error) {
+    console.error('❌ Error parsing JSON value:', error);
+    // If all parsing fails, return the raw value
+    return jsonValue;
+  }
+}
+
+function getTimeClause(cond: any): string {
+  if (cond.duration && cond.durationType) {
+    const durationLabel = getDurationTypeLabel(cond.durationType);
+    return `in last ${cond.duration} ${durationLabel}`;
+  }
+  
+  if (cond.lastTransactionCount) {
+    return `in last ${cond.lastTransactionCount} transactions`;
+  }
+  
+  return '';
+}
+
+function getAggregationClauses(cond: any): { filterBy: string; accountType: string } {
+  let filterBy = '';
+  let accountType = '';
+  
+  // Apply To (filterBy) should appear for all conditions, not just aggregated ones
+  if (cond.filterBy) {
+    const filterByLabel = getLabel(FilterByOptions, cond.filterBy);
+    filterBy = filterByLabel ? `by ${filterByLabel}` : '';
+  }
+  
+  // Account type only for aggregated conditions
+  if (cond.isAggregated) {
+    if (cond.accountType) {
+      const accountTypeLabel = getLabel(AccountTypeOptions, cond.accountType);
+      accountType = accountTypeLabel ? `for ${accountTypeLabel}` : 'for [Account Type]';
+    } else {
+      accountType = 'for [Account Type]';
+    }
+  }
+  
+  return { filterBy, accountType };
+}
+
+function buildPreviewString(parts: {
+  metric: string;
+  operator: string;
+  aggregateFunction: string;
+  value: string;
+  timeClause: string;
+  aggregationClauses: { filterBy: string; accountType: string };
+  isAggregated: boolean;
+}): string {
+  const { metric, operator, aggregateFunction, value, timeClause, aggregationClauses, isAggregated } = parts;
+  
+  let preview = '';
+  
+  // Base structure: [Field] [Operator] [AggregateFunction] [Value]
+  preview += metric;
+  
+  if (operator !== '[Operator]') {
+    preview += ` ${operator}`;
+  } else if (!isAggregated) {
+    preview += ' [Operator]';
+  }
+  
+  if (aggregateFunction) {
+    preview += ` ${aggregateFunction}`;
+  } else if (isAggregated) {
+    preview += ' [Aggregate Function]';
+  }
+  
+  preview += ` ${value}`;
+  
+  // Add Apply To (filterBy) for all conditions
+  if (aggregationClauses.filterBy) {
+    preview += ` ${aggregationClauses.filterBy}`;
+  }
+  
+  // Add time clause
+  if (timeClause) {
+    preview += ` ${timeClause}`;
+  }
+  
+  // Add account type for aggregated conditions only
+  if (isAggregated && aggregationClauses.accountType) {
+    preview += ` ${aggregationClauses.accountType}`;
+  }
+  
+  return preview.trim();
 }

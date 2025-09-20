@@ -24,7 +24,8 @@ import {
   getDraftAge
 } from '@/utils/ruleDraftStorage';
 import DraftConfirmationDialog from '@/components/rule-builder/DraftConfirmationDialog';
-import { Save } from 'lucide-react';
+import { Save, Loader2 } from 'lucide-react';
+import { templateDataService } from '@/services/templateDataService';
 
 const defaultRootGroup: RuleGroupType = {
   operator: OperatorId.And,
@@ -43,10 +44,27 @@ const RuleBuilderPage = () => {
   const [rulePreview, setRulePreview] = useState<string>('');
   const [showDraftDialog, setShowDraftDialog] = useState(false);
   const [isDraftSaved, setIsDraftSaved] = useState(false);
+  const [isLoadingTemplateData, setIsLoadingTemplateData] = useState(false);
   const navigate = useNavigate();
 
-  // Check for existing draft on component mount
+  // Load template data and check for existing draft on component mount
   useEffect(() => {
+    const initializePage = async () => {
+      setIsLoadingTemplateData(true);
+      try {
+        // Load all template data once
+        await templateDataService.loadAllTemplateData();
+        console.log('RuleBuilderPage: Template data loaded successfully');
+      } catch (error) {
+        console.error('RuleBuilderPage: Failed to load template data:', error);
+      } finally {
+        setIsLoadingTemplateData(false);
+      }
+    };
+
+    initializePage();
+
+    // Check for existing draft
     if (hasDraft()) {
       setShowDraftDialog(true);
     }
@@ -139,9 +157,16 @@ const RuleBuilderPage = () => {
         ...rule,
         ruleType: Number(rule.ruleType),
         applyTo: Number(rule.applyTo),
+        rulePreview: rulePreview, // Include the rule preview string
         isActive: true, // default to active
         tenantId: 1 // default tenant, adjust as needed
       };
+      
+      console.log('Saving rule with preview:', { 
+        name: ruleToSend.name, 
+        rulePreview: ruleToSend.rulePreview 
+      });
+      
       await ruleService.createRule(ruleToSend);
 
       // Delete draft after successful save
@@ -154,6 +179,25 @@ const RuleBuilderPage = () => {
       setSaving(false);
     }
   };
+
+  // Show loading state while template data is being loaded
+  if (isLoadingTemplateData) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="text-center">
+              <p className="text-lg font-medium text-gray-900">Loading Template Data</p>
+              <p className="text-sm text-gray-500">
+                Preparing templates and custom fields for rule building...
+              </p>
+            </div>
+          </div>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -187,9 +231,14 @@ const RuleBuilderPage = () => {
               </div>
             )}
           </div>
-          <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm font-mono text-gray-800">
-            {rulePreview ||
-              '[Metric] [Operator] [Value] in last [Duration] [Duration Type] for [Account Type]'}
+          <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-gray-800">
+            {rulePreview ? (
+              <span className="font-mono">{rulePreview}</span>
+            ) : (
+              <span className="italic text-gray-500">
+                Add conditions below to see the rule preview
+              </span>
+            )}
           </div>
         </div>
 
@@ -240,12 +289,13 @@ const RuleBuilderPage = () => {
           <CardContent className="p-8 bg-white rounded-b-lg">
             {/* Rule builder UI */}
             <div className="mb-10">
-              <RuleGroup
-                group={rule.root}
-                onChange={handleRootGroupChange}
-                isRoot
-                operatorDropdownClassName="w-28 h-9 text-sm px-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-              />
+            <RuleGroup
+              group={rule.root}
+              onChange={handleRootGroupChange}
+              isRoot
+              operatorDropdownClassName="w-28 h-9 text-sm px-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              fullRuleContext={rule.root}
+            />
             </div>
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={handleResetRule}>
