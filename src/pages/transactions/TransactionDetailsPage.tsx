@@ -22,7 +22,8 @@ import {
   Clock,
   FileText,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  RefreshCw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +38,7 @@ const TransactionDetailsPage = () => {
   const navigate = useNavigate();
   const [transaction, setTransaction] = useState<TransactionDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reExecuting, setReExecuting] = useState(false);
 
   useEffect(() => {
     const fetchTransactionDetails = async () => {
@@ -60,6 +62,33 @@ const TransactionDetailsPage = () => {
 
     fetchTransactionDetails();
   }, [id]);
+
+  const handleReExecute = async () => {
+    if (!id) return;
+    
+    setReExecuting(true);
+    try {
+      await transactionService.reExecuteTransaction(id);
+      toast({
+        title: 'Success',
+        description: 'Transaction re-executed successfully',
+        variant: 'default'
+      });
+      
+      // Optionally refresh the transaction details to see updated processing status
+      const updatedData = await transactionService.getTransactionById(id);
+      setTransaction(updatedData as TransactionDetails);
+    } catch (error) {
+      console.error('Error re-executing transaction:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to re-execute transaction. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setReExecuting(false);
+    }
+  };
 
   const getStatusLabel = (status: number) => {
     switch (status) {
@@ -239,6 +268,16 @@ const TransactionDetailsPage = () => {
               <h1 className="text-2xl font-bold text-gray-900">Transaction Details</h1>
             </div>
             <div className="flex items-center gap-3">
+              <Button
+                onClick={handleReExecute}
+                disabled={reExecuting}
+                variant="outline"
+                size="sm"
+                className="bg-white hover:bg-gray-50"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${reExecuting ? 'animate-spin' : ''}`} />
+                {reExecuting ? 'Re-executing...' : 'Re-execute'}
+              </Button>
               <Badge
                 className={`px-4 py-2 text-sm font-medium ${getStatusColor(transaction.transactionStatus)}`}
               >

@@ -1533,5 +1533,8 @@ export const transactionService = {
   getRuleDetails: async (ruleId: number): Promise<RuleDetails> => {
     const response = await api.get<RuleDetails>(`/Rules/${ruleId}`);
     return response.data;
+  },
+  reExecuteTransaction: async (transactionId: string): Promise<void> => {
+    await api.post(`/Transactions/${transactionId}/re-execute`);
   }
 };
