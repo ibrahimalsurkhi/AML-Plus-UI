@@ -27,7 +27,7 @@ const RuleDetailPage: React.FC = () => {
       setLoading(true);
       try {
         if (!id) throw new Error('Invalid rule ID');
-        const found = await ruleService.getRuleById(Number(id));
+        const found = await ruleService.getRuleById(id);
         setRule(found || null);
       } catch (error) {
         setRule(null);

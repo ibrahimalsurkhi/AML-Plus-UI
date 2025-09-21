@@ -68,7 +68,8 @@ export interface Condition {
   accountType: number | null;
   jsonValue: string;
   customValueId?: number | null; // ID of selected custom value
-  ComparisonOperator?: number; // Changed property name to match backend expectation
+  ComparisonOperator?: number; // Frontend property name
+  comparisonOperator?: number; // Backend property name (camelCase)
   // New properties for custom fields
   selectedFieldId?: string | number | null; // This will store either static field id or custom_<id>
   customFieldType?: number | null; // Store the FieldType of the custom field
@@ -255,14 +256,17 @@ function getLabel(options: { label: string; value: any }[], value: any) {
   const found = options.find((opt) => opt.value === value);
   return found ? found.label : value;
 }
-function getOperatorLabel(value: any, fieldId: any, operatorProp?: any) {
-  // First check for ComparisonOperator (new field from backend)
-  if (operatorProp !== undefined && operatorProp !== null) {
+function getOperatorLabel(value: any, fieldId: any, condition?: any) {
+  // Get the operator value from either ComparisonOperator or comparisonOperator property
+  const operatorValue = condition?.ComparisonOperator ?? condition?.comparisonOperator;
+  
+  // First check for ComparisonOperator/comparisonOperator (from backend)
+  if (operatorValue !== undefined && operatorValue !== null) {
     if (fieldId === AggregateFieldId.TransactionStatus) {
-      return getLabel(StatusOperatorOptions, operatorProp) || '[Operator]';
+      return getLabel(StatusOperatorOptions, operatorValue) || '[Operator]';
     }
     if (fieldId === AggregateFieldId.RiskStatus) {
-      return getLabel(RiskStatusOperatorOptions, operatorProp) || '[Operator]';
+      return getLabel(RiskStatusOperatorOptions, operatorValue) || '[Operator]';
     }
     if (
       fieldId === AggregateFieldId.Amount ||
@@ -270,7 +274,7 @@ function getOperatorLabel(value: any, fieldId: any, operatorProp?: any) {
       fieldId === AggregateFieldId.TransactionTime ||
       fieldId === AggregateFieldId.CurrencyAmount
     ) {
-      return getLabel(ComparisonOperatorOptions, operatorProp) || '[Operator]';
+      return getLabel(ComparisonOperatorOptions, operatorValue) || '[Operator]';
     }
   }
 
@@ -553,13 +557,21 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
   // Load custom field options when a custom field is selected
   useEffect(() => {
     const loadCustomFieldOptions = async () => {
-      if (!condition.selectedFieldId || !isCustomField(condition.selectedFieldId)) {
+      // Handle both selectedFieldId (new format) and customFieldId (backend format)
+      let customFieldId: number | null = null;
+      
+      if (condition.selectedFieldId && isCustomField(condition.selectedFieldId)) {
+        customFieldId = getCustomFieldId(condition.selectedFieldId);
+      } else if (condition.customFieldId) {
+        customFieldId = condition.customFieldId;
+      }
+
+      if (!customFieldId) {
         setCustomFieldOptions([]);
         setCustomFieldLookupValues([]);
         return;
       }
 
-      const customFieldId = getCustomFieldId(condition.selectedFieldId);
       const field = templateDataService.getCustomField(customFieldId);
 
       if (!field) {
@@ -603,7 +615,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
     };
 
     loadCustomFieldOptions();
-  }, [condition.selectedFieldId]);
+  }, [condition.selectedFieldId, condition.customFieldId]);
 
   const handleFieldChange = (field: keyof Condition, value: any) => {
     if (readOnly) return;
@@ -652,35 +664,64 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
             <div>
               <div className="text-xs text-muted-foreground mb-1">Field</div>
               <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
-                {condition.customFieldId
-                  ? [
-                      ...customFields.transaction,
-                      ...customFields.record
-                    ].find((f) => f.id === condition.customFieldId)?.label || '[Custom Field]'
-                  : getLabel(AggregateFieldIdOptions, condition.aggregateFieldId)}
+                {(() => {
+                  // Handle custom fields - check both selectedFieldId and customFieldId
+                  if (condition.customFieldId || (condition.selectedFieldId && isCustomField(condition.selectedFieldId))) {
+                    let customFieldId: number | null = null;
+                    
+                    if (condition.customFieldId) {
+                      customFieldId = condition.customFieldId;
+                    } else if (condition.selectedFieldId && isCustomField(condition.selectedFieldId)) {
+                      customFieldId = getCustomFieldId(condition.selectedFieldId);
+                    }
+                    
+                    if (customFieldId) {
+                      const customField = [
+                        ...customFields.transaction,
+                        ...customFields.record
+                      ].find((f) => f.id === customFieldId);
+                      return customField?.label || `Custom Field ${customFieldId}`;
+                    }
+                  }
+                  
+                  // Handle static fields - use selectedFieldId if available, otherwise aggregateFieldId
+                  const fieldId = condition.selectedFieldId || condition.aggregateFieldId;
+                  return getLabel(AggregateFieldIdOptions, fieldId) || '[Field]';
+                })()}
               </div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground mb-1">Operator</div>
               <div className="py-2 px-3 bg-gray-50 rounded text-gray-700">
                 {(() => {
-                  // Custom field logic
-                  if (condition.customFieldId !== null && condition.customFieldType !== null) {
-                    if (
-                      condition.customFieldType === FieldType.Dropdown ||
-                      condition.customFieldType === FieldType.Radio ||
-                      condition.customFieldType === FieldType.Checkbox ||
-                      condition.customFieldType === FieldType.Lookup
-                    ) {
-                      return (
-                        getLabel(StatusOperatorOptions, condition.ComparisonOperator) ||
-                        '[Operator]'
-                      );
-                    } else if (condition.customFieldType === FieldType.Number) {
-                      return (
-                        getLabel(ComparisonOperatorOptions, condition.ComparisonOperator) ||
-                        '[Operator]'
-                      );
+                  // Custom field logic - check if we have a custom field
+                  const hasCustomField = condition.customFieldId !== null || 
+                    (condition.selectedFieldId && isCustomField(condition.selectedFieldId));
+                  
+                  if (hasCustomField) {
+                    // Get the operator value
+                    const operatorValue = condition.ComparisonOperator ?? condition.comparisonOperator;
+                    
+                    // Always try to determine operator type from the operator value first
+                    // This works regardless of whether we have customFieldType
+                    if (operatorValue !== undefined && operatorValue !== null) {
+                      // StatusOperator values: In=9, NotIn=10
+                      if (operatorValue === 9 || operatorValue === 10) {
+                        return getLabel(StatusOperatorOptions, operatorValue) || '[Operator]';
+                      }
+                      // ComparisonOperator values: Equal=1, NotEqual=2, GreaterThan=3, etc.
+                      else if (operatorValue >= 1 && operatorValue <= 8) {
+                        return getLabel(ComparisonOperatorOptions, operatorValue) || '[Operator]';
+                      }
+                      // Handle any other operator values
+                      else {
+                        // Try both operator option lists
+                        const statusLabel = getLabel(StatusOperatorOptions, operatorValue);
+                        if (statusLabel && statusLabel !== operatorValue) return statusLabel;
+                        
+                        const comparisonLabel = getLabel(ComparisonOperatorOptions, operatorValue);
+                        if (comparisonLabel && comparisonLabel !== operatorValue) return comparisonLabel;
+                      }
                     }
                     return '[Operator]';
                   }
@@ -689,7 +730,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                   return getOperatorLabel(
                     condition.aggregateFunction,
                     condition.aggregateFieldId,
-                    condition.ComparisonOperator
+                    condition
                   );
                 })()}
               </div>
@@ -708,17 +749,16 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                 {(() => {
                   if (!condition.jsonValue) return '[Value]';
 
-                  // Handle custom fields
-                  if (condition.customFieldId !== null && condition.customFieldType !== null) {
+                  // Handle custom fields - check if we have a custom field
+                  const hasCustomField = condition.customFieldId !== null || 
+                    (condition.selectedFieldId && isCustomField(condition.selectedFieldId));
+                  
+                  if (hasCustomField) {
                     try {
                       const parsed = JSON.parse(condition.jsonValue);
                       if (Array.isArray(parsed)) {
-                        if (
-                          condition.customFieldType === FieldType.Dropdown ||
-                          condition.customFieldType === FieldType.Radio ||
-                          condition.customFieldType === FieldType.Checkbox
-                        ) {
-                          // Show option labels if available
+                        // Try to map IDs to labels from field options first
+                        if (customFieldOptions.length > 0) {
                           const labels = parsed
                             .map((id: number) => {
                               const option = customFieldOptions.find((opt) => opt.id === id);
@@ -726,8 +766,9 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                             })
                             .join(', ');
                           return labels || condition.jsonValue;
-                        } else if (condition.customFieldType === FieldType.Lookup) {
-                          // Show lookup value labels if available
+                        }
+                        // Try to map IDs to labels from lookup values
+                        else if (customFieldLookupValues.length > 0) {
                           const labels = parsed
                             .map((id: number) => {
                               const value = customFieldLookupValues.find((val) => val.id === id);
@@ -735,7 +776,9 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                             })
                             .join(', ');
                           return labels || condition.jsonValue;
-                        } else {
+                        }
+                        // Fallback: just show the IDs
+                        else {
                           return parsed.join(', ');
                         }
                       } else {

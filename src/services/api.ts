@@ -979,6 +979,7 @@ export interface Rule {
 
 export interface RuleListItem {
   id: number;
+  uuid: string;
   name: string;
   ruleType: string | number;
   isActive: boolean;
@@ -1010,7 +1011,7 @@ export const ruleService = {
     });
     return response.data;
   },
-  getRuleById: async (id: number): Promise<Rule> => {
+  getRuleById: async (id: string): Promise<Rule> => {
     const response = await api.get<Rule>(`/Rules/${id}`);
     return response.data;
   },
@@ -1201,6 +1202,7 @@ export interface MatchedRule {
   ruleType: number;
   isActive: boolean;
   applyTo: number;
+  rulePreview: string;
   created: string;
   createdBy: string;
 }
@@ -1265,6 +1267,7 @@ export interface TransactionCaseDetails {
   currencyId: number;
   accountId: number;
   ruleExecutionId: number;
+  tranactionUuid: string; // Note: This is the actual property name from the API response
   created: string;
   createdBy: string;
   lastModified: string;

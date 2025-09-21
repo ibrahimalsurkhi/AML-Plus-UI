@@ -135,7 +135,7 @@ const RuleListPage: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/rules/${rule.id}`)}
+                            onClick={() => navigate(`/rules/${rule.uuid}`)}
                           >
                             View
                           </Button>
