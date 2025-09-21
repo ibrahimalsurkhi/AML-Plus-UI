@@ -984,6 +984,10 @@ export interface RuleListItem {
   isActive: boolean;
   tenantId: number;
   ruleConditions: { id: number; condition: string }[];
+  applyToText?: string;
+  applyToDescription?: string;
+  ruleTypeText?: string;
+  ruleTypeDescription?: string;
 }
 
 export interface PaginatedRulesResponse {
@@ -1001,8 +1005,8 @@ export const ruleService = {
     return response.data;
   },
   getRules: async (pageNumber: number, pageSize: number): Promise<PaginatedRulesResponse> => {
-    const response = await api.get<PaginatedRulesResponse>(`/Rules`, {
-      params: { PageNumber: pageNumber, PageSize: pageSize }
+    const response = await api.post<PaginatedRulesResponse>(`/Rules/search`, {
+      PageNumber: pageNumber, PageSize: pageSize
     });
     return response.data;
   },
@@ -1153,12 +1157,14 @@ export interface TransactionCase {
   caseUuid: string;
   tenantId: number;
   type: number;
+  transactionTypeName: string;
   status: number;
   amount: number;
   currencyId: number;
   accountId: number | null;
   ruleExecutionId: number;
   recordName: string | null;
+  ruleName?: string | null;
   created: string;
   createdBy: string;
   lastModified: string;

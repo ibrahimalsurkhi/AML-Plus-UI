@@ -526,6 +526,7 @@ const TransactionCaseDetailsPage = () => {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Case UUID</TableHead>
+                          <TableHead>Rule Name</TableHead>
                           <TableHead>Type</TableHead>
                           <TableHead>Amount</TableHead>
                           <TableHead>Status</TableHead>
@@ -547,6 +548,20 @@ const TransactionCaseDetailsPage = () => {
                                   />
                                   {formatUuid(caseItem.caseUuid)}
                                 </div>
+                              </TableCell>
+                              <TableCell>
+                                {caseItem.ruleName ? (
+                                  <div className="flex items-center gap-2">
+                                    <KeenIcon
+                                      icon="document"
+                                      style="outline"
+                                      className="text-muted-foreground"
+                                    />
+                                    <span>{caseItem.ruleName}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground italic">No rule</span>
+                                )}
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">

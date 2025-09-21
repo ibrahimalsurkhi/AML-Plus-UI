@@ -6,13 +6,11 @@ import { Container } from '@/components/container';
 import { Toolbar, ToolbarHeading } from '@/partials/toolbar';
 import {
   transactionService,
-  transactionTypeService,
   type Transaction,
   type TransactionParticipant,
   type TransactionFieldResponse,
   type TransactionCase,
-  type PaginatedResponse,
-  type TransactionType
+  type PaginatedResponse
 } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { KeenIcon } from '@/components/keenicons';
@@ -46,7 +44,6 @@ const TransactionDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [reExecuting, setReExecuting] = useState(false);
   const [transactionCases, setTransactionCases] = useState<PaginatedResponse<TransactionCase> | null>(null);
-  const [transactionTypes, setTransactionTypes] = useState<TransactionType[]>([]);
   const [casesLoading, setCasesLoading] = useState(false);
   const [casesError, setCasesError] = useState<string | null>(null);
   const [casesPageNumber, setCasesPageNumber] = useState(1);
@@ -96,15 +93,6 @@ const TransactionDetailsPage = () => {
     }
   };
 
-  // Fetch transaction types
-  const fetchTransactionTypes = async () => {
-    try {
-      const response = await transactionTypeService.getTransactionTypes({ page: 1, pageSize: 100 });
-      setTransactionTypes(response.items);
-    } catch (err) {
-      console.error('Failed to fetch transaction types:', err);
-    }
-  };
 
   // Fetch cases when transaction is loaded
   useEffect(() => {
@@ -113,10 +101,6 @@ const TransactionDetailsPage = () => {
     }
   }, [transaction?.uuid, casesPageNumber]);
 
-  // Fetch transaction types on component mount
-  useEffect(() => {
-    fetchTransactionTypes();
-  }, []);
 
   // Callback when processing completes
   const handleProcessingComplete = useCallback(async (result: any) => {
@@ -853,7 +837,6 @@ const TransactionDetailsPage = () => {
             <div className="space-y-4">
               <TransactionCasesTable
                 cases={transactionCases}
-                transactionTypes={transactionTypes}
                 loading={casesLoading}
                 error={casesError}
                 pageNumber={casesPageNumber}

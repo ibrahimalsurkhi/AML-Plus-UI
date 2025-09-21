@@ -20,8 +20,7 @@ import {
 } from '@/components/ui/pagination';
 import {
   type TransactionCase,
-  type PaginatedResponse,
-  type TransactionType
+  type PaginatedResponse
 } from '@/services/api';
 import { format } from 'date-fns';
 import { KeenIcon } from '@/components/keenicons';
@@ -29,7 +28,6 @@ import { formatCurrencyUSD } from '@/utils/currency';
 
 interface TransactionCasesTableProps {
   cases: PaginatedResponse<TransactionCase> | null;
-  transactionTypes: TransactionType[];
   loading?: boolean;
   error?: string | null;
   pageNumber: number;
@@ -40,7 +38,6 @@ interface TransactionCasesTableProps {
 
 const TransactionCasesTable: React.FC<TransactionCasesTableProps> = ({
   cases,
-  transactionTypes,
   loading = false,
   error = null,
   pageNumber,
@@ -84,10 +81,6 @@ const TransactionCasesTable: React.FC<TransactionCasesTableProps> = ({
     }
   };
 
-  const getTypeLabel = (type: number) => {
-    const transactionType = transactionTypes.find((t) => t.id === type);
-    return transactionType?.name || `Type ${type}`;
-  };
 
   const formatAmount = (amount: number) => {
     return formatCurrencyUSD(amount);
@@ -188,6 +181,7 @@ const TransactionCasesTable: React.FC<TransactionCasesTableProps> = ({
               <TableRow>
                 <TableHead>Case UUID</TableHead>
                 <TableHead>Record Name</TableHead>
+                <TableHead>Rule Name</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
@@ -218,6 +212,20 @@ const TransactionCasesTable: React.FC<TransactionCasesTableProps> = ({
                       <span className="text-muted-foreground italic">No record</span>
                     )}
                   </TableCell>
+                   <TableCell>
+                     {caseItem.ruleName ? (
+                       <div className="flex items-center gap-2">
+                         <KeenIcon
+                           icon="document"
+                           style="outline"
+                           className="text-muted-foreground"
+                         />
+                         <span>{caseItem.ruleName}</span>
+                       </div>
+                     ) : (
+                       <span className="text-muted-foreground italic">No rule</span>
+                     )}
+                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <KeenIcon
@@ -225,7 +233,7 @@ const TransactionCasesTable: React.FC<TransactionCasesTableProps> = ({
                         style="outline"
                         className="text-muted-foreground"
                       />
-                      {getTypeLabel(caseItem.type)}
+                      {caseItem.transactionTypeName}
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">

@@ -8,10 +8,8 @@ import { Label } from '@/components/ui/label';
 import TransactionCasesTable from '@/components/transactions/TransactionCasesTable';
 import {
   transactionService,
-  transactionTypeService,
   type TransactionCase,
-  type PaginatedResponse,
-  type TransactionType
+  type PaginatedResponse
 } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { KeenIcon } from '@/components/keenicons';
@@ -20,7 +18,6 @@ const TransactionCasesPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [cases, setCases] = useState<PaginatedResponse<TransactionCase> | null>(null);
-  const [transactionTypes, setTransactionTypes] = useState<TransactionType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
@@ -61,20 +58,10 @@ const TransactionCasesPage = () => {
     [pageSize, accountIdFilter]
   );
 
-  // Fetch transaction types for display
-  const fetchTransactionTypes = useCallback(async () => {
-    try {
-      const response = await transactionTypeService.getTransactionTypes({ page: 1, pageSize: 100 });
-      setTransactionTypes(response.items);
-    } catch (err) {
-      console.error('Failed to fetch transaction types:', err);
-    }
-  }, []);
 
   useEffect(() => {
     fetchCases(pageNumber);
-    fetchTransactionTypes();
-  }, [fetchCases, fetchTransactionTypes, pageNumber]);
+  }, [fetchCases, pageNumber]);
 
   // Initialize account ID filter from URL params
   useEffect(() => {
@@ -164,7 +151,6 @@ const TransactionCasesPage = () => {
       <div className="mt-6">
         <TransactionCasesTable
           cases={cases}
-          transactionTypes={transactionTypes}
           loading={loading}
           error={error}
           pageNumber={pageNumber}

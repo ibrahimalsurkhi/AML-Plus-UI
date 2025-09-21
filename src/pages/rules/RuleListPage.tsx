@@ -108,6 +108,7 @@ const RuleListPage: React.FC = () => {
                       <TableHead>ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Rule Type</TableHead>
+                      <TableHead>Apply To</TableHead>
                       <TableHead>Active</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -117,7 +118,17 @@ const RuleListPage: React.FC = () => {
                       <TableRow key={rule.id} className="hover:bg-gray-50 cursor-pointer">
                         <TableCell className="font-medium">{rule.id}</TableCell>
                         <TableCell>{rule.name}</TableCell>
-                        <TableCell>{rule.ruleType}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium">{rule.ruleTypeDescription || rule.ruleType}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium">{rule.applyToDescription || 'N/A'}</div>
+                            
+                          </div>
+                        </TableCell>
                         <TableCell>{rule.isActive ? 'Yes' : 'No'}</TableCell>
 
                         <TableCell className="text-right">
