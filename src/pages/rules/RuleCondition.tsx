@@ -278,6 +278,17 @@ function getOperatorLabel(value: any, fieldId: any, condition?: any) {
     }
   }
 
+  // Fallback for null operators - default to reasonable operators based on field type
+  if ((operatorValue === null || operatorValue === undefined) && fieldId !== null && fieldId !== undefined) {
+    if (fieldId === AggregateFieldId.TransactionStatus) {
+      // For Transaction Status with null operator, default to "In" (most common case)
+      return getLabel(StatusOperatorOptions, 9) || '[Operator]'; // 9 = In
+    }
+    if (fieldId === AggregateFieldId.RiskStatus) {
+      return getLabel(RiskStatusOperatorOptions, 11) || '[Operator]'; // 11 = AtLeastOne
+    }
+  }
+
   // Fallback to aggregateFunction for legacy data
   if (fieldId === AggregateFieldId.TransactionStatus) {
     return getLabel(StatusOperatorOptions, value) || '[Operator]';
