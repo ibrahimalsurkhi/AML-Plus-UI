@@ -1125,6 +1125,14 @@ export interface TransactionCreate {
   fieldResponses?: FieldResponseCreate[];
 }
 
+export interface TransactionCreateResponse {
+  transactionId: string;
+  transactionExecutionId: number;
+  transactionExecutionUuid: string;
+  isExecutionIdAvailable: boolean;
+  message: string;
+}
+
 export enum TransactionProcessingStatus {
   Pending = 0,
   Processing = 1,
@@ -1486,9 +1494,9 @@ export const transactionService = {
     const response = await api.get<TransactionPrepareResponse>('/transactions/prepare');
     return response.data;
   },
-  createTransaction: async (data: TransactionCreate): Promise<string> => {
+  createTransaction: async (data: TransactionCreate): Promise<TransactionCreateResponse> => {
     console.log('Creating transaction with data:', data);
-    const response = await api.post<string>(API_CONFIG.endpoints.transactions.create, data);
+    const response = await api.post<TransactionCreateResponse>(API_CONFIG.endpoints.transactions.create, data);
     console.log('Transaction creation response:', response.data);
     return response.data;
   },

@@ -30,6 +30,7 @@ import {
   type StatusOption,
   type ProcessingStatusOption,
   type CustomField,
+  type TransactionCreateResponse,
   ScoreCriteriaRange
 } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
@@ -364,7 +365,7 @@ const CreateTransactionPage = () => {
       console.log('About to create transaction with data:', transactionData);
       console.log('Transaction service:', transactionService);
 
-      let createdTransaction: string;
+      let createdTransactionResponse: TransactionCreateResponse;
       try {
         // Create transaction with field responses included
         const transactionDataWithFields = {
@@ -385,8 +386,8 @@ const CreateTransactionPage = () => {
           'Creating transaction with field responses included:',
           transactionDataWithFields
         );
-        createdTransaction = await transactionService.createTransaction(transactionDataWithFields);
-        console.log('Transaction creation response:', createdTransaction);
+        createdTransactionResponse = await transactionService.createTransaction(transactionDataWithFields);
+        console.log('Transaction creation response:', createdTransactionResponse);
       } catch (error: any) {
         console.error('Error creating transaction:', error);
         console.error('Error details:', {
@@ -398,14 +399,20 @@ const CreateTransactionPage = () => {
         throw error; // Re-throw to be caught by the outer try-catch
       }
 
-      // Get the transaction ID and check processing status
-      // Handle both object response and direct ID response
-      let transactionId: string;
+      // Extract transaction details from the new response structure
+      const transactionId = createdTransactionResponse.transactionId;
+      const transactionExecutionId = createdTransactionResponse.transactionExecutionId;
+      const transactionExecutionUuid = createdTransactionResponse.transactionExecutionUuid;
+      const isExecutionIdAvailable = createdTransactionResponse.isExecutionIdAvailable;
+      const responseMessage = createdTransactionResponse.message;
 
-      // API returned just the ID number
-      transactionId = createdTransaction;
-
-      console.log('Extracted transaction ID:', transactionId);
+      console.log('Extracted transaction details:', {
+        transactionId,
+        transactionExecutionId,
+        transactionExecutionUuid,
+        isExecutionIdAvailable,
+        responseMessage
+      });
 
       // Validate that we have a valid transaction ID
       if (!transactionId) {
@@ -416,15 +423,33 @@ const CreateTransactionPage = () => {
       }
 
       setSuccess(true);
+      
+      // Create enhanced success message based on response
+      let successDescription = `Transaction #${transactionId} created successfully!`;
+      if (isExecutionIdAvailable && transactionExecutionId) {
+        successDescription += ` Execution ID: ${transactionExecutionId}`;
+      }
+      if (responseMessage) {
+        successDescription += ` ${responseMessage}`;
+      }
+      
       toast({
         title: 'Success',
-        description: `Transaction #${transactionId} created successfully!`
+        description: successDescription
       });
 
       // Check processing status after a short delay
       setTimeout(async () => {
         try {
-          console.log('Checking processing status for transaction ID:', transactionId);
+          // Use execution ID for monitoring if available, otherwise use transaction ID
+          const monitoringId = transactionId;
+          
+          console.log('Checking processing status for ID:', monitoringId, {
+            isExecutionIdAvailable,
+            transactionExecutionId,
+            transactionId
+          });
+          
           const statusResponse =
             await transactionService.getTransactionProcessingStatus(transactionId);
 
@@ -432,15 +457,25 @@ const CreateTransactionPage = () => {
             const matchedRules = statusResponse.ruleMatches.filter((rule) => rule.isMatched);
             const ruleNames = matchedRules.map((rule) => rule.ruleName).join(', ');
 
+            let ruleMatchDescription = `${statusResponse.matchedRulesCount} rule(s) matched: ${ruleNames}`;
+            if (isExecutionIdAvailable && transactionExecutionId) {
+              ruleMatchDescription += ` (Execution: ${transactionExecutionId})`;
+            }
+            
             toast({
               title: '⚠️ Rule Matches Detected',
-              description: `${statusResponse.matchedRulesCount} rule(s) matched: ${ruleNames}`,
+              description: ruleMatchDescription,
               variant: 'destructive'
             });
           } else {
+            let completionDescription = `Transaction #${transactionId} processed successfully with no rule matches.`;
+            if (isExecutionIdAvailable && transactionExecutionId) {
+              completionDescription += ` (Execution: ${transactionExecutionId})`;
+            }
+            
             toast({
               title: '✅ Processing Complete',
-              description: `Transaction #${transactionId} processed successfully with no rule matches.`
+              description: completionDescription
             });
           }
 

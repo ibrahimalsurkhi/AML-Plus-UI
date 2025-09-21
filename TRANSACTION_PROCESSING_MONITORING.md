@@ -36,7 +36,34 @@ This implementation provides real-time monitoring of transaction processing stat
 
 ## API Integration
 
-### Endpoint
+### Transaction Creation Endpoint
+```
+POST /api/transactions
+```
+
+#### New Response Structure
+```typescript
+interface TransactionCreateResponse {
+  transactionId: string;
+  transactionExecutionId: number;
+  transactionExecutionUuid: string;
+  isExecutionIdAvailable: boolean;
+  message: string;
+}
+```
+
+Example response:
+```json
+{
+  "transactionId": "42f60ab2-e430-4c53-8eca-d805b765c50d",
+  "transactionExecutionId": 2,
+  "transactionExecutionUuid": "62e8edfb-dcf2-4d16-8721-1b07225f3987",
+  "isExecutionIdAvailable": true,
+  "message": "Transaction created successfully. Rule execution is in progress."
+}
+```
+
+### Processing Status Endpoint
 ```
 GET /api/transactions/{id}/processing-status
 ```

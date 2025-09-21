@@ -86,11 +86,6 @@ export const useTransactionProcessingStatus = ({
           return;
         }
         
-        const numericId = parseInt(idToUse, 10);
-        if (isNaN(numericId) || numericId <= 0) {
-          console.warn('Cannot poll: Invalid numeric transaction ID');
-          return;
-        }
         
         const result = await transactionService.getTransactionProcessingStatus(idToUse);
         setStatus(result);
