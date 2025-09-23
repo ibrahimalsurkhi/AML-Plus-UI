@@ -1012,7 +1012,22 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
         fieldResponses: accountFieldResponses
       };
       const res = await accountService.createAccount(accountDataWithFields);
-      setAccounts((prev: any[]) => [...prev, { ...accountData, id: res.id }]);
+      
+      // Create a properly structured account object
+      const createdAccount = {
+        id: res.id || res.accountId || res,
+        name: accountData.name,
+        number: accountData.number,
+        bankOfCountryName: bankCountries.find(c => c.id == accountData.bankOfCountryId)?.value || '',
+        bankOfCity: accountData.bankOfCity,
+        creationDate: accountData.creationDate,
+        accountStatus: accountData.accountStatus,
+        ...accountData,
+        // Ensure we have the correct ID
+        uuid: res.uuid || res.accountUuid || ''
+      };
+      
+      setAccounts((prev: any[]) => [...prev, createdAccount]);
       setShowCreateAccount(false);
       setAccountData({});
       setAccountFieldResponses([]);
@@ -1020,7 +1035,7 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
         title: 'Success',
         description: 'Account created successfully'
       });
-      setSelectedAccount({ ...accountData, id: res.id });
+      setSelectedAccount(createdAccount);
     } catch (error: any) {
       console.error('Error creating account:', error);
       console.error('Error response data:', error.response?.data);

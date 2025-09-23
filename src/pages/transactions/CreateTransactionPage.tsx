@@ -242,11 +242,28 @@ const CreateTransactionPage = () => {
     );
     console.log('Form data for validation:', form);
 
-    if (showSender && !form.senderId && !selectedSenderAccount) {
-      newErrors.senderId = 'Sender account is required';
+    // Enhanced validation for sender account
+    if (showSender) {
+      const hasSenderId = form.senderId && form.senderId.trim() !== '';
+      const hasSelectedSender = selectedSenderAccount && selectedSenderAccount.id;
+      
+      if (!hasSenderId && !hasSelectedSender) {
+        newErrors.senderId = 'Sender account is required';
+      } else if (selectedSenderAccount && !selectedSenderAccount.id) {
+        newErrors.senderId = 'Selected sender account is invalid - missing ID';
+      }
     }
-    if (showRecipient && !form.recipientId && !selectedRecipientAccount) {
-      newErrors.recipientId = 'Recipient account is required';
+    
+    // Enhanced validation for recipient account
+    if (showRecipient) {
+      const hasRecipientId = form.recipientId && form.recipientId.trim() !== '';
+      const hasSelectedRecipient = selectedRecipientAccount && selectedRecipientAccount.id;
+      
+      if (!hasRecipientId && !hasSelectedRecipient) {
+        newErrors.recipientId = 'Recipient account is required';
+      } else if (selectedRecipientAccount && !selectedRecipientAccount.id) {
+        newErrors.recipientId = 'Selected recipient account is invalid - missing ID';
+      }
     }
 
     console.log('Validation errors:', newErrors);
@@ -296,12 +313,33 @@ const CreateTransactionPage = () => {
     console.log('Validation passed, proceeding with transaction creation');
     setLoading(true);
     try {
-      let senderId = selectedSenderAccount?.id
-        ? String(selectedSenderAccount.id)
-        : form.senderId || undefined;
-      let recipientId = selectedRecipientAccount?.id
-        ? String(selectedRecipientAccount.id)
-        : form.recipientId || undefined;
+      // Ensure we have valid account IDs
+      let senderId = undefined;
+      let recipientId = undefined;
+      
+      if (showSender) {
+        if (selectedSenderAccount?.id) {
+          senderId = String(selectedSenderAccount.id);
+        } else if (form.senderId && form.senderId.trim() !== '') {
+          senderId = form.senderId;
+        }
+        
+        if (!senderId) {
+          throw new Error('Sender account ID is required but not provided');
+        }
+      }
+      
+      if (showRecipient) {
+        if (selectedRecipientAccount?.id) {
+          recipientId = String(selectedRecipientAccount.id);
+        } else if (form.recipientId && form.recipientId.trim() !== '') {
+          recipientId = form.recipientId;
+        }
+        
+        if (!recipientId) {
+          throw new Error('Recipient account ID is required but not provided');
+        }
+      }
 
       console.log(
         'Using senderId:',
@@ -384,8 +422,8 @@ const CreateTransactionPage = () => {
           transactionTime: form.transactionTime,
           transactionPurpose: form.transactionPurpose,
           transactionStatus: Number(form.transactionStatus),
-          senderId: senderId ? Number(senderId) : undefined,
-          recipientId: recipientId ? Number(recipientId) : undefined,
+        senderId: senderId ? Number(senderId) : undefined,
+        recipientId: recipientId ? Number(recipientId) : undefined,
           fieldResponses: fieldResponses
         };
 
