@@ -348,7 +348,7 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
     }>
   >([]);
   const [customFieldOptions, setCustomFieldOptions] = useState<
-    Array<{ id: number; label: string; value?: string }>
+    Array<{ id: number; label: string; value?: string; isDeleted?: boolean }>
   >([]);
   const [customFieldLookupValues, setCustomFieldLookupValues] = useState<LookupValue[]>([]);
   const [loadingCustomFieldOptions, setLoadingCustomFieldOptions] = useState(false);
@@ -604,7 +604,8 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
             options.map((opt) => ({
               id: opt.id,
               label: opt.label,
-              value: opt.label
+              value: opt.label,
+              isDeleted: opt.isDeleted || false
             }))
           );
         } else if (field.fieldType === FieldType.Lookup && field.lookupId) {
@@ -614,7 +615,8 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
             lookupValues.map((val) => ({
               id: val.id,
               value: val.value,
-              lookupId: field.lookupId!
+              lookupId: field.lookupId!,
+              isDeleted: val.isDeleted || false
             }))
           );
         }
@@ -1208,10 +1210,12 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                   // Multi-select for dropdown/radio/checkbox
                   return (
                     <MultiSelect
-                      options={customFieldOptions.map((opt) => ({
-                        label: opt.label,
-                        value: opt.id
-                      }))}
+                      options={customFieldOptions
+                        .filter(opt => !opt.isDeleted)
+                        .map((opt) => ({
+                          label: opt.label,
+                          value: opt.id
+                        }))}
                       value={(() => {
                         try {
                           return JSON.parse(condition.jsonValue || '[]').map(String);
@@ -1229,10 +1233,12 @@ const RuleCondition: React.FC<RuleConditionProps> = ({
                   // Multi-select for lookup fields
                   return (
                     <MultiSelect
-                      options={customFieldLookupValues.map((val) => ({
-                        label: val.value,
-                        value: val.id
-                      }))}
+                      options={customFieldLookupValues
+                        .filter(val => !val.isDeleted)
+                        .map((val) => ({
+                          label: val.value,
+                          value: val.id
+                        }))}
                       value={(() => {
                         try {
                           return JSON.parse(condition.jsonValue || '[]').map(String);

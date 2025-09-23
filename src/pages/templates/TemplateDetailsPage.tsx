@@ -1566,6 +1566,7 @@ const FieldOptionsDialog = ({
                     </TableHeader>
                     <TableBody>
                       {options
+                        .filter(option => !option.isDeleted)
                         .sort((a, b) => a.displayOrder - b.displayOrder)
                         .map((option) => {
                           // Find corresponding lookup value for this option
@@ -1629,6 +1630,7 @@ interface ScoreCriteriaRange {
   maxValue: number;
   scoreCriteriaId: number;
   displayOrder: number;
+  isDeleted?: boolean;
 }
 
 const ScoreCriteriaRangeForm = ({
@@ -1718,11 +1720,13 @@ const ScoreCriteriaRangeForm = ({
     const rangesToCheck = !initialData ? serverRanges : existingRanges;
 
     // Check for overlapping ranges and boundary conditions
-    const hasOverlap = rangesToCheck.some((existingRange) => {
-      // Skip the current range if we're editing
-      if (initialData && existingRange.id === initialData.id) {
-        return false;
-      }
+    const hasOverlap = rangesToCheck
+      .filter(range => !range.isDeleted) // Exclude deleted ranges from overlap validation
+      .some((existingRange) => {
+        // Skip the current range if we're editing
+        if (initialData && existingRange.id === initialData.id) {
+          return false;
+        }
 
       // Check if the new range starts at the end of an existing range
       if (formData.minValue === existingRange.maxValue) {
@@ -1862,19 +1866,22 @@ const SectionDialog = ({
 }) => {
   const [formData, setFormData] = useState<Omit<TemplateSection, 'id' | 'fields'>>({
     title: '',
-    displayOrder: 1
+    displayOrder: 1,
+    isDeleted: false
   });
 
   useEffect(() => {
     if (initialData) {
       setFormData({
         title: initialData.title,
-        displayOrder: initialData.displayOrder
+        displayOrder: initialData.displayOrder,
+        isDeleted: initialData.isDeleted
       });
     } else {
       setFormData({
         title: '',
-        displayOrder: 1
+        displayOrder: 1,
+        isDeleted: false
       });
     }
   }, [initialData, open]);
@@ -2078,6 +2085,7 @@ const ScoreCriteriaRangeDialog = ({
               ) : (
                 <div className="border rounded-md divide-y">
                   {localRanges // Use localRanges instead of ranges prop
+                    .filter(range => !range.isDeleted)
                     .sort((a, b) => a.displayOrder - b.displayOrder)
                     .map((range) => {
                       const criteria = scoreCriteria.find((c) => c.id === range.scoreCriteriaId);
@@ -2354,8 +2362,17 @@ export const TemplateDetailsPage = () => {
   const fetchTemplateFields = async (templateId: string) => {
     try {
       const data = await templateService.getTemplateFields(templateId);
-      setTemplateSections(data.sections);
-      setFieldsWithoutSection(data.fieldsWithoutSection);
+      // Filter out deleted sections and fields
+      const filteredSections = data.sections
+        .filter(section => !section.isDeleted)
+        .map(section => ({
+          ...section,
+          fields: section.fields.filter(field => !field.isDeleted)
+        }));
+      const filteredFieldsWithoutSection = data.fieldsWithoutSection.filter(field => !field.isDeleted);
+      
+      setTemplateSections(filteredSections);
+      setFieldsWithoutSection(filteredFieldsWithoutSection);
     } catch (err) {
       console.error('Error fetching template fields:', err);
       toast({
@@ -2418,7 +2435,8 @@ export const TemplateDetailsPage = () => {
         pattern: field.pattern,
         lookupId: field.lookupId || null,
         sectionId: fieldSectionId || null,
-        readOnly: field.readOnly || false
+        readOnly: field.readOnly || false,
+        isDeleted: false
       };
 
       await templateService.createTemplateField(id, newField);
@@ -2935,7 +2953,7 @@ export const TemplateDetailsPage = () => {
           pageNumber: 1,
           pageSize: 100
         });
-        lookupData = nationalityData.items;
+        lookupData = nationalityData.items.filter(item => !item.isDeleted);
         sampleOptions = nationalityData.items.map((item, index) => ({
           id: item.id,
           fieldId: mockFieldId,
@@ -2955,7 +2973,7 @@ export const TemplateDetailsPage = () => {
           pageNumber: 1,
           pageSize: 100
         });
-        lookupData = countryOfBirthData.items;
+        lookupData = countryOfBirthData.items.filter(item => !item.isDeleted);
         sampleOptions = countryOfBirthData.items.map((item, index) => ({
           id: item.id,
           fieldId: mockFieldId,
@@ -2989,7 +3007,8 @@ export const TemplateDetailsPage = () => {
         sectionId: null,
         templateId: template?.id || 0,
         readOnly: true, // Mark as read-only
-        lookupId: null
+        lookupId: null,
+        isDeleted: false
       };
 
       // Fetch real options from API for Nationality and Country of Birth fields

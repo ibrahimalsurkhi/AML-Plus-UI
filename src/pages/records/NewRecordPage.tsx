@@ -97,7 +97,10 @@ const baseValidationSchema = Yup.object().shape({
 const getRangeBounds = (ranges: ScoreCriteriaRange[] | undefined) => {
   if (!ranges || ranges.length === 0) return { min: undefined, max: undefined };
 
-  return ranges.reduce(
+  const activeRanges = ranges.filter(range => !range.isDeleted);
+  if (activeRanges.length === 0) return { min: undefined, max: undefined };
+
+  return activeRanges.reduce(
     (acc, range) => ({
       min: acc.min === undefined ? range.minValue : Math.min(acc.min, range.minValue),
       max: acc.max === undefined ? range.maxValue : Math.max(acc.max, range.maxValue)
@@ -165,16 +168,21 @@ const NewRecordPage = () => {
       // Store the prepare-record response
       setPrepareRecordData(prepareResponse);
       
-      // Populate country of birth and nationality options
-      setCountryOfBirthOptions(prepareResponse.countryOfBirthOptions);
-      setNationalityOptions(prepareResponse.nationalityOptions);
+      // Populate country of birth and nationality options (filter out deleted items)
+      setCountryOfBirthOptions(prepareResponse.countryOfBirthOptions.filter(option => !option.isDeleted));
+      setNationalityOptions(prepareResponse.nationalityOptions.filter(option => !option.isDeleted));
       
-      // Process sections with their fields
-      const processedSections: ExtendedTemplateSection[] = prepareResponse.sections.map(section => ({
+      // Process sections with their fields (filter out deleted sections and fields)
+      const processedSections: ExtendedTemplateSection[] = prepareResponse.sections
+        .filter(section => !section.isDeleted)
+        .map(section => ({
         id: section.id,
         title: section.title,
         displayOrder: section.displayOrder,
-        fields: section.fields.map(field => ({
+        isDeleted: section.isDeleted,
+        fields: section.fields
+          .filter(field => !field.isDeleted)
+          .map(field => ({
           id: field.id,
           templateId: field.templateId,
           label: field.label,
@@ -191,7 +199,10 @@ const NewRecordPage = () => {
           maxDate: field.maxDate || undefined,
           pattern: field.pattern || undefined,
           lookupId: field.lookupId || undefined,
-          options: field.lookupOptions.map((opt, index) => ({
+          isDeleted: field.isDeleted,
+          options: field.lookupOptions
+            .filter(opt => !opt.isDeleted)
+            .map((opt, index) => ({
             id: opt.id,
             fieldId: field.id,
             label: opt.value,
@@ -199,14 +210,16 @@ const NewRecordPage = () => {
             displayOrder: opt.displayOrder || index,
             value: opt.value
           })),
-          ranges: field.scoreCriteria.map(criteria => ({
-            id: criteria.id,
-            fieldId: criteria.fieldId,
-            minValue: criteria.minValue,
-            maxValue: criteria.maxValue,
-            scoreCriteriaId: criteria.scoreCriteriaId,
-            displayOrder: 0
-          }))
+          ranges: field.scoreCriteria
+            .filter(criteria => !criteria.isDeleted)
+            .map(criteria => ({
+              id: criteria.id,
+              fieldId: criteria.fieldId,
+              minValue: criteria.minValue,
+              maxValue: criteria.maxValue,
+              scoreCriteriaId: criteria.scoreCriteriaId,
+              displayOrder: 0
+            }))
         }))
       }));
       
@@ -324,12 +337,14 @@ const NewRecordPage = () => {
                   response.valueNumber = numericValue;
 
                   // Find the matching range based on the value
-                  const matchingRange = field.ranges?.find(
-                    (range) =>
-                      numericValue !== null &&
-                      numericValue >= range.minValue &&
-                      numericValue <= range.maxValue
-                  );
+                  const matchingRange = field.ranges
+                    ?.filter(range => !range.isDeleted)
+                    ?.find(
+                      (range) =>
+                        numericValue !== null &&
+                        numericValue >= range.minValue &&
+                        numericValue <= range.maxValue
+                    );
 
                   // Set the range ID in valueText if a matching range is found
                   response.templateFieldScoreCriteriaId = matchingRange
@@ -397,12 +412,14 @@ const NewRecordPage = () => {
                 response.valueNumber = numericValue;
 
                 // Find the matching range based on the value
-                const matchingRange = field.ranges?.find(
-                  (range) =>
-                    numericValue !== null &&
-                    numericValue >= range.minValue &&
-                    numericValue <= range.maxValue
-                );
+                const matchingRange = field.ranges
+                  ?.filter(range => !range.isDeleted)
+                  ?.find(
+                    (range) =>
+                      numericValue !== null &&
+                      numericValue >= range.minValue &&
+                      numericValue <= range.maxValue
+                  );
 
                 // Set the range ID in valueText if a matching range is found
                 response.templateFieldScoreCriteriaId = matchingRange

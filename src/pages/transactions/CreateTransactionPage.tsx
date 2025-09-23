@@ -122,19 +122,21 @@ const CreateTransactionPage = () => {
         setLoading(true);
         const prepareData = await transactionService.prepareTransaction();
 
-        // Set all the data from the prepare API
+        // Set all the data from the prepare API (filter out deleted items)
         setTransactionTypes(prepareData.transactionTypes);
-        setCurrencyOptions(prepareData.currencyOptions);
+        setCurrencyOptions(prepareData.currencyOptions.filter(option => !option.isDeleted));
         setStatusOptions(prepareData.statusOptions);
         setProcessingStatusOptions(prepareData.processingStatusOptions);
-        setCustomFields(prepareData.customFields);
+        setCustomFields(prepareData.customFields.filter(field => !field.isDeleted));
         setTransactionTemplates(prepareData.transactionTemplates);
 
         // Convert customFields to templateFields format for backward compatibility
-        const templateFieldsFromCustomFields = prepareData.customFields.map((customField) => ({
+        const filteredCustomFields = prepareData.customFields.filter(field => !field.isDeleted);
+        const templateFieldsFromCustomFields = filteredCustomFields.map((customField) => ({
           id: customField.id,
           templateId: customField.templateId,
           label: customField.label,
+          isDeleted: customField.isDeleted || false,
           fieldType: customField.fieldType,
           weight: 0, // Default weight
           isRequired: customField.isRequired,
@@ -148,25 +150,30 @@ const CreateTransactionPage = () => {
           maxDate: customField.maxDate,
           pattern: customField.pattern,
           lookupId: customField.lookupId,
-          options: customField.lookupOptions.map((option) => ({
-            id: option.id,
-            fieldId: customField.id,
-            label: option.value,
-            scoreCriteriaId: 0,
-            displayOrder: option.displayOrder,
-            value: option.value
-          }))
+          options: customField.lookupOptions
+            .filter(option => !option.isDeleted)
+            .map((option) => ({
+              id: option.id,
+              fieldId: customField.id,
+              label: option.value,
+              scoreCriteriaId: 0,
+              displayOrder: option.displayOrder,
+              value: option.value,
+              isDeleted: option.isDeleted || false
+            }))
         }));
         setTemplateFields(templateFieldsFromCustomFields);
 
         // Set currencies from currency options for backward compatibility
         setCurrencies(
-          prepareData.currencyOptions.map((currency) => ({
-            id: currency.id,
-            lookupId: 2, // Assuming currency lookup ID
-            value: currency.value,
-            scoreCriteriaId: 0
-          }))
+          prepareData.currencyOptions
+            .filter(option => !option.isDeleted)
+            .map((currency) => ({
+              id: currency.id,
+              lookupId: 2, // Assuming currency lookup ID
+              value: currency.value,
+              scoreCriteriaId: 0
+            }))
         );
       } catch (err) {
         toast({
@@ -585,7 +592,10 @@ const CreateTransactionPage = () => {
   const getRangeBounds = (ranges: ScoreCriteriaRange[] | undefined) => {
     if (!ranges || ranges.length === 0) return { min: undefined, max: undefined };
 
-    return ranges.reduce(
+    const activeRanges = ranges.filter(range => !range.isDeleted);
+    if (activeRanges.length === 0) return { min: undefined, max: undefined };
+
+    return activeRanges.reduce(
       (acc, range) => ({
         min: acc.min === undefined ? range.minValue : Math.min(acc.min, range.minValue),
         max: acc.max === undefined ? range.maxValue : Math.max(acc.max, range.maxValue)
@@ -690,12 +700,14 @@ const CreateTransactionPage = () => {
 
           // Find the matching range based on the value
           const field = templateFields.find((f) => f.id === fieldId);
-          const matchingRange = field?.ranges?.find(
-            (range) =>
-              numericValue !== null &&
-              numericValue >= range.minValue &&
-              numericValue <= range.maxValue
-          );
+          const matchingRange = field?.ranges
+            ?.filter(range => !range.isDeleted)
+            ?.find(
+              (range) =>
+                numericValue !== null &&
+                numericValue >= range.minValue &&
+                numericValue <= range.maxValue
+            );
 
           // Set the range ID for number fields
           response.templateFieldScoreCriteriaId = matchingRange

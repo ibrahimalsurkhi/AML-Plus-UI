@@ -118,12 +118,14 @@ export interface TemplateField {
   pattern?: string | null;
   lookupId?: number | null;
   readOnly?: boolean;
+  isDeleted: boolean;
 }
 
 export interface TemplateSection {
   id: number;
   title: string;
   displayOrder: number;
+  isDeleted: boolean;
   fields: TemplateField[];
 }
 
@@ -139,6 +141,7 @@ export interface FieldOption {
   label: string;
   scoreCriteriaId: number;
   displayOrder: number;
+  isDeleted?: boolean;
 }
 
 export interface ScoreCriteriaRange {
@@ -148,6 +151,7 @@ export interface ScoreCriteriaRange {
   maxValue: number;
   scoreCriteriaId: number;
   displayOrder: number;
+  isDeleted?: boolean;
 }
 
 // Prepare Record Response Interfaces
@@ -165,6 +169,7 @@ export interface PrepareRecordOption {
   id: number;
   value: string;
   displayOrder: number;
+  isDeleted: boolean;
 }
 
 export interface PrepareRecordCustomField {
@@ -185,6 +190,7 @@ export interface PrepareRecordCustomField {
   pattern: string | null;
   lookupId: number | null;
   lookupName: string | null;
+  isDeleted: boolean;
   lookupOptions: PrepareRecordOption[];
   scoreCriteria: any[];
 }
@@ -201,6 +207,7 @@ export interface PrepareRecordSection {
   id: number;
   title: string;
   displayOrder: number;
+  isDeleted: boolean;
   fields: PrepareRecordCustomField[];
 }
 
@@ -831,6 +838,7 @@ export interface LookupValue {
   scoreCriteriaScore?: number;
   scoreCriteriaBGColor?: string;
   scoreCriteriaColor?: string;
+  isDeleted: boolean;
 }
 
 export interface LookupQueryParams {
@@ -1443,6 +1451,7 @@ export interface CurrencyOption {
   id: number;
   value: string;
   displayOrder: number;
+  isDeleted?: boolean;
 }
 
 export interface StatusOption {
@@ -1474,6 +1483,7 @@ export interface CustomField {
   pattern?: string;
   lookupId?: number;
   lookupName?: string;
+  isDeleted?: boolean;
   lookupOptions: LookupOption[];
 }
 
@@ -1481,6 +1491,7 @@ export interface LookupOption {
   id: number;
   value: string;
   displayOrder: number;
+  isDeleted?: boolean;
 }
 
 export interface TransactionPrepareResponse {

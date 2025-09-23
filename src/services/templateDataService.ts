@@ -1,4 +1,4 @@
-import { templateService, customValueService, FieldType, TemplateType } from './api';
+import { templateService, customValueService, FieldType, TemplateType, TemplateStatus } from './api';
 
 export interface TemplateData {
   id: number;
@@ -16,8 +16,8 @@ export interface CustomFieldData {
   fieldType: number;
   lookupId?: number;
   templateId: string;
-  options?: { id: number; label: string }[];
-  lookupValues?: { id: number; value: string }[];
+  options?: { id: number; label: string; isDeleted?: boolean }[];
+  lookupValues?: { id: number; value: string; isDeleted?: boolean }[];
 }
 
 export interface CustomValueData {
@@ -74,7 +74,7 @@ class TemplateDataService {
       }
 
       // Step 3: Process each template using only prepare-record (contains all data we need)
-      const templatePromises = templatesResponse.items.map(async (template) => {
+      const templatePromises = templatesResponse.items.filter(x => x.status == TemplateStatus.Active).map(async (template) => {
         const templateData: TemplateData = {
           id: template.id,
           name: template.name,
@@ -127,14 +127,16 @@ class TemplateDataService {
               // Use lookupOptions from prepare-record response
               customField.options = field.lookupOptions?.map((opt: any) => ({
                 id: opt.id,
-                label: opt.value // PrepareRecordOption uses 'value' field for the label
+                label: opt.value, // PrepareRecordOption uses 'value' field for the label
+                isDeleted: opt.isDeleted || false
               })) || [];
               
               // For lookup fields, also store as lookupValues for backward compatibility
               if (field.fieldType === FieldType.Lookup) {
                 customField.lookupValues = field.lookupOptions?.map((opt: any) => ({
                   id: opt.id,
-                  value: opt.value
+                  value: opt.value,
+                  isDeleted: opt.isDeleted || false
                 })) || [];
               }
             }
@@ -249,7 +251,7 @@ class TemplateDataService {
   /**
    * Get field options for a custom field
    */
-  getFieldOptions(customFieldId: number): { id: number; label: string }[] {
+  getFieldOptions(customFieldId: number): { id: number; label: string; isDeleted?: boolean }[] {
     const field = this.getCustomField(customFieldId);
     return field?.options || [];
   }
@@ -257,7 +259,7 @@ class TemplateDataService {
   /**
    * Get lookup values for a custom field
    */
-  getLookupValues(customFieldId: number): { id: number; value: string }[] {
+  getLookupValues(customFieldId: number): { id: number; value: string; isDeleted?: boolean }[] {
     const field = this.getCustomField(customFieldId);
     return field?.lookupValues || [];
   }

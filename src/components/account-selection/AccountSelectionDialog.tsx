@@ -325,9 +325,11 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
   const fetchBankCountries = async () => {
     setBankCountriesLoading(true);
     try {
-      const lookup = await lookupService.getLookupById(4);
-      const values = await lookupService.getLookupValues(4, { pageNumber: 1, pageSize: 100 });
-      setBankCountries(values.items);
+      const values = await lookupService.getLookupValuesByKey('CountryOfBirth', { 
+        pageNumber: 1, 
+        pageSize: 100 
+      });
+      setBankCountries(values.items.filter(item => !item.isDeleted));
     } catch (err) {
       toast({
         title: 'Error',
@@ -343,9 +345,18 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
     setAccountTemplateFieldsLoading(true);
     try {
       const fieldsResponse = await templateService.getTemplateFields('13');
+      // Filter out deleted sections and fields
+      const filteredSections = fieldsResponse.sections
+        .filter(section => !section.isDeleted)
+        .map(section => ({
+          ...section,
+          fields: section.fields.filter(field => !field.isDeleted)
+        }));
+      const filteredFieldsWithoutSection = fieldsResponse.fieldsWithoutSection.filter(field => !field.isDeleted);
+      
       const allFields = [
-        ...fieldsResponse.sections.flatMap((section) => section.fields),
-        ...fieldsResponse.fieldsWithoutSection
+        ...filteredSections.flatMap((section) => section.fields),
+        ...filteredFieldsWithoutSection
       ];
 
       const fieldsWithOptions = await Promise.all(
@@ -446,7 +457,10 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
   const getRangeBounds = (ranges: ScoreCriteriaRange[] | undefined) => {
     if (!ranges || ranges.length === 0) return { min: undefined, max: undefined };
 
-    return ranges.reduce(
+    const activeRanges = ranges.filter(range => !range.isDeleted);
+    if (activeRanges.length === 0) return { min: undefined, max: undefined };
+
+    return activeRanges.reduce(
       (acc, range) => ({
         min: acc.min === undefined ? range.minValue : Math.min(acc.min, range.minValue),
         max: acc.max === undefined ? range.maxValue : Math.max(acc.max, range.maxValue)
@@ -545,12 +559,14 @@ const AccountSelectionDialog: React.FC<AccountSelectionDialogProps> = ({
           response.valueNumber = numericValue;
 
           const field = accountTemplateFields.find((f) => f.id === fieldId);
-          const matchingRange = field?.ranges?.find(
-            (range) =>
-              numericValue !== null &&
-              numericValue >= range.minValue &&
-              numericValue <= range.maxValue
-          );
+          const matchingRange = field?.ranges
+            ?.filter(range => !range.isDeleted)
+            ?.find(
+              (range) =>
+                numericValue !== null &&
+                numericValue >= range.minValue &&
+                numericValue <= range.maxValue
+            );
 
           response.templateFieldScoreCriteriaId = matchingRange
             ? parseInt(matchingRange.id.toString())

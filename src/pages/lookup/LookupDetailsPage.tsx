@@ -100,7 +100,7 @@ const LookupDetailsPage = () => {
   const handleAddValue = async () => {
     if (!lookup || !newValue.trim()) return;
     try {
-      await lookupService.createLookupValue(lookup.id, { value: newValue });
+      await lookupService.createLookupValue(lookup.id, { value: newValue, isDeleted: false });
       setNewValue('');
       fetchValues(lookup.id, pageNumber);
       toast({ title: 'Success', description: 'Value added' });
