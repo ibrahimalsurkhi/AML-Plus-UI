@@ -1,0 +1,23 @@
+# App Engine configuration (alternative to Cloud Run)
+runtime: nodejs18
+
+env_variables:
+  VITE_APP_API_URL: "https://34.36.135.193/api"
+  VITE_APP_ENVIRONMENT: "qa"
+  VITE_APP_VERSION: "9.1.2"
+
+automatic_scaling:
+  min_instances: 1
+  max_instances: 10
+  target_cpu_utilization: 0.6
+
+handlers:
+  # Serve static files with caching
+  - url: /static
+    static_dir: dist/assets
+    expiration: 1d
+
+  # Serve the main app
+  - url: /.*
+    static_files: dist/index.html
+    upload: dist/index.html

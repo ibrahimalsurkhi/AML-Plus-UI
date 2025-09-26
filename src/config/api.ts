@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  baseURL: import.meta.env.VITE_APP_API_URL || 'https://localhost:5001/api',
+  baseURL: import.meta.env.VITE_APP_API_URL || 'https://34.36.135.193/api',
   endpoints: {
     auth: {
       login: 'Auth/login'
