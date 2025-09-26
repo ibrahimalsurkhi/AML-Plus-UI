@@ -12,12 +12,13 @@ import {
 import * as authHelper from '../_helpers';
 import { type AuthModel } from '@/auth';
 
-const API_URL = import.meta.env.VITE_APP_API_URL;
-export const LOGIN_URL = `${API_URL}/Auth/login`;
-export const REGISTER_URL = `${API_URL}/register`;
-export const FORGOT_PASSWORD_URL = `${API_URL}/forgot-password`;
-export const RESET_PASSWORD_URL = `${API_URL}/reset-password`;
-export const GET_USER_URL = `${API_URL}/Auth/me`;
+// Fix: Remove double-pathing by using baseURL=/api and paths WITHOUT /api prefix:
+const API_URL = '/api';
+export const LOGIN_URL = 'Auth/login';
+export const REGISTER_URL = 'register';
+export const FORGOT_PASSWORD_URL = 'forgot-password';
+export const RESET_PASSWORD_URL = 'reset-password';
+export const GET_USER_URL = 'Auth/me';
 
 // Setup axios instance
 const api = axios.create({
