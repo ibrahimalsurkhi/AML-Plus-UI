@@ -1,5 +1,6 @@
-const apiBaseURL = import.meta.env.VITE_APP_API_URL || '/api';
-console.log('API Base URL is:', apiBaseURL);
+// Fixed: Use /api for backend routing through nginx proxy
+const apiBaseURL = '/api';
+console.log('API Base URL set to:', apiBaseURL);
 
 export const API_CONFIG = {
   baseURL: apiBaseURL,
