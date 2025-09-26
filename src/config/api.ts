@@ -1,5 +1,8 @@
+const apiBaseURL = import.meta.env.VITE_APP_API_URL || '/api';
+console.log('API Base URL is:', apiBaseURL);
+
 export const API_CONFIG = {
-  baseURL: import.meta.env.VITE_APP_API_URL || '/api',
+  baseURL: apiBaseURL,
   endpoints: {
     auth: {
       login: 'Auth/login'
