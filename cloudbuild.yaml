@@ -4,7 +4,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
-      '--build-arg', 'VITE_APP_API_URL=https://34.36.135.193/api',
+      '--build-arg', 'VITE_APP_API_URL=/api',
       '--build-arg', 'VITE_APP_ENVIRONMENT=qa',
       '--build-arg', 'VITE_APP_VERSION=9.1.2',
       '-t', 'gcr.io/$PROJECT_ID/aml-plus-ui-qa:$BUILD_ID',
@@ -33,7 +33,7 @@ steps:
       '--cpu', '1',
       '--max-instances', '10',
       '--min-instances', '1',
-      '--set-env-vars', 'VITE_APP_API_URL=https://34.36.135.193/api,VITE_APP_ENVIRONMENT=qa,VITE_APP_VERSION=9.1.2'
+      '--set-env-vars', 'VITE_APP_API_URL=/api,VITE_APP_ENVIRONMENT=qa,VITE_APP_VERSION=9.1.2'
     ]
 
 # Substitutions for build variables
