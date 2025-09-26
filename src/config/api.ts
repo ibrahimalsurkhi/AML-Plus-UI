@@ -1,9 +1,8 @@
-// Fixed: Use /api for backend routing through nginx proxy
-const apiBaseURL = '/api';
-console.log('API Base URL set to:', apiBaseURL);
+import.meta.env.DEV && console.debug('[MAIN] API Config loading');
 
+// Conclusively fix the double /api issue by making the URL construction clear:
 export const API_CONFIG = {
-  baseURL: apiBaseURL,
+  baseURL: '/api',
   endpoints: {
     auth: {
       login: 'Auth/login'
